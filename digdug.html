@@ -6,12 +6,45 @@
 <title>Dig Dug</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Press Start 2P', 'Press Start 2P', monospace; }
-canvas { border: 3px solid #555; image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+body { background: #111; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Press Start 2P', 'Press Start 2P', monospace; }
+canvas { border: 3px solid #555; image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 40px rgba(0,0,0,0.8); max-width: 96vw; max-height: 96vh; }
+#mobileControls { display: none; margin-top: 10px; user-select: none; -webkit-user-select: none; touch-action: manipulation; width: 100%; max-width: 500px; }
+#mobileTop { display: flex; justify-content: center; align-items: center; gap: 16px; }
+#dpad { display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px 60px; gap: 6px; justify-content: center; align-items: center; }
+#dpad button, #btnFire { width: 60px; height: 60px; font-size: 22px; font-family: 'Press Start 2P', monospace; font-weight: bold; background: #222; color: #ffcc00; border: 3px solid #555; border-radius: 12px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; box-shadow: 0 4px 0 #111; display: flex; align-items: center; justify-content: center; }
+#dpad button:active, #btnFire:active { transform: translateY(4px); box-shadow: none; background: #333; color: #fff; }
+#dpad .empty { visibility: hidden; }
+#mobileActions { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#mobileActions span { font-size: 7px; color: #888; font-family: 'Press Start 2P', monospace; }
+#btnFire { width: 80px; height: 80px; font-size: 28px; background: #331111; border-color: #aa2222; color: #ff6666; }
+#btnFire:active { background: #661111; }
+/* MOBILE ONLY - desktop stays exactly the same */
+@media (max-width: 900px), (pointer: coarse) {
+  body { justify-content: flex-start; padding: 6px 0; height: auto; min-height: 100vh; overflow: auto; }
+  canvas { width: 96vw; height: auto; max-height: 58vh; }
+  #mobileControls { display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; }
+}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="mobileControls" aria-label="Mobile controls">
+  <div id="dpad">
+    <div class="empty"></div>
+    <button id="btnUp" aria-label="Up">▲</button>
+    <div class="empty"></div>
+    <button id="btnLeft" aria-label="Left">◀</button>
+    <div class="empty"></div>
+    <button id="btnRight" aria-label="Right">▶</button>
+    <div class="empty"></div>
+    <button id="btnDown" aria-label="Down">▼</button>
+    <div class="empty"></div>
+  </div>
+  <div id="mobileActions">
+    <button id="btnFire" aria-label="Fire">⏺</button>
+    <span>FIRE</span>
+  </div>
+</div>
 <script>
 var canvas = document.getElementById('game');
 var ctx = canvas.getContext('2d');
@@ -602,6 +635,8 @@ function startGame() {
 }
 
 var keys = {};
+// Mobile touch flags - MOBILE ONLY controls
+var touchUp=false, touchDown=false, touchLeft=false, touchRight=false;
 document.addEventListener('keydown', function(e) {
   keys[e.key.toLowerCase()] = true;
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].indexOf(e.key.toLowerCase()) >= 0 || ['w', 'a', 's', 'd'].indexOf(e.key.toLowerCase()) >= 0) e.preventDefault();
@@ -612,6 +647,28 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && (gameState === 'title' || gameState === 'gameover')) startGame();
 });
 document.addEventListener('keyup', function(e) { keys[e.key.toLowerCase()] = false; });
+function bindMobileBtn(id, onDown, onUp){
+  var btn=document.getElementById(id);
+  if(!btn) return;
+  var start=function(e){ e.preventDefault(); onDown(); };
+  var end=function(e){ e.preventDefault(); if(onUp) onUp(); };
+  btn.addEventListener('touchstart', start, {passive:false});
+  btn.addEventListener('touchend', end, {passive:false});
+  btn.addEventListener('touchcancel', end, {passive:false});
+  btn.addEventListener('mousedown', function(e){ e.preventDefault(); onDown(); });
+  btn.addEventListener('mouseup', function(e){ e.preventDefault(); if(onUp) onUp(); });
+  btn.addEventListener('mouseleave', function(e){ if(onUp) onUp(); });
+  // prevent click from focusing/scrolling
+  btn.addEventListener('click', function(e){ e.preventDefault(); });
+}
+bindMobileBtn('btnUp', function(){ touchUp=true; }, function(){ touchUp=false; });
+bindMobileBtn('btnDown', function(){ touchDown=true; }, function(){ touchDown=false; });
+bindMobileBtn('btnLeft', function(){ touchLeft=true; }, function(){ touchLeft=false; });
+bindMobileBtn('btnRight', function(){ touchRight=true; }, function(){ touchRight=false; });
+bindMobileBtn('btnFire', function(){
+  if(gameState==='playing' && player.alive) shootArrow();
+  else if(gameState==='title' || gameState==='gameover') startGame();
+}, function(){});
 
 function shootArrow() {
   if (arrows.length > 0 || arrowCooldown > 0) return;
@@ -771,10 +828,10 @@ function update(timestamp) {
     player.moveTimer -= dt;
     if (player.moveTimer <= 0 && player.alive) {
       var moved = false;
-      if (keys['w'] || keys['arrowup']) { moved = moveEntity(player, 'up', true); }
-      else if (keys['s'] || keys['arrowdown']) { moved = moveEntity(player, 'down', true); }
-      else if (keys['a'] || keys['arrowleft']) { moved = moveEntity(player, 'left', true); }
-      else if (keys['d'] || keys['arrowright']) { moved = moveEntity(player, 'right', true); }
+      if (keys['w'] || keys['arrowup'] || touchUp) { moved = moveEntity(player, 'up', true); }
+      else if (keys['s'] || keys['arrowdown'] || touchDown) { moved = moveEntity(player, 'down', true); }
+      else if (keys['a'] || keys['arrowleft'] || touchLeft) { moved = moveEntity(player, 'left', true); }
+      else if (keys['d'] || keys['arrowright'] || touchRight) { moved = moveEntity(player, 'right', true); }
       if (moved) { player.moveTimer = 0.15; player.animFrame++; }
     }
 
