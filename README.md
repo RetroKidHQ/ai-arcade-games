@@ -7,10 +7,11 @@ Every game on this site was designed, coded, and debugged by AI — no human wro
 ## Games
 
 - **Space Invaders** — Defend Earth from alien invasion
+- **Dig Dug** — Tunnel underground and defeat monsters
+- **Pac-Man** — Clear the maze while avoiding ghosts
 
 ## Tech
 
 - Pure HTML/CSS/JavaScript (no frameworks)
 - Hosted on GitHub Pages
-
 
