@@ -101,12 +101,43 @@
             height: auto;
         }
         @media (max-width: 700px), (pointer: coarse) {
-            canvas {
-                width: min(672px, 96vw);
-                height: auto;
+            body {
+                min-height: 100vh;
+                min-height: 100dvh;
+                align-items: flex-start;
+                overflow: hidden;
             }
-            #mobileControls { display: block; }
-            #instructions { font-size: 12px; }
+            #gameContainer {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: space-between;
+                height: 100vh;
+                max-height: 100vh;
+                height: 100dvh;
+                max-height: 100dvh;
+                padding: 4px 0;
+                box-sizing: border-box;
+            }
+            #score { font-size: 18px; margin-bottom: 4px; }
+            #lives { font-size: 16px; margin-bottom: 4px; }
+            #instructions { font-size: 10px; margin-top: 4px; }
+            canvas {
+                width: auto;
+                height: auto;
+                max-width: 96vw;
+                max-height: calc(100vh - 270px);
+                max-height: calc(100dvh - 270px);
+                aspect-ratio: 672 / 720;
+            }
+            #mobileControls { display: block; margin-top: 6px; flex-shrink: 0; }
+            #dpad {
+                grid-template-columns: 56px 56px 56px;
+                grid-template-rows: 56px 56px 56px;
+                width: 180px;
+                gap: 5px;
+            }
+            #dpad button { width: 56px; height: 56px; font-size: 22px; }
         }
     </style>
 </head>
