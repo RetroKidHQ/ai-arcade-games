@@ -3223,9 +3223,9 @@ class Enemy {
       this.die();
       return;
     } else if (zone === "stomach") {
-      amt = Math.round(amt * 0.5);
+      amt = Math.round(this.maxHealth * 0.5);
     } else if (zone === "leg") {
-      amt = Math.round(amt * 0.2);
+      amt = Math.round(this.maxHealth * 0.2);
     }
     this.health -= amt;
     this.state = "combat";
@@ -3344,9 +3344,9 @@ class Enemy {
       const t = Math.min(1, this.hitReactT / this.hitReactDur);
       const p = this.pos();
       if (this.hitReact === "stomach") {
-        // Clutch stomach: both arms wrap inward, torso hunches forward, body dips
+        // Clutch stomach: both arms wrap inward, torso hunches forward
         const clutch = Math.sin(t * Math.PI);
-        const bend = Math.sin(t * Math.PI) * 0.4;
+        const bend = Math.sin(t * Math.PI) * 0.35;
         // Left arm — wraps around belly (forward and inward)
         if (this.mesh.armL) {
           this.mesh.armL.rotation.x = 1.0 * clutch;
@@ -3359,8 +3359,8 @@ class Enemy {
         }
         // Torso hunches forward
         this.mesh.group.rotation.x = bend;
-        // Hunch — group Y dips
-        this.mesh.group.position.y = this._savedGroupY - 0.1 * clutch;
+        // Clamp Y so guard never clips below ground
+        this.mesh.group.position.y = Math.max(0, this._savedGroupY - 0.08 * clutch);
       } else if (this.hitReact === "leg") {
         // Hold leg: one leg lifts, body leans to side, hobbles
         const hobble = Math.sin(t * Math.PI);
@@ -3373,8 +3373,8 @@ class Enemy {
         }
         // Lean body to the hurt side
         this.mesh.group.rotation.z = 0.25 * hobble;
-        // Slight hunch
-        this.mesh.group.position.y = this._savedGroupY - 0.06 * hobble;
+        // Clamp Y so guard never clips below ground
+        this.mesh.group.position.y = Math.max(0, this._savedGroupY - 0.05 * hobble);
         // Right arm — reaches down toward leg
         if (this.mesh.armR) {
           this.mesh.armR.rotation.x = 0.4 * hobble;
