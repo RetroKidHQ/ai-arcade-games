@@ -726,6 +726,117 @@ canvas#gl {
    UTILITY
    ══════════════════════════════════════════════════════════ */
 .hidden { display: none !important; }
+
+/* ══════════════════════════════════════════════════════════
+   HIT REACTION TEST UI
+   ══════════════════════════════════════════════════════════ */
+#hitui {
+  position: fixed;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+  z-index: 1002;
+  background: rgba(8, 14, 8, 0.92);
+  border: 1px solid rgba(136, 255, 102, 0.3);
+  padding: 14px 16px;
+  width: 210px;
+  font-family: 'Share Tech Mono', monospace;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
+  cursor: default;
+}
+
+#hitui .hui-title {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #c9a227;
+  margin-bottom: 10px;
+  text-align: center;
+  border-bottom: 1px solid rgba(201, 162, 39, 0.25);
+  padding-bottom: 6px;
+}
+
+#hitui .hui-btn {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  margin-bottom: 5px;
+  background: rgba(20, 36, 16, 0.8);
+  border: 1px solid rgba(136, 255, 102, 0.2);
+  color: #8f6;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  pointer-events: auto;
+}
+
+#hitui .hui-btn:hover {
+  background: rgba(40, 80, 30, 0.6);
+  border-color: rgba(136, 255, 102, 0.5);
+}
+
+#hitui .hui-btn.death {
+  border-color: rgba(196, 30, 30, 0.4);
+  color: #c44;
+}
+
+#hitui .hui-btn.death:hover {
+  background: rgba(60, 15, 15, 0.6);
+  border-color: rgba(196, 30, 30, 0.6);
+}
+
+#hitui .hui-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  margin-top: 6px;
+  border-top: 1px solid rgba(136, 255, 102, 0.15);
+}
+
+#hitui .hui-toggle label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #8f6;
+  cursor: pointer;
+}
+
+#hitui .hui-toggle input[type="checkbox"] {
+  accent-color: #8f6;
+  cursor: pointer;
+}
+
+/* Hitbox overlay panels (invisible by default, shown when toggled) */
+.hitbox-overlay {
+  position: absolute;
+  pointer-events: auto;
+  cursor: crosshair;
+  border: 1px dashed rgba(255, 100, 100, 0.6);
+  background: rgba(255, 50, 50, 0.08);
+  transition: background 0.15s;
+  z-index: 1001;
+}
+
+.hitbox-overlay:hover {
+  background: rgba(255, 50, 50, 0.22);
+}
+
+.hitbox-overlay .hz-label {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: rgba(255, 120, 120, 0.7);
+  font-family: 'Share Tech Mono', monospace;
+  text-transform: uppercase;
+  pointer-events: none;
+}
 </style>
 </head>
 <body>
@@ -889,6 +1000,21 @@ canvas#gl {
     Time: 00:00:00
   </p>
   <div class="end-hint">CLICK TO REDEPLOY</div>
+</div>
+
+<!-- ═══ HIT REACTION TEST UI ═════════════════════════════ -->
+<div id="hitui">
+  <div class="hui-title">HIT REACTION TESTER</div>
+  <button class="hui-btn" onclick="testHitReact('foot')">TRIGGER FOOT HIT</button>
+  <button class="hui-btn" onclick="testHitReact('leg')">TRIGGER LEG HIT</button>
+  <button class="hui-btn" onclick="testHitReact('stomach')">TRIGGER STOMACH HIT</button>
+  <button class="hui-btn" onclick="testHitReact('graze')">TRIGGER GRAZE</button>
+  <button class="hui-btn death" onclick="testHitReact('head')">TRIGGER FACE DEATH</button>
+  <button class="hui-btn" onclick="testResetAll()">RESET ALL GUARDS</button>
+  <div class="hui-toggle">
+    <input type="checkbox" id="hui-hitbox" onchange="toggleHitboxes(this.checked)">
+    <label for="hui-hitbox">SHOW HITBOXES</label>
+  </div>
 </div>
 
 
@@ -3149,7 +3275,16 @@ function makeSoldier(boss) {
   gunGroup.add(muzzle);
 
   scene.add(g);
-  return { group: g, headGroup, legL: thighL, legR: thighR, armL: forearmL, armR: forearmR, gunGroup };
+  return {
+    group: g, headGroup, gunGroup,
+    legL: thighL, legR: thighR,
+    armL: forearmL, armR: forearmR,
+    chest, abdomen, hip, neck,
+    calfL, calfR,
+    bootFootL, bootFootR, bootShaftL, bootShaftR,
+    upperArmL, upperArmR, elbowL, elbowR,
+    handL, handR,
+  };
 }
 
 
@@ -3171,6 +3306,8 @@ class Enemy {
     this.cool = 1.2;
     this.walkT = 0;
     this.dead = false;
+    this.dying = false;
+    this.dyingT = 0;
     this.investigate = new THREE.Vector3();
     this.lastSeen = new THREE.Vector3();
     this.strafe = 1;
@@ -3183,63 +3320,60 @@ class Enemy {
     });
     this.spawnX = opt.x;
     this.spawnZ = opt.z;
-    // Hit reaction animation state
-    this.hitReact = "none";       // "none" | "stomach" | "leg" | "headfall"
-    this.hitReactT = 0;           // timer for current reaction
-    this.hitReactDur = 0;         // total duration
+    this.hitReact = "none";
     this.hitReactT = 0;
-    // Saved rotations for limbs during reactions
-    this._savedArmLX = 0;
-    this._savedArmRZ = 0;
-    this._savedLegLX = 0;
-    this._savedLegRX = 0;
-    this._savedArmLY = 0;
-    this._savedArmRY = 0;
-    this._savedTorsoRX = 0;
-    this._savedGroupY = 0;
-    this._savedHeadRotY = 0;
-    this._savedHeadRotX = 0;
-    this._savedGunRotX = 0;
+    this.hitReactDur = 0;
+    this.hitSide = 1;
     this.breatheT = Math.random() * Math.PI * 2;
+    this._idleT = Math.random() * Math.PI * 2;
+    this._savedPose = {};
   }
 
   pos() { return this.mesh.group.position; }
 
   getHitZone(hitPoint) {
-    // Convert hit world Y to local Y relative to enemy group
     const localY = hitPoint.y - this.mesh.group.position.y;
     if (localY >= 1.45) return "head";
-    if (localY >= 0.75) return "stomach";
-    return "leg";
+    if (localY >= 0.95) return "stomach";
+    if (localY >= 0.45) return "leg";
+    if (localY >= 0.15) return "foot";
+    return "foot";
   }
 
   takeDamage(amt, hitPoint) {
-    if (this.dead) return;
+    if (this.dead || this.dying) return;
     let zone = "body";
     if (hitPoint) zone = this.getHitZone(hitPoint);
-    // Adjust damage by zone
     if (zone === "head") {
-      amt = 999;
       this.die();
       return;
     } else if (zone === "stomach") {
       amt = Math.round(this.maxHealth * 0.5);
     } else if (zone === "leg") {
       amt = Math.round(this.maxHealth * 0.2);
+    } else if (zone === "foot") {
+      amt = Math.round(this.maxHealth * 0.15);
     }
     this.health -= amt;
     this.state = "combat";
     this.lastSeen.set(player.x, 0, player.z);
     audio.hit();
     state.screenShake = Math.max(state.screenShake, 0.15);
-    // Trigger hit reaction animation (only if still alive)
+    const hitDir = hitPoint ? Math.sign(hitPoint.x - this.pos().x) || 1 : 1;
+    this.hitSide = hitDir;
     if (this.health > 0 && this.hitReact === "none") {
       if (zone === "stomach") {
         this.startHitReact("stomach", 1.0);
         subtitle("GUARD WOUNDED — STOMACH.");
       } else if (zone === "leg") {
-        this.startHitReact("leg", 1.0);
+        this.startHitReact("leg", 1.2);
         subtitle("GUARD WOUNDED — LEG.");
+      } else if (zone === "foot") {
+        this.startHitReact("foot", 0.9);
+        subtitle("GUARD WOUNDED — FOOT.");
+      } else if (Math.random() < 0.35) {
+        this.startHitReact("graze", 0.55);
+        subtitle("GRAZED.");
       }
     }
     if (this.health <= 0) this.die();
@@ -3249,43 +3383,117 @@ class Enemy {
     this.hitReact = type;
     this.hitReactT = 0;
     this.hitReactDur = dur;
-    // Save current limb poses
-    this._savedArmLX = this.mesh.armR ? this.mesh.armR.rotation.x : 0;
-    this._savedArmRZ = this.mesh.armR ? this.mesh.armR.rotation.z : 0;
-    this._savedLegLX = this.mesh.legL ? this.mesh.legL.rotation.x : 0;
-    this._savedLegRX = this.mesh.legR ? this.mesh.legR.rotation.x : 0;
-    this._savedGroupY = this.mesh.group.position.y;
-    if (this.mesh.headGroup) {
-      this._savedHeadRotY = this.mesh.headGroup.rotation.y;
-      this._savedHeadRotX = this.mesh.headGroup.rotation.x;
+    const m = this.mesh;
+    this._savedPose = {
+      armLX: m.armL ? m.armL.rotation.x : 0,
+      armLZ: m.armL ? m.armL.rotation.z : 0,
+      armLY: m.armL ? m.armL.rotation.y : 0,
+      armRX: m.armR ? m.armR.rotation.x : 0,
+      armRZ: m.armR ? m.armR.rotation.z : 0,
+      armRY: m.armR ? m.armR.rotation.y : 0,
+      legLX: m.legL ? m.legL.rotation.x : 0,
+      legRX: m.legR ? m.legR.rotation.x : 0,
+      groupY: m.group.position.y,
+      groupRotX: m.group.rotation.x,
+      groupRotZ: m.group.rotation.z,
+      headRotX: m.headGroup ? m.headGroup.rotation.x : 0,
+      headRotY: m.headGroup ? m.headGroup.rotation.y : 0,
+      gunRotX: m.gunGroup ? m.gunGroup.rotation.x : 0,
+      calfLX: m.calfL ? m.calfL.rotation.x : 0,
+      calfRX: m.calfR ? m.calfR.rotation.x : 0,
+      bootLX: m.bootFootL ? m.bootFootL.rotation.x : 0,
+      bootLY: m.bootFootL ? m.bootFootL.position.y : 0,
+      bootLZ: m.bootFootL ? m.bootFootL.position.z : 0,
+      bootRX: m.bootFootR ? m.bootFootR.rotation.x : 0,
+      bootRY: m.bootFootR ? m.bootFootR.position.y : 0,
+      bootRZ: m.bootFootR ? m.bootFootR.position.z : 0,
+      chestX: m.chest ? m.chest.rotation.x : 0,
+      abdX: m.abdomen ? m.abdomen.rotation.x : 0,
+      handLX: m.handL ? m.handL.rotation.x : 0,
+      handLY: m.handL ? m.handL.rotation.y : 0,
+      handLZ: m.handL ? m.handL.rotation.z : 0,
+      handRX: m.handR ? m.handR.rotation.x : 0,
+      handRY: m.handR ? m.handR.rotation.y : 0,
+      handRZ: m.handR ? m.handR.rotation.z : 0,
+      upperArmLX: m.upperArmL ? m.upperArmL.rotation.x : 0,
+      upperArmRX: m.upperArmR ? m.upperArmR.rotation.x : 0,
+    };
+  }
+
+  resetPose(dt) {
+    const m = this.mesh;
+    const sp = this._savedPose;
+    const f = 0.15;
+    if (m.group) {
+      m.group.rotation.x *= f;
+      m.group.rotation.z *= f;
     }
-    if (this.mesh.gunGroup) {
-      this._savedGunRotX = this.mesh.gunGroup.rotation.x;
+    if (m.headGroup) {
+      m.headGroup.rotation.x *= f;
+      m.headGroup.rotation.y *= f;
     }
+    if (m.gunGroup) m.gunGroup.rotation.x *= f;
+    if (m.chest) m.chest.rotation.x *= f;
+    if (m.abdomen) m.abdomen.rotation.x *= f;
+    if (m.armL) { m.armL.rotation.x *= f; m.armL.rotation.z *= f; m.armL.rotation.y *= f; }
+    if (m.armR) { m.armR.rotation.x *= f; m.armR.rotation.z *= f; m.armR.rotation.y *= f; }
+    if (m.handL) { m.handL.rotation.x *= f; m.handL.rotation.z *= f; }
+    if (m.handR) { m.handR.rotation.x *= f; m.handR.rotation.z *= f; }
+    if (m.legL) m.legL.rotation.x *= f;
+    if (m.legR) m.legR.rotation.x *= f;
+    if (m.calfL) m.calfL.rotation.x *= f;
+    if (m.calfR) m.calfR.rotation.x *= f;
+    if (m.bootFootL) {
+      m.bootFootL.rotation.x *= f;
+      m.bootFootL.position.z = sp.bootLZ + (m.bootFootL.position.z - sp.bootLZ) * f;
+    }
+    if (m.bootFootR) {
+      m.bootFootR.rotation.x *= f;
+      m.bootFootR.position.z = sp.bootRZ + (m.bootFootR.position.z - sp.bootRZ) * f;
+    }
+    m.group.position.y += (sp.groupY - m.group.position.y) * f;
   }
 
   die() {
-    this.dead = true;
+    if (this.dead || this.dying) return;
     this.state = "dead";
     this.hitReact = "none";
-    this.mesh.group.rotation.x = Math.PI / 2;
-    this.mesh.group.rotation.z = 0;
-    this.mesh.group.position.y = 0.2;
-    if (this.mesh.headGroup) {
-      this.mesh.headGroup.rotation.x = 0;
-      this.mesh.headGroup.rotation.y = 0;
-    }
-    if (this.mesh.gunGroup) {
-      this.mesh.gunGroup.rotation.x = 0;
-    }
+    this.dying = true;
+    this.dyingT = 0;
     state.killCount++;
     if (!state.alarm) state.stealthKills++;
-    spawnBlood(this.pos().clone().setY(1));
     if (this.boss) {
       codesMesh.visible = true;
       subtitle("VOLKOV DOWN. RECOVER THE LAUNCH CODES.");
       audio.explosion();
     }
+  }
+
+  finishDeath() {
+    const m = this.mesh;
+    m.group.rotation.x = Math.PI / 2;
+    m.group.rotation.z = 0;
+    m.group.position.y = 0.2;
+    if (m.headGroup) {
+      m.headGroup.rotation.x = 0;
+      m.headGroup.rotation.y = 0;
+    }
+    if (m.gunGroup) m.gunGroup.rotation.x = 0;
+    if (m.armL) { m.armL.rotation.x = 0; m.armL.rotation.z = 0; m.armL.rotation.y = 0; }
+    if (m.armR) { m.armR.rotation.x = 0; m.armR.rotation.z = 0; m.armR.rotation.y = 0; }
+    if (m.legL) m.legL.rotation.x = 0;
+    if (m.legR) m.legR.rotation.x = 0;
+    if (m.calfL) m.calfL.rotation.x = 0;
+    if (m.calfR) m.calfR.rotation.x = 0;
+    if (m.bootFootL) m.bootFootL.rotation.x = 0;
+    if (m.bootFootR) m.bootFootR.rotation.x = 0;
+    if (m.chest) m.chest.rotation.x = 0;
+    if (m.abdomen) m.abdomen.rotation.x = 0;
+    if (m.handL) { m.handL.rotation.x = 0; m.handL.rotation.z = 0; }
+    if (m.handR) { m.handR.rotation.x = 0; m.handR.rotation.z = 0; }
+    spawnBlood(this.pos().clone().setY(1));
+    this.dead = true;
+    this.dying = false;
   }
 
   los() {
@@ -3337,87 +3545,219 @@ class Enemy {
 
   update(dt) {
     if (this.dead) return;
+    const m = this.mesh;
+    const p = this.pos();
+
+    // ── DEATH ANIMATION SEQUENCE (head snap → arch back → knee buckle → fall flat) ──
+    if (this.dying) {
+      this.dyingT += dt;
+      const t = this.dyingT;
+      // Phase 1: Head snaps violently backward (0-0.25s)
+      if (t < 0.25) {
+        const lt = t / 0.25;
+        const ease = lt * lt;
+        if (m.headGroup) m.headGroup.rotation.x = -1.6 * ease;
+      }
+      // Phase 2: Chest arches backward + arms go limp (0.2-0.7s)
+      if (t >= 0.2 && t < 0.7) {
+        const lt = (t - 0.2) / 0.5;
+        const ease = 1 - Math.pow(1 - lt, 3);
+        m.group.rotation.x = -0.5 * ease;
+        if (m.armL) { m.armL.rotation.x = -0.3 * ease; m.armL.rotation.z = 0.2 * ease; }
+        if (m.armR) { m.armR.rotation.x = 0.2 * ease; m.armR.rotation.z = -0.15 * ease; }
+      }
+      // Phase 3: Knees buckle (0.5-1.0s)
+      if (t >= 0.5 && t < 1.0) {
+        const lt = (t - 0.5) / 0.5;
+        const ease = 1 - Math.pow(1 - lt, 2);
+        if (m.legL) m.legL.rotation.x = 0.7 * ease;
+        if (m.legR) m.legR.rotation.x = 0.7 * ease;
+        if (m.calfL) m.calfL.rotation.x = 0.5 * ease;
+        if (m.calfR) m.calfR.rotation.x = 0.5 * ease;
+        m.group.position.y = this._savedPose.groupY - 0.3 * ease;
+      }
+      // Phase 4: Full body rotates90 degrees backward + floor bounce (0.9-1.5s)
+      if (t >= 0.9 && t < 1.5) {
+        const lt = (t - 0.9) / 0.6;
+        const ease = lt < 0.7 ? (lt / 0.7) * (lt / 0.7) : 1 - Math.pow((lt - 0.7) / 0.3, 2) * 0.03;
+        m.group.rotation.x = -0.5 + (Math.PI / 2 + 0.5) * Math.min(1, lt / 0.85);
+        m.group.position.y = Math.max(0.05, this._savedPose.groupY - 0.3 - (this._savedPose.groupY + 0.1) * Math.min(1, lt / 0.85));
+        if (m.headGroup) m.headGroup.rotation.x = -1.6 + lt * 0.5;
+      }
+      if (t >= 1.5) {
+        this.finishDeath();
+      }
+      return;
+    }
 
     // ── HIT REACTION ANIMATIONS ──
-    if (this.hitReact !== "none" && !this.dead) {
+    if (this.hitReact !== "none") {
       this.hitReactT += dt;
       const t = Math.min(1, this.hitReactT / this.hitReactDur);
-      const p = this.pos();
-      if (this.hitReact === "stomach") {
-        // Clutch stomach: both arms wrap inward, torso hunches forward
-        const clutch = Math.sin(t * Math.PI);
-        const bend = Math.sin(t * Math.PI) * 0.35;
-        // Left arm — wraps around belly (forward and inward)
-        if (this.mesh.armL) {
-          this.mesh.armL.rotation.x = 1.0 * clutch;
-          this.mesh.armL.rotation.z = 0.5 * clutch;
+      const sp = this._savedPose;
+      const side = this.hitSide;
+
+      if (this.hitReact === "foot") {
+        // FOOT HIT: impacted foot jerks up/back, pelvis drops, opposite leg hops
+        const impact = t < 0.12 ? t / 0.12 : 1;
+        const hold = t > 0.12 && t < 0.55 ? 1 : (t >= 0.55 ? Math.max(0, 1 - (t - 0.55) / 0.45) : 0);
+        const snappy = impact < 1 ? Math.pow(impact, 0.3) : hold;
+        const hop = t > 0.12 ? Math.sin((t - 0.12) * 28) * 0.12 * hold : 0;
+
+        if (side > 0 && m.bootFootL) {
+          m.bootFootL.rotation.x = -1.2 * snappy;
+          m.bootFootL.position.z = sp.bootLZ - 0.06 * snappy;
+          if (m.calfL) m.calfL.rotation.x = -0.6 * snappy;
+          if (m.legL) m.legL.rotation.x = -0.3 * snappy;
+        } else if (m.bootFootR) {
+          m.bootFootR.rotation.x = -1.2 * snappy;
+          m.bootFootR.position.z = sp.bootRZ - 0.06 * snappy;
+          if (m.calfR) m.calfR.rotation.x = -0.6 * snappy;
+          if (m.legR) m.legR.rotation.x = -0.3 * snappy;
         }
-        // Right arm — clutches stomach (forward and inward)
-        if (this.mesh.armR) {
-          this.mesh.armR.rotation.x = -1.0 * clutch;
-          this.mesh.armR.rotation.z = -0.5 * clutch;
+        // Pelvis drops
+        m.group.position.y = sp.groupY - 0.06 * snappy;
+        // Opposite leg rapid stabilization hop
+        if (side > 0 && m.legR) {
+          m.legR.rotation.x = hop;
+        } else if (m.legL) {
+          m.legL.rotation.x = hop;
         }
-        // Torso hunches forward
-        this.mesh.group.rotation.x = bend;
-        // Clamp Y so guard never clips below ground
-        this.mesh.group.position.y = Math.max(0, this._savedGroupY - 0.08 * clutch);
+        // Arms flail for balance
+        if (m.armL) { m.armL.rotation.x = -0.4 * snappy; m.armL.rotation.z = 0.3 * snappy; }
+        if (m.armR) { m.armR.rotation.x = -0.4 * snappy; m.armR.rotation.z = -0.3 * snappy; }
+        if (m.headGroup) m.headGroup.rotation.x = -0.2 * snappy;
       } else if (this.hitReact === "leg") {
-        // Hold leg: one leg lifts, body leans to side, hobbles
-        const hobble = Math.sin(t * Math.PI);
-        // Left leg lifts up as if being held
-        if (this.mesh.legL) {
-          this.mesh.legL.rotation.x = -0.8 * hobble;
+        // LEG HIT: buckle sequence — targeted leg collapses forward, torso sags, arms balance
+        const buckle = t < 0.2 ? Math.pow(t / 0.2, 2) : 1;
+        const hold = t > 0.2 && t < 0.75 ? 1 : (t >= 0.75 ? Math.max(0, 1 - (t - 0.75) / 0.25) : 0);
+        const strength = buckle * hold;
+        const sag = Math.sin(t * Math.PI * 0.5) * hold;
+
+        if (side > 0 && m.legL) {
+          m.legL.rotation.x = 1.1 * strength;
+          if (m.calfL) m.calfL.rotation.x = 0.8 * strength;
+        } else if (m.legR) {
+          m.legR.rotation.x = 1.1 * strength;
+          if (m.calfR) m.calfR.rotation.x = 0.8 * strength;
         }
-        if (this.mesh.legR) {
-          this.mesh.legR.rotation.x = 0.2 * hobble;
+        // Support leg stabilizes (slight bend)
+        if (side > 0 && m.legR) m.legR.rotation.x = 0.15 * strength;
+        else if (m.legL) m.legL.rotation.x = 0.15 * strength;
+
+        // Torso sags and tilts toward collapsed side
+        m.group.rotation.x = 0.2 * sag;
+        m.group.rotation.z = side * 0.3 * sag;
+        m.group.position.y = sp.groupY - 0.12 * sag;
+
+        // Arms rise asymmetrically — hurt-side arm drops, opposite arm extends for balance
+        if (side > 0) {
+          if (m.armL) { m.armL.rotation.x = -0.9 * sag; m.armL.rotation.z = 0.5 * sag; }
+          if (m.armR) { m.armR.rotation.x = -0.5 * sag; m.armR.rotation.z = -0.7 * sag; }
+        } else {
+          if (m.armR) { m.armR.rotation.x = -0.9 * sag; m.armR.rotation.z = -0.5 * sag; }
+          if (m.armL) { m.armL.rotation.x = -0.5 * sag; m.armL.rotation.z = 0.7 * sag; }
         }
-        // Lean body to the hurt side
-        this.mesh.group.rotation.z = 0.25 * hobble;
-        // Clamp Y so guard never clips below ground
-        this.mesh.group.position.y = Math.max(0, this._savedGroupY - 0.05 * hobble);
-        // Right arm — reaches down toward leg
-        if (this.mesh.armR) {
-          this.mesh.armR.rotation.x = 0.4 * hobble;
+        if (m.headGroup) {
+          m.headGroup.rotation.x = -0.25 * sag;
+          m.headGroup.rotation.y = side * 0.2 * sag;
         }
+      } else if (this.hitReact === "stomach") {
+        // STOMACH HIT: violent forward fold — torso snaps, head whips, arms wrap
+        const snap = t < 0.1 ? Math.pow(t / 0.1, 0.5) : 1;
+        const hold = t > 0.1 && t < 0.65 ? 1 : (t >= 0.65 ? Math.max(0, 1 - (t - 0.65) / 0.35) : 0);
+        const fold = snap * hold;
+        const whip = t < 0.15 ? Math.pow(t / 0.15, 0.4) : Math.max(0, 1 - (t - 0.15) * 1.5) * hold;
+
+        // Lower and upper torso snap forward 35 degrees
+        if (m.chest) m.chest.rotation.x = 0.6 * fold;
+        if (m.abdomen) m.abdomen.rotation.x = 0.4 * fold;
+        m.group.rotation.x = 0.15 * fold;
+
+        // Head whip — jerks forward then recoils
+        if (m.headGroup) m.headGroup.rotation.x = 0.55 * whip;
+
+        // Arms snap inward — wrapping around impact zone
+        if (m.armL) {
+          m.armL.rotation.x = 1.2 * fold;
+          m.armL.rotation.z = 0.6 * fold;
+        }
+        if (m.armR) {
+          m.armR.rotation.x = -1.2 * fold;
+          m.armR.rotation.z = -0.6 * fold;
+        }
+        // Hands come to stomach
+        if (m.handL) {
+          m.handL.rotation.x = 0.8 * fold;
+          m.handL.rotation.z = 0.5 * fold;
+        }
+        if (m.handR) {
+          m.handR.rotation.x = -0.8 * fold;
+          m.handR.rotation.z = -0.5 * fold;
+        }
+
+        m.group.position.y = sp.groupY - 0.05 * fold;
+      } else if (this.hitReact === "graze") {
+        // GRAZE: localized flinch + closest arm rubs the hit area
+        const flinch = t < 0.08 ? (t / 0.08) : Math.max(0, 1 - (t - 0.08) / 0.15);
+        const rub = t > 0.1 && t < 0.45 ? Math.sin((t - 0.1) / 0.35 * Math.PI) : 0;
+        const retract = t > 0.45 ? Math.min(1, (t - 0.45) / 0.1) : 0;
+
+        // Body flinches away from impact direction
+        m.group.rotation.z = -side * 0.12 * flinch;
+
+        // Closest arm reaches to rub the grazed area
+        const reachAmt = rub * (1 - retract);
+        if (side > 0 && m.armR) {
+          m.armR.rotation.x = -0.7 * reachAmt;
+          m.armR.rotation.z = -0.4 * reachAmt;
+          if (m.handR) {
+            m.handR.rotation.x = -0.6 * reachAmt;
+            m.handR.rotation.z = -0.3 * reachAmt;
+          }
+        } else if (m.armL) {
+          m.armL.rotation.x = 0.7 * reachAmt;
+          m.armL.rotation.z = 0.4 * reachAmt;
+          if (m.handL) {
+            m.handL.rotation.x = 0.6 * reachAmt;
+            m.handL.rotation.z = 0.3 * reachAmt;
+          }
+        }
+        if (m.headGroup) m.headGroup.rotation.y = -side * 0.2 * flinch;
       }
-      // When reaction finishes, reset to normal
+
+      // When reaction finishes, smoothly reset all joints
       if (this.hitReactT >= this.hitReactDur) {
         this.hitReact = "none";
         this.hitReactT = 0;
-        if (this.mesh.armL) {
-          this.mesh.armL.rotation.x = 0;
-          this.mesh.armL.rotation.z = 0;
-        }
-        if (this.mesh.armR) {
-          this.mesh.armR.rotation.x = this._savedArmLX;
-          this.mesh.armR.rotation.z = this._savedArmRZ;
-        }
-        if (this.mesh.legL) this.mesh.legL.rotation.x = this._savedLegLX;
-        if (this.mesh.legR) this.mesh.legR.rotation.x = this._savedLegRX;
-        if (this.mesh.headGroup) {
-          this.mesh.headGroup.rotation.x = this._savedHeadRotX;
-          this.mesh.headGroup.rotation.y = this._savedHeadRotY;
-        }
-        if (this.mesh.gunGroup) {
-          this.mesh.gunGroup.rotation.x = this._savedGunRotX;
-        }
-        this.mesh.group.rotation.x = 0;
-        this.mesh.group.rotation.z = 0;
-        this.mesh.group.position.y = this._savedGroupY;
+        this.resetPose(dt);
       } else {
-        // During hit reaction, enemy is staggered — don't move or shoot
         return;
       }
     }
 
-    // ── BREATHING ANIMATION (subtle torso + head bob) ──
+    // ── IDLE ANIMATION (breathing, weight shift, arm sway) ──
+    this._idleT += dt;
     this.breatheT += dt * 1.8;
-    const breathAmt = Math.sin(this.breatheT) * 0.003;
-    if (this.mesh.headGroup && this.hitReact === "none") {
-      this.mesh.headGroup.position.y = 1.57 + breathAmt * 2;
+    const bt = this.breatheT;
+    const idle = this._idleT;
+
+    // Subtle head breathing bob
+    if (m.headGroup) {
+      m.headGroup.position.y = 1.57 + Math.sin(bt) * 0.004;
+    }
+    // Weight shift — very subtle pelvis sway
+    m.group.position.y = (this._savedPose.groupY || 0) + Math.sin(bt * 0.7) * 0.002;
+    // Arm sway
+    if (m.armL) {
+      m.armL.rotation.x = Math.sin(idle * 0.9) * 0.04;
+      m.armL.rotation.z = 0.03 + Math.sin(idle * 0.6) * 0.02;
+    }
+    if (m.armR) {
+      m.armR.rotation.x = Math.sin(idle * 0.9 + 1) * 0.04 - 0.5;
+      m.armR.rotation.z = -0.03 + Math.sin(idle * 0.6 + 1) * 0.02;
     }
 
-    const p = this.pos();
     const heard = this.hear();
     const sees = this.los();
 
@@ -4355,6 +4695,7 @@ function loop(now) {
     updateHud();
   }
   renderer.render(scene, camera);
+  if (hitboxEls.length) updateHitboxPositions();
   requestAnimationFrame(loop);
 }
 
@@ -4387,6 +4728,155 @@ camera.position.set(player.x, 0.85, player.z);
 resize();
 bind();
 requestAnimationFrame(loop);
+
+// ── HIT REACTION TEST UI ──────────────────────────────────────
+const hitboxEls = [];
+
+function testHitReact(type) {
+  audio.resume();
+  const target = enemies.find(e => !e.dead && !e.dying);
+  if (!target) return;
+  const p = target.pos();
+  if (type === "head") {
+    target.takeDamage(999, new THREE.Vector3(p.x, p.y + 1.6, p.z));
+  } else if (type === "stomach") {
+    target.takeDamage(10, new THREE.Vector3(p.x, p.y + 1.1, p.z));
+  } else if (type === "leg") {
+    target.takeDamage(10, new THREE.Vector3(p.x, p.y + 0.55, p.z));
+  } else if (type === "foot") {
+    target.takeDamage(10, new THREE.Vector3(p.x, p.y + 0.1, p.z));
+  } else if (type === "graze") {
+    target.takeDamage(5, new THREE.Vector3(p.x, p.y + 1.0, p.z));
+  }
+  // Force the hit react if takeDamage didn't trigger one (e.g. graze random check)
+  if (target.hitReact === "none" && !target.dying && target.health > 0) {
+    if (type === "graze") target.startHitReact("graze", 0.55);
+    else if (type === "foot") target.startHitReact("foot", 0.9);
+    else if (type === "leg") target.startHitReact("leg", 1.2);
+    else if (type === "stomach") target.startHitReact("stomach", 1.0);
+  }
+}
+
+function testResetAll() {
+  for (const e of enemies) {
+    if (e.dead && !e.dying) {
+      e.dead = false;
+      e.dying = false;
+      e.dyingT = 0;
+      e.health = e.maxHealth;
+      e.state = "patrol";
+      e.hitReact = "none";
+      e.hitReactT = 0;
+      const m = e.mesh;
+      m.group.rotation.set(0, m.group.rotation.y, 0);
+      m.group.position.set(e.spawnX, 0, e.spawnZ);
+      m.group.position.y = 0;
+      if (m.headGroup) { m.headGroup.rotation.x = 0; m.headGroup.rotation.y = 0; }
+      if (m.gunGroup) m.gunGroup.rotation.x = 0;
+      if (m.armL) { m.armL.rotation.x = 0; m.armL.rotation.z = 0; m.armL.rotation.y = 0; }
+      if (m.armR) { m.armR.rotation.x = 0; m.armR.rotation.z = 0; m.armR.rotation.y = 0; }
+      if (m.legL) m.legL.rotation.x = 0;
+      if (m.legR) m.legR.rotation.x = 0;
+      if (m.calfL) m.calfL.rotation.x = 0;
+      if (m.calfR) m.calfR.rotation.x = 0;
+      if (m.chest) m.chest.rotation.x = 0;
+      if (m.abdomen) m.abdomen.rotation.x = 0;
+      if (m.handL) { m.handL.rotation.x = 0; m.handL.rotation.z = 0; }
+      if (m.handR) { m.handR.rotation.x = 0; m.handR.rotation.z = 0; }
+      e._savedPose = {
+        bootLZ: 0, bootRZ: 0, groupY: 0, groupRotX: 0, groupRotZ: 0,
+        armLX: 0, armLZ: 0, armLY: 0, armRX: 0, armRZ: 0, armRY: 0,
+        legLX: 0, legRX: 0, headRotX: 0, headRotY: 0, gunRotX: 0,
+        calfLX: 0, calfRX: 0, chestX: 0, abdX: 0,
+        handLX: 0, handLY: 0, handLZ: 0, handRX: 0, handRY: 0, handRZ: 0,
+        upperArmLX: 0, upperArmRX: 0,
+      };
+    } else if (e.dying) {
+      e.finishDeath();
+      e.dead = false;
+      e.health = e.maxHealth;
+      e.state = "patrol";
+      const m = e.mesh;
+      m.group.rotation.set(0, 0, 0);
+      m.group.position.set(e.spawnX, 0, e.spawnZ);
+      if (m.headGroup) { m.headGroup.rotation.x = 0; m.headGroup.rotation.y = 0; }
+    } else {
+      e.health = e.maxHealth;
+      e.hitReact = "none";
+      e.hitReactT = 0;
+      e._savedPose = {
+        bootLZ: 0, bootRZ: 0, groupY: 0, groupRotX: 0, groupRotZ: 0,
+        armLX: 0, armLZ: 0, armLY: 0, armRX: 0, armRZ: 0, armRY: 0,
+        legLX: 0, legRX: 0, headRotX: 0, headRotY: 0, gunRotX: 0,
+        calfLX: 0, calfRX: 0, chestX: 0, abdX: 0,
+        handLX: 0, handLY: 0, handLZ: 0, handRX: 0, handRY: 0, handRZ: 0,
+        upperArmLX: 0, upperArmRX: 0,
+      };
+    }
+  }
+}
+
+function toggleHitboxes(show) {
+  // Remove existing overlays
+  for (const el of hitboxEls) el.remove();
+  hitboxEls.length = 0;
+  if (!show) return;
+
+  for (const e of enemies) {
+    if (e.dead || e.dying) continue;
+    const zones = [
+      { label: "HEAD", yMin: 1.45, yMax: 1.85, color: "rgba(255,80,80,0.5)" },
+      { label: "STOMACH", yMin: 0.95, yMax: 1.45, color: "rgba(255,180,50,0.4)" },
+      { label: "LEG", yMin: 0.45, yMax: 0.95, color: "rgba(100,180,255,0.4)" },
+      { label: "FOOT", yMin: 0.0, yMax: 0.45, color: "rgba(100,255,100,0.4)" },
+    ];
+    for (const z of zones) {
+      const div = document.createElement("div");
+      div.className = "hitbox-overlay";
+      div.dataset.enemyId = enemies.indexOf(e);
+      div.dataset.zone = z.label.toLowerCase();
+      div.style.borderColor = z.color.replace("0.", "0.8").replace("rgba", "rgb").replace(")", ")");
+      div.style.background = z.color;
+      const lbl = document.createElement("span");
+      lbl.className = "hz-label";
+      lbl.textContent = z.label;
+      div.appendChild(lbl);
+      div.addEventListener("click", () => {
+        testHitReact(z.label.toLowerCase());
+      });
+      document.body.appendChild(div);
+      hitboxEls.push(div);
+    }
+  }
+  updateHitboxPositions();
+}
+
+function updateHitboxPositions() {
+  if (!hitboxEls.length) return;
+  const camPos = camera.position;
+  for (const el of hitboxEls) {
+    const idx = parseInt(el.dataset.enemyId);
+    const e = enemies[idx];
+    if (!e || e.dead || e.dying) { el.style.display = "none"; continue; }
+    const zone = el.dataset.zone;
+    const yMin = { head: 1.45, stomach: 0.95, leg: 0.45, foot: 0.0 }[zone];
+    const yMax = { head: 1.85, stomach: 1.45, leg: 0.95, foot: 0.45 }[zone];
+    const worldPos = new THREE.Vector3(e.pos().x, e.pos().y + (yMin + yMax) / 2, e.pos().z);
+    const dist = camPos.distanceTo(worldPos);
+    const screenPos = worldPos.clone().project(camera);
+    const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+    const scale = Math.max(10, 120 / Math.max(1, dist));
+    const h = (yMax - yMin) * scale;
+    el.style.left = (x - scale * 0.35) + "px";
+    el.style.top = (y - h / 2) + "px";
+    el.style.width = (scale * 0.7) + "px";
+    el.style.height = h + "px";
+    if (screenPos.z > 1) el.style.display = "none";
+    else el.style.display = "block";
+  }
+}
+
 </script>
 
 </body>
