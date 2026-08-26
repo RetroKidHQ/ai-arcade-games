@@ -3339,7 +3339,7 @@ class Enemy {
     if (this.dead) return;
 
     // ── HIT REACTION ANIMATIONS ──
-    if (this.hitReact !== "none") {
+    if (this.hitReact !== "none" && !this.dead) {
       this.hitReactT += dt;
       const t = Math.min(1, this.hitReactT / this.hitReactDur);
       const p = this.pos();
