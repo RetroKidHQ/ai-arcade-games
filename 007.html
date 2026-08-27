@@ -1975,7 +1975,11 @@ const state = {
   ammo: 7,
   reserve: 21,
   maxAmmo: 7,
-  weapon: 0,
+  weapon: 0, // 0 = pistol, 1 = watch, 2 = ak47
+  hasAK47: false,
+  ak47Ammo: 30,
+  ak47MaxAmmo: 30,
+  ak47Reserve: 60,
   reloading: 0,
   fireCd: 0,
   ads: false,
@@ -2595,7 +2599,7 @@ function buildLevel() {
   securityCams.push(makeCamera(-3.5, 3.4, 30, new THREE.Vector3(1, -0.2, -0.5)));
 }
 
-let doorMesh, doorCollider, codesMesh, liftMesh, alarmLights, weaponGroup, gunGroup, watchGroup, muzzleLight;
+let doorMesh, doorCollider, codesMesh, liftMesh, alarmLights, weaponGroup, gunGroup, ak47Group, watchGroup, muzzleLight;
 let doorY = 1.6;
 
 function openDoor() {
@@ -2692,13 +2696,21 @@ function makeCamera(x, y, z, dir) {
 
 // ── PICKUPS ──────────────────────────────────────
 function spawnPickup(type, x, y, z) {
-  const color = type === "health" ? 0xcc3333 : type === "armor" ? 0x3399ff : 0xc9a227;
+  const color = type === "health" ? 0xcc3333 : type === "armor" ? 0x3399ff : type === "ak47" ? 0x4a3018 : 0xc9a227;
   const g = new THREE.Group();
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.35), new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.25 }));
   g.add(mesh);
   const glow = new THREE.PointLight(color, 0.5, 3);
   glow.position.y = 0.2;
   g.add(glow);
+  if (type === "ak47") {
+    const gunMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.35), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+    gunMesh.position.y = 0.2;
+    g.add(gunMesh);
+    const stockMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.15), new THREE.MeshLambertMaterial({ color: 0x5c3d1e }));
+    stockMesh.position.set(0, 0.18, 0.15);
+    g.add(stockMesh);
+  }
   g.position.set(x, y, z);
   scene.add(g);
   pickups.push({ type, mesh: g, y, taken: false });
@@ -2732,6 +2744,14 @@ function makeSoldier(boss) {
   const tieMat = new THREE.MeshLambertMaterial({ color: 0x1a0a0a });
   const greyMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
   const darkGreyMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+
+  // Boss-specific materials: brown coat and brown hat
+  if (boss) {
+    greenMat.color.setHex(0x6b4423);
+    darkGreenMat.color.setHex(0x553618);
+    collarMat.color.setHex(0x5c3d1e);
+    shirtMat.color.setHex(0x5a4a3a);
+  }
 
   // ── NECK ──
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.1, 8), skinMat);
@@ -3344,6 +3364,12 @@ function makeSoldier(boss) {
   gunGroup.add(muzzle);
 
   scene.add(g);
+  
+  // Boss is bigger and has a collision radius for hit detection
+  if (boss) {
+    g.scale.set(1.4, 1.4, 1.4);
+  }
+  
   return {
     group: g, headGroup, gunGroup,
     legL: thighL, legR: thighR,
@@ -3353,6 +3379,7 @@ function makeSoldier(boss) {
     bootFootL, bootFootR, bootShaftL, bootShaftR,
     upperArmL, upperArmR, elbowL, elbowR,
     handL, handR,
+    boss: boss,
   };
 }
 
@@ -3413,7 +3440,11 @@ class Enemy {
     if (this.dead || this.dying) return;
     let zone = "body";
     if (hitPoint) zone = this.getHitZone(hitPoint);
-    if (zone === "head") {
+    
+    // Boss takes 20 damage regardless of hit location (10 shots to kill)
+    if (this.boss) {
+      amt = 20;
+    } else if (zone === "head") {
       this.die();
       return;
     } else if (zone === "stomach") {
@@ -3423,6 +3454,7 @@ class Enemy {
     } else if (zone === "foot") {
       amt = Math.round(this.maxHealth * 0.15);
     }
+    
     this.health -= amt;
     this.state = "combat";
     this.lastSeen.set(player.x, 0, player.z);
@@ -3434,16 +3466,16 @@ class Enemy {
     if (this.health > 0 && this.hitReact === "none") {
       if (zone === "stomach") {
         this.startHitReact("stomach", 1.0);
-        subtitle("GUARD WOUNDED — STOMACH.");
+        subtitle(this.boss ? "VOLKOV WOUNDED — STOMACH." : "GUARD WOUNDED — STOMACH.");
       } else if (zone === "leg") {
         this.startHitReact("leg", 1.2);
-        subtitle("GUARD WOUNDED — LEG.");
+        subtitle(this.boss ? "VOLKOV WOUNDED — LEG." : "GUARD WOUNDED — LEG.");
       } else if (zone === "foot") {
         this.startHitReact("foot", 0.9);
-        subtitle("GUARD WOUNDED — FOOT.");
+        subtitle(this.boss ? "VOLKOV WOUNDED — FOOT." : "GUARD WOUNDED — FOOT.");
       } else if (Math.random() < 0.35) {
         this.startHitReact("graze", 0.55);
-        subtitle("GRAZED.");
+        subtitle(this.boss ? "VOLKOV GRAZED." : "GRAZED.");
       }
     }
     if (this.health <= 0) this.die();
@@ -3536,6 +3568,11 @@ class Enemy {
       codesMesh.visible = true;
       subtitle("VOLKOV DOWN. RECOVER THE LAUNCH CODES.");
       audio.explosion();
+    }
+    const p = this.pos();
+    if (Math.random() < 0.4) spawnPickup("ammo", p.x + (Math.random() - 0.5) * 0.5, 0.4, p.z + (Math.random() - 0.5) * 0.5);
+    if (!state.hasAK47 && Math.random() < 0.25) {
+      spawnPickup("ak47", p.x + (Math.random() - 0.5) * 0.5, 0.4, p.z + (Math.random() - 0.5) * 0.5);
     }
   }
 
@@ -3895,8 +3932,8 @@ class Enemy {
       this.cool -= dt;
       if (this.cool <= 0 && sees) {
         this.cool = this.boss ? 0.35 : 0.8 + Math.random() * 0.3;
-        const didShoot = Math.random() < 0.4;
-        if (didShoot) shootPlayer(this.boss ? 18 : 11);
+        const didShoot = Math.random() < (this.boss ? 0.2 : 0.4);
+        if (didShoot) shootPlayer(this.boss ? 13 : 11);
         this.strafe *= -1;
         playGunshot();
         spawnMuzzleFlash(this.pos().clone().setY(1.15));
@@ -4009,6 +4046,39 @@ function buildWeapon() {
   gunGroup.traverse((o) => o.layers.set(1));
   weaponGroup.add(gunGroup);
 
+  // AK-47 weapon group
+  ak47Group = new THREE.Group();
+  const woodMat = new THREE.MeshLambertMaterial({ color: 0x5c3d1e });
+  const metalMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  const akStock = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.25), woodMat);
+  akStock.position.set(0, -0.06, 0.12);
+  ak47Group.add(akStock);
+  const akBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.38), metalMat);
+  akBody.position.set(0, 0, -0.08);
+  ak47Group.add(akBody);
+  const akBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.35), metalMat);
+  akBarrel.position.set(0, 0.01, -0.42);
+  ak47Group.add(akBarrel);
+  const akMag = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.08), metalMat);
+  akMag.position.set(0, -0.12, -0.1);
+  ak47Group.add(akMag);
+  const akForegrip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 0.18), woodMat);
+  akForegrip.position.set(0, -0.06, -0.18);
+  ak47Group.add(akForegrip);
+  const akMuzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.08, 8), metalMat);
+  akMuzzle.rotation.x = Math.PI / 2;
+  akMuzzle.position.set(0, 0.01, -0.62);
+  ak47Group.add(akMuzzle);
+  const akFrontSight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.02), metalMat);
+  akFrontSight.position.set(0, 0.06, -0.38);
+  ak47Group.add(akFrontSight);
+  const akRearSight = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.02), metalMat);
+  akRearSight.position.set(0, 0.06, -0.18);
+  ak47Group.add(akRearSight);
+  ak47Group.traverse((o) => o.layers.set(1));
+  ak47Group.visible = false;
+  weaponGroup.add(ak47Group);
+
   watchGroup = new THREE.Group();
   const w = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.16), mats.gold);
   watchGroup.add(w);
@@ -4049,6 +4119,21 @@ function fire() {
     state.muzzleFlashT = 0.05;
     emitNoise(2.0);
     hitscan(25, 0.012);
+  } else if (state.weapon === 2) {
+    if (state.ak47Ammo <= 0) {
+      audio.empty();
+      state.fireCd = 0.2;
+      return;
+    }
+    state.ak47Ammo--;
+    state.fireCd = 0.08;
+    state.recoil = 0.6;
+    state.gunKick = 0.7;
+    playGunshot();
+    muzzleLight.intensity = 10;
+    state.muzzleFlashT = 0.04;
+    emitNoise(2.5);
+    hitscan(22, 0.025);
   } else {
     state.fireCd = 0.16;
     audio.laser();
@@ -4215,9 +4300,16 @@ function updateTracers(dt) {
 }
 
 function reload() {
-  if (state.weapon !== 0 || state.reloading > 0 || state.ammo >= state.maxAmmo || state.reserve <= 0) return;
-  state.reloading = 1.35;
-  playReloadSound();
+  if (state.reloading > 0) return;
+  if (state.weapon === 0) {
+    if (state.ammo >= state.maxAmmo || state.reserve <= 0) return;
+    state.reloading = 1.35;
+    playReloadSound();
+  } else if (state.weapon === 2) {
+    if (state.ak47Ammo >= state.ak47MaxAmmo || state.ak47Reserve <= 0) return;
+    state.reloading = 1.8;
+    playReloadSound();
+  }
 }
 
 function takedown() {
@@ -4419,16 +4511,24 @@ function updatePlayer(dt) {
   );
   weaponGroup.rotation.x = state.recoil * 0.12 + state.gunKick * 0.08 + (state.reloading > 0 ? Math.sin((1.35 - state.reloading) * 4) * 0.4 : 0);
   gunGroup.visible = state.weapon === 0;
+  ak47Group.visible = state.weapon === 2;
   watchGroup.visible = state.weapon === 1;
   muzzleLight.intensity *= Math.max(0, 1 - dt * 18);
 
   if (state.reloading > 0) {
     state.reloading -= dt;
     if (state.reloading <= 0) {
-      const need = state.maxAmmo - state.ammo;
-      const take = Math.min(need, state.reserve);
-      state.ammo += take;
-      state.reserve -= take;
+      if (state.weapon === 0) {
+        const need = state.maxAmmo - state.ammo;
+        const take = Math.min(need, state.reserve);
+        state.ammo += take;
+        state.reserve -= take;
+      } else if (state.weapon === 2) {
+        const need = state.ak47MaxAmmo - state.ak47Ammo;
+        const take = Math.min(need, state.ak47Reserve);
+        state.ak47Ammo += take;
+        state.ak47Reserve -= take;
+      }
     }
   }
   state.fireCd = Math.max(0, state.fireCd - dt);
@@ -4449,6 +4549,13 @@ function updatePickups(dt) {
       if (p.type === "health") state.health = Math.min(100, state.health + 50);
       if (p.type === "armor") state.armor = Math.min(100, state.armor + 50);
       if (p.type === "ammo") state.reserve = Math.min(49, state.reserve + 14);
+      if (p.type === "ak47") {
+        state.hasAK47 = true;
+        state.ak47Ammo = state.ak47MaxAmmo;
+        state.ak47Reserve = Math.max(state.ak47Reserve, 60);
+        state.weapon = 2;
+        subtitle("AK-47 ACQUIRED. PRESS J TO SWITCH.");
+      }
     }
   }
 }
@@ -4522,9 +4629,9 @@ function updateHud() {
   const am = document.getElementById("ammo");
   const res = document.getElementById("reserve");
   const wn = document.getElementById("wname");
-  if (am) am.textContent = state.weapon === 1 ? "\u221E" : String(state.ammo);
-  if (res) res.textContent = state.weapon === 1 ? "LASER" : "/ " + state.reserve;
-  if (wn) wn.textContent = state.weapon === 1 ? "WATCH" : "PP7";
+  if (am) am.textContent = state.weapon === 1 ? "\u221E" : state.weapon === 2 ? String(state.ak47Ammo) : String(state.ammo);
+  if (res) res.textContent = state.weapon === 1 ? "LASER" : state.weapon === 2 ? "/ " + state.ak47Reserve : "/ " + state.reserve;
+  if (wn) wn.textContent = state.weapon === 1 ? "WATCH" : state.weapon === 2 ? "AK-47" : "PP7";
 
   const ch = document.getElementById("crosshair");
   if (ch) ch.classList.toggle("ads", state.ads);
@@ -4750,6 +4857,7 @@ function bind() {
       if (e.code === "KeyV") takedown();
       if (e.code === "Digit1") state.weapon = 0;
       if (e.code === "Digit2") state.weapon = 1;
+      if (e.code === "KeyJ" && state.hasAK47) state.weapon = state.weapon === 2 ? 0 : 2;
       if (e.code === "Escape") {
         state.mode = "pause";
         document.getElementById("pause").style.display = "flex";
