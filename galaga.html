@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galaga</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+body { background:#000; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; overflow:hidden; font-family:'Press Start 2P', monospace; margin:0; }
+canvas { border:3px solid #16233f; image-rendering:pixelated; image-rendering:crisp-edges; box-shadow:0 0 40px rgba(30,90,255,0.35); width:min(96vw, 114vh); max-width:960px; height:auto; }
+#touchControls { display:none; margin-top:10px; user-select:none; -webkit-user-select:none; width:100%; max-width:600px; justify-content:space-between; align-items:center; padding:0 22px; box-sizing:border-box; }
+#stick { position:relative; width:132px; height:132px; border-radius:50%; background:radial-gradient(circle at 50% 42%, #0a1830, #061024 72%); border:3px solid #1c3f77; box-shadow:0 0 18px rgba(30,90,255,0.25), inset 0 0 26px rgba(20,60,140,0.4); touch-action:none; }
+#stickBase { position:absolute; left:16px; top:16px; right:16px; bottom:16px; border-radius:50%; border:2px dashed rgba(70,120,200,0.38); }
+#stickKnob { position:absolute; left:50%; top:50%; width:58px; height:58px; border-radius:50%; transform:translate(-50%,-50%); background:radial-gradient(circle at 50% 32%, #8fc2ff, #1c4f9e 72%); border:2px solid #a9cfff; box-shadow:0 0 16px rgba(90,150,255,0.65); pointer-events:none; }
+#btnFire { width:104px; height:104px; border-radius:50%; font-family:'Press Start 2P', monospace; font-size:13px; font-weight:bold; background:#1a0620; color:#ff88ff; border:3px solid #772266; cursor:pointer; touch-action:none; -webkit-tap-highlight-color:transparent; box-shadow:0 6px 0 #2a0a33; display:flex; align-items:center; justify-content:center; }
+#btnFire:active { transform:translateY(5px); box-shadow:none; background:#551177; color:#fff; }
+body.touch { justify-content:flex-start; padding:6px 0 16px; height:auto; min-height:100vh; overflow:auto; }
+body.touch canvas { width:96vw; max-width:96vw; }
+body.touch #touchControls { display:flex; }
+</style>
+</head>
+<body>
+<canvas id="game" width="480" height="400"></canvas>
+<div id="touchControls" aria-label="Touch controls">
+  <div id="stick" aria-label="Move">
+    <div id="stickBase"></div>
+    <div id="stickKnob"></div>
+  </div>
+  <button id="btnFire" aria-label="Fire">FIRE</button>
+</div>
+<script>
+/* =========================================================================
+   GALAGA  -  AI ARCADE GAMES
+   Code, sprites and music all generated at runtime with the Web Audio API.
+   ========================================================================= */
+var canvas = document.getElementById('game');
+var ctx = canvas.getContext('2d');
+var W = 480, H = 400;
+ctx.imageSmoothingEnabled = false;
+
+var COL_SPACING = 44, ROW_SPACING = 36, ESC = 2;
+var FORM_Y0 = 44;
+var PLAYER_SPEED = 250, PLAYER_Y = 346;
+var PLAYER_Y_MIN = 246, PLAYER_Y_MAX = H - 20;
+// Bullet budget. MAX_E_BULLETS is a hard ceiling on the whole screen so a
+// large capture group can never bury the player; CAP_SHOOTERS is how many
+// captured ships may fire in a single volley.
+var MAX_E_BULLETS = 18, CAP_SHOOTERS = 2;
+// Invisible playfield border. Sprites are 16px wide at ESC=2, so FIELD_PAD
+// keeps a whole enemy inside the visible area no matter what path it takes.
+var FIELD_PAD = 16;
+var CAP_COL_SPACING = 34, CAP_ROW_SPACING = 26, CAP_MARGIN = 24, CAP_SWEEP = 132;
+var CAP_MAX_COLS = Math.max(3, Math.floor((W - CAP_MARGIN * 2) / CAP_COL_SPACING));
+
+/* ============================== SPRITES ================================= */
+var PAL = { W:'#ffffff', K:'#101010', B:'#3a5cff', R:'#ff2a2a', G:'#22dd44', Y:'#ffe000' };
+
+/* Letters B, R and G all accept the override colour, so a captured (green)
+   enemy is the very same shape simply recoloured. */
+function drawSprite(bx, by, rows, scale, over) {
+  for (var ry = 0; ry < rows.length; ry++) {
+    var row = rows[ry];
+    for (var rx = 0; rx < row.length; rx++) {
+      var ch = row.charAt(rx);
+      if (ch === '.' || ch === ' ') continue;
+      var col = PAL[ch];
+      if (over && (ch === 'B' || ch === 'R' || ch === 'G')) col = over;
+      if (!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(bx + rx * scale, by + ry * scale, scale, scale);
+    }
+  }
+}
+
+/* --- Zako, blue scout, 50 pts --- */
+var SPR_ZAKO = [
+["................",
+ "................",
+ "...B........B...",
+ "...BB......BB...",
+ "...BB......BB...",
+ "..BBBBBBBBBBBB..",
+ ".BBBBBBBBBBBBBB.",
+ ".BBWWBBBBBBWWBB.",
+ ".BBWWBBBBBBWWBB.",
+ ".BBBBBBBBBBBBBB.",
+ ".BBBBBBBBBBBBBB.",
+ "..BBBBBBBBBBBB..",
+ "..BBBBB..BBBBB..",
+ "...BBB....BBB...",
+ "..BB......BB....",
+ "................"],
+["................",
+ "...B........B...",
+ "...B........B...",
+ "...BB......BB...",
+ "..BBBBBBBBBBBB..",
+ ".BBBBBBBBBBBBBB.",
+ ".BBWWBBBBBBWWBB.",
+ ".BBWWBBBBBBWWBB.",
+ ".BBBBBBBBBBBBBB.",
+ ".BBBBBBBBBBBBBB.",
+ "..BBBBBBBBBBBB..",
+ "..BBBBBBBBBBBB..",
+ "...BBBBBBBBBB...",
+ "...BBB..BBB.....",
+ "..BB......BB....",
+ "................"]
+];
+
+/* --- Goei, green butterfly, 80 pts --- */
+var SPR_GOEI = [
+["................",
+ "................",
+ "..G..........G..",
+ "..GG........GG..",
+ "..GGG......GGG..",
+ ".GGGGG....GGGGG.",
+ ".GGGGGG..GGGGGG.",
+ "GGGGGGG..GGGGGGG",
+ "GWWGGGGBBGGGGWWG",
+ "GWWGGGGBBGGGGWWG",
+ "GGGGGGGGBBGGGGGGG",
+ "GGGGGGGGBBGGGGGGG",
+ ".GGGGGGBBGGGGGG.",
+ "..GGGGGGBBGGGGG..",
+ "...GGGGGBBGGGG...",
+ "................"],
+["................",
+ "................",
+ "................",
+ "................",
+ "...GGGG..GGGG...",
+ "..GGGGG..GGGGG..",
+ ".GGGGGG..GGGGGG.",
+ "GGGGGGG..GGGGGGG",
+ "GWWGGGGBBGGGGWWG",
+ "GWWGGGGBBGGGGWWG",
+ "GGGGGGGGBBGGGGGGG",
+ "GGGGGGGGBBGGGGGGG",
+ ".GGGGGGBBGGGGGG.",
+ ".GGGGGGBBGGGGGG.",
+ "..GGGGG..GGGGG..",
+ "................"]
+];
+
+/* --- Bosconian, red boss, 150 pts --- */
+var SPR_BOSC = [
+["................",
+ "................",
+ "..RR........RR..",
+ "..RR........RR..",
+ "..RRR......RRR..",
+ "..RRRR....RRRR..",
+ ".RRRRRR..RRRRRR.",
+ ".RRRRRR..RRRRRR.",
+ "RRWWRRRRRRRRWWRR",
+ "RRWWRRRRRRRRWWRR",
+ "RRRRRRRRRRRRRRRR",
+ "RRRRRRRRRRRRRRRR",
+ ".RRRRRR..RRRRRR.",
+ "..RRRR....RRRR..",
+ "..YY......YY....",
+ "................"],
+["................",
+ "..RR........RR..",
+ "..RR........RR..",
+ "..RRR......RRR..",
+ "..RRRR....RRRR..",
+ ".RRRRRR..RRRRRR.",
+ "RRRRRRRRRRRRRRRR",
+ "RRWWRRRRRRRRWWRR",
+ "RRWWRRRRRRRRWWRR",
+ "RRRRRRRRRRRRRRRR",
+ "RRRRRRRRRRRRRRRR",
+ ".RRRRRR..RRRRRR.",
+ "..RRRR....RRRR..",
+ "..RRRR....RRRR..",
+ "...YY......YY...",
+ "................"]
+];
+
+var SPR_SHIP = [
+"................",
+".......W........",
+".......WW.......",
+"......WBBW......",
+"......WBBW......",
+".....WWBBWW.....",
+"....WWBBBBWW....",
+"...WWBBBBBBWW...",
+"..WWBBWBBWBBWW..",
+".WBBBWBBWBBBW...",
+".WWBBBWBBWBBBWW.",
+".WBBBWWBBWWBBBW.",
+".WBBWWWWWWWWBBW.",
+".WWWW......WWWW.",
+".WW..........WW.",
+"................"
+];
+
+/* Galaxian flagship: wider than 16px so it is assembled from rects. */
+function drawFlagship(x, y, flash) {
+  var body  = flash > 0 ? '#ffffff' : '#ff2a2a';
+  var dark  = flash > 0 ? '#ffffff' : '#a01010';
+  var lit   = flash > 0 ? '#ffffff' : '#66ccff';
+  var gold  = flash > 0 ? '#ffffff' : '#ffe000';
+  x = Math.round(x); y = Math.round(y);
+  ctx.fillStyle = gold; ctx.fillRect(x - 7, y - 21, 14, 5);
+  ctx.fillStyle = body; ctx.fillRect(x - 22, y - 16, 44, 11);
+  ctx.fillStyle = dark; ctx.fillRect(x - 22, y - 5, 44, 4);
+  ctx.fillStyle = body; ctx.fillRect(x - 16, y - 5, 32, 10);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x - 12, y - 13, 7, 5); ctx.fillRect(x + 5, y - 13, 7, 5);
+  ctx.fillStyle = dark;
+  ctx.fillRect(x - 30, y - 15, 8, 5); ctx.fillRect(x + 22, y - 15, 8, 5);
+  ctx.fillStyle = lit;
+  ctx.fillRect(x - 30, y - 10, 8, 9); ctx.fillRect(x + 22, y - 10, 8, 9);
+  ctx.fillRect(x - 27, y - 1, 9, 7);  ctx.fillRect(x + 18, y - 1, 9, 7);
+  ctx.fillStyle = body;
+  ctx.fillRect(x - 10, y + 5, 20, 4);
+}
+
+/* ============================== AUDIO ================================== */
+var audio = { ctx:null, master:null, musicGain:null, sfxGain:null, timer:null, track:null };
+
+function initAudio() {
+  if (audio.ctx) return;
+  var AC = window.AudioContext || window.webkitAudioContext;
+  audio.ctx = new AC();
+  audio.master = audio.ctx.createGain();
+  audio.master.gain.value = 0.85;
+  audio.master.connect(audio.ctx.destination);
+  audio.musicGain = audio.ctx.createGain();
+  audio.musicGain.gain.value = 0.55;
+  audio.musicGain.connect(audio.master);
+  audio.sfxGain = audio.ctx.createGain();
+  audio.sfxGain.gain.value = 0.85;
+  audio.sfxGain.connect(audio.master);
+}
+
+function tone(freq, when, dur, wave, vol, dest) {
+  if (!audio.ctx || !freq || freq <= 0) return;
+  var o = audio.ctx.createOscillator();
+  var g = audio.ctx.createGain();
+  o.type = wave || 'square';
+  o.frequency.setValueAtTime(freq, when);
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.linearRampToValueAtTime(vol, when + 0.006);
+  g.gain.setValueAtTime(vol, when + Math.max(0.012, dur * 0.5));
+  g.gain.exponentialRampToValueAtTime(0.0008, when + dur);
+  o.connect(g);
+  g.connect(dest || audio.master);
+  o.start(when);
+  o.stop(when + dur + 0.02);
+}
+
+function sweep(f1, f2, when, dur, wave, vol) {
+  if (!audio.ctx) return;
+  var o = audio.ctx.createOscillator();
+  var g = audio.ctx.createGain();
+  o.type = wave || 'square';
+  o.frequency.setValueAtTime(f1, when);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), when + dur);
+  g.gain.setValueAtTime(vol, when);
+  g.gain.exponentialRampToValueAtTime(0.0008, when + dur);
+  o.connect(g);
+  g.connect(audio.sfxGain);
+  o.start(when);
+  o.stop(when + dur + 0.02);
+}
+
+function noise(when, dur, vol) {
+  if (!audio.ctx) return;
+  var len = Math.max(1, Math.floor(audio.ctx.sampleRate * dur));
+  var buf = audio.ctx.createBuffer(1, len, audio.ctx.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  var src = audio.ctx.createBufferSource();
+  src.buffer = buf;
+  var f = audio.ctx.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.setValueAtTime(4400, when);
+  f.frequency.exponentialRampToValueAtTime(300, when + dur);
+  var g = audio.ctx.createGain();
+  g.gain.setValueAtTime(vol, when);
+  g.gain.exponentialRampToValueAtTime(0.0008, when + dur);
+  src.connect(f); f.connect(g); g.connect(audio.sfxGain);
+  src.start(when);
+}
+
+/* --------------------------- drum synthesis ----------------------------- */
+function drumNoise(when, dur, vol, filterType, cutoff, dest) {
+  var len = Math.max(1, Math.floor(audio.ctx.sampleRate * dur));
+  var buf = audio.ctx.createBuffer(1, len, audio.ctx.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  var src = audio.ctx.createBufferSource();
+  src.buffer = buf;
+  var f = audio.ctx.createBiquadFilter();
+  f.type = filterType;
+  f.frequency.value = cutoff;
+  var g = audio.ctx.createGain();
+  g.gain.setValueAtTime(vol, when);
+  g.gain.exponentialRampToValueAtTime(0.0008, when + dur);
+  src.connect(f); f.connect(g); g.connect(dest || audio.musicGain);
+  src.start(when);
+  src.stop(when + dur + 0.02);
+}
+
+function drumKick(when, vol, dest) {
+  var o = audio.ctx.createOscillator();
+  var g = audio.ctx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(155, when);
+  o.frequency.exponentialRampToValueAtTime(45, when + 0.10);
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.linearRampToValueAtTime(vol, when + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0008, when + 0.24);
+  o.connect(g); g.connect(dest || audio.musicGain);
+  o.start(when); o.stop(when + 0.28);
+}
+
+function drumSnare(when, vol, dest) {
+  drumNoise(when, 0.16, vol, 'bandpass', 1900, dest);
+  var o = audio.ctx.createOscillator();
+  var g = audio.ctx.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(200, when);
+  o.frequency.exponentialRampToValueAtTime(120, when + 0.08);
+  g.gain.setValueAtTime(vol * 0.45, when);
+  g.gain.exponentialRampToValueAtTime(0.0008, when + 0.09);
+  o.connect(g); g.connect(dest || audio.musicGain);
+  o.start(when); o.stop(when + 0.12);
+}
+
+function playDrum(kind, when, vol, dest) {
+  if (kind === 'k') drumKick(when, vol * 0.85, dest);
+  else if (kind === 's') drumSnare(when, vol * 0.5, dest);
+  else if (kind === 'h') drumNoise(when, 0.045, vol * 0.24, 'highpass', 7200, dest);
+  else if (kind === 'H') drumNoise(when, 0.22, vol * 0.22, 'highpass', 6600, dest);
+  else if (kind === 'c') drumNoise(when, 0.9, vol * 0.3, 'highpass', 5200, dest);
+}
+
+/* Note table, generated from equal temperament so it can never drift out of
+   tune and covers every range the music needs (A1 up to B7, naturals + sharps). */
+var NOTES = {};
+(function buildNotes() {
+  var SEMI = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+  for (var oct = 1; oct <= 7; oct++) {
+    for (var name in SEMI) {
+      for (var s = 0; s <= 1; s++) {
+        var midi = (oct + 1) * 12 + SEMI[name] + s;
+        NOTES[name + (s ? '#' : '') + oct] = 440 * Math.pow(2, (midi - 69) / 12);
+      }
+    }
+  }
+})();
+
+/* Sequence format: one token per step, and a step is an eighth note unless the
+   voice sets `div` (0.5 gives sixteenths, used by the arpeggios).
+     D5      note, one step
+     D5/2    note, held two steps
+     D5!     accented, louder
+     D5*     ghost note, quieter
+     D5~     staccato, shorter
+     .       rest
+   Drum voices use one-letter tokens instead of note names:
+     k kick   s snare   h closed hat   H open hat   c crash                */
+function parseSeq(s) {
+  return String(s).trim().split(/\s+/).map(function (tok) {
+    var out = { f:0, d:0, l:1, v:1, st:1, r:0 };
+    if (!tok || tok === '.') { out.r = 1; return out; }
+    // Articulation flags first, so "D5/2!" still yields the 2-step length.
+    while (tok.length) {
+      var c = tok.charAt(tok.length - 1);
+      if (c === '!') { out.v = 1.4; tok = tok.slice(0, -1); }
+      else if (c === '*') { out.v = 0.5; tok = tok.slice(0, -1); }
+      else if (c === '~') { out.st = 0.45; tok = tok.slice(0, -1); }
+      else break;
+    }
+    var m = /^(.*)\/(\d+)$/.exec(tok);
+    if (m) { out.l = parseInt(m[2], 10); tok = m[1]; }
+    if (tok === 'k' || tok === 's' || tok === 'h' || tok === 'H' || tok === 'c') out.d = tok;
+    else out.f = NOTES[tok] || 0;
+    return out;
+  });
+}
+
+var SQR = 'square', TRI = 'triangle';
+
+/* Sixteenth-note arpeggio tokens through a chord, one chord per bar. */
+function arpTokens(chords) {
+  var t = [];
+  for (var b = 0; b < chords.length; b++) {
+    for (var i = 0; i < 16; i++) {
+      var n = chords[b][i % chords[b].length];
+      t.push(i % 4 === 0 ? n : n + '*');
+    }
+  }
+  return t;
+}
+
+/* Sections are two bars each. The longer variation sections carry their own
+   arpeggio, otherwise the intro section's figure repeats under them. */
+var SEC = {
+  A:{
+    lead:'D5 D5 . D5 F#5 A5 B5/2 A5 . F#5 . D5 . A4/2',
+    harm:'F#4 . A4 . F#4 . B4/2 C5 . A4 . F#4 D4 . . .',
+    bass:'D2 . D3 . A2 . D3 . A2 A3 . E2 . A2 A3 .',
+    drums:'k h s h k h s h k h s h k h s h',
+    arpTokens:arpTokens([['D3','F#3','A3','D4'], ['A2','C3','E3','A3']])
+  },
+  B:{
+    lead:'A5 . C6 B5 A5 F#5 . A5/2 D6/2 . A5 F#5 G5/2',
+    harm:'E5 . E5 . F#5 A5 . B4 . C5/2 A4 . D5 . E5',
+    bass:'A2 A3 . A2 . E2 E3 . A2 . A2 A3 . D2 . F#2',
+    drums:'k h s h k h s h k h s h k k s c',
+    arpTokens:arpTokens([['A3','C4','E4','A4'], ['E3','G#3','B3','E4']])
+  },
+  C:{
+    lead:'D6 . A5 F#5 D5 F#5 . A5 B5/2 C6 . A5 F#5 D5/2',
+    harm:'A4 . F#4 . A4 . D5 . F#4 . B4/2 A4 . F#4 D4',
+    bass:'D2 . D3 D2 . A2 . D3 . F#2 . A2 . D2 . A2',
+    drums:'k h s h k h s h k h s h k k s c',
+    arpTokens:arpTokens([['D4','F#4','A4','D5'], ['F#3','A3','C4','F#4']])
+  },
+  X:{
+    lead:'F#5 A5 B5/2 A5 F#5 . D5 . E5/2 F#5 . D5 . A4 .',
+    harm:'D4 . F#4 . A4 . D5 . F#4 . E5/2 D5 . A4 . .',
+    bass:'D2 . D3 . F#2 . A2 . D2 . A2 D3 . . . .',
+    drums:'k h s h k h s h k h s h k h s h',
+    arpTokens:arpTokens([['D4','F#4','A4','D5'], ['B3','D4','F#4','B4']])
+  }
+};
+
+/* Drum voices for the "hurry up" run: same groove, but the offbeats open up. */
+var HURRY_DRUM_A = 'k h s h k h s H k h s h k k s h';
+var HURRY_DRUM_B = 'k h s h k h s H k h s h k k s c';
+
+/* Boss theme: minor key, driving eighth-note bass, busier hats. */
+var BOSS = {
+  A:{
+    lead:'A5 A5 . A5 C6 D6/2 E6 . D6 C6 A5 . E5/2 .',
+    harm:'E5 . E5 . G5 A5 . B5 . E5 . A5/2 G5 .',
+    bass:'A2 A2 E3 A2 A2 E3 A2 A2 E3 A2 A2 E3 A2 A2 E3 A2',
+    drums:'k h s h k k s h k h s h k k s h',
+    arpTokens:arpTokens([['A3','C4','E4','A4'], ['A3','C4','E4','A4']])
+  },
+  B:{
+    lead:'D6 . C6 A5 G5 A5 . F5/2 A5 D6/2 C6 A5 F#5/2',
+    harm:'A4 . A4 . D5 F5 . G5 . D5/2 E5 A5/2 G5 F5',
+    bass:'D3 . D3 . A2 . D3 . D3 A2 . F2 . F2 A2 .',
+    drums:'k h s h k h s h k h s h k k s c',
+    arpTokens:arpTokens([['D4','F4','A4','D5'], ['F3','A3','C4','F4']])
+  }
+};
+
+/* Concatenate sections. Each token is one step (a longer note just rings for
+   longer, it does not shorten the loop), so every voice is padded with rests
+   to the section's token count. `drums`, when given, overrides the section
+   drum line, and the arpeggio voice is sized to twice the tokens because it
+   runs at double speed. */
+function seqSet(sections, drums) {
+  var keys = ['lead', 'harm', 'bass', 'drums'], out = {}, k, s, i;
+  var canon = [];
+  for (s = 0; s < sections.length; s++) {
+    var mx = 0;
+    for (k = 0; k < keys.length; k++) {
+      var d = (keys[k] === 'drums' && drums) ? drums[s] : sections[s][keys[k]];
+      var n = parseSeq(d).length;
+      if (n > mx) mx = n;
+    }
+    canon.push(mx);
+  }
+  for (k = 0; k < keys.length; k++) {
+    var buf = [];
+    for (s = 0; s < sections.length; s++) {
+      var src = (keys[k] === 'drums' && drums) ? drums[s] : sections[s][keys[k]];
+      buf.push(padTokens(src, canon[s]));
+    }
+    out[keys[k]] = buf.join(' ');
+  }
+  var abuf = [];
+  for (s = 0; s < sections.length; s++) {
+    var toks = sections[s].arpTokens, want = canon[s] * 2, t = [];
+    for (i = 0; i < want; i++) t.push(toks[i % toks.length]);
+    abuf.push(t.join(' '));
+  }
+  out.arp = abuf.join(' ');
+  return out;
+}
+
+/* Pad a sequence with rests until it holds `n` tokens. */
+function padTokens(s, n) {
+  var have = parseSeq(s).length, pad = '';
+  for (var p = have; p < n; p++) pad += ' .';
+  return s + pad;
+}
+
+function seqVoice(s, wave, vol, div) {
+  return { wave:wave, vol:vol, div:div || 1, notes:parseSeq(s) };
+}
+function drumVoice(s) {
+  return { drums:true, vol:1, div:1, notes:parseSeq(s) };
+}
+
+function themeTrack(bpm, sections, drums) {
+  var m = seqSet(sections, drums);
+  return { bpm:bpm, loop:true, voices:[
+    seqVoice(m.lead, SQR, 0.046),
+    seqVoice(m.harm, SQR, 0.022),
+    seqVoice(m.bass, TRI, 0.068),
+    seqVoice(m.arp,  TRI, 0.013, 0.5),
+    drumVoice(m.drums)
+  ]};
+}
+
+var SEQS = {
+  clearL:'C5 E5 G5 C6 E6 . C6/2 E6/4 G6/4',
+  clearH:'E4 G4 C5 E5 C5 G5 C5/2 G5/4 C6/4',
+  clearB:'C3 . G2 . C3 . E3 . G2 . C3/2 E3 . G2 . C2/2',
+  clearD:'c . . . . . . . c . . . . . . h',
+  deathL:'G4 . E4 . C4 . A3 . F3 . E3/2 . C3/4',
+  deathH:'D4 . B3 . G3 . E3 . D3 . C3/2 . . . .',
+  deathB:'G2 . . . D3 . . . C3 . . . E3/2 . C2',
+  lifeL:'C5 E5 G5 C6 G5 E5 C5/2',
+  lifeH:'E4 G4 C5 E5 C5 . E4 .',
+  lifeB:'C3 . G2 . C3 . C2/2',
+  lifeD:'k k k . h h h h'
+};
+
+function jingle(bpm, l, h, b, d) {
+  var voices = [
+    seqVoice(l, SQR, 0.050),
+    seqVoice(h, SQR, 0.025),
+    seqVoice(b, TRI, 0.070)
+  ];
+  if (d) voices.push(drumVoice(d));
+  return { bpm:bpm, loop:false, voices:voices };
+}
+
+var TRACKS = {
+  main:  themeTrack(150, [SEC.A, SEC.B, SEC.A, SEC.C, SEC.A, SEC.B, SEC.C, SEC.X]),
+  hurry: themeTrack(192, [SEC.A, SEC.B, SEC.A, SEC.C, SEC.A, SEC.B, SEC.C, SEC.X],
+                    [HURRY_DRUM_A, HURRY_DRUM_B, HURRY_DRUM_A, HURRY_DRUM_B,
+                     HURRY_DRUM_A, HURRY_DRUM_B, HURRY_DRUM_B, HURRY_DRUM_A]),
+  boss:  themeTrack(174, [BOSS.A, BOSS.B]),
+  clear: jingle(170, SEQS.clearL, SEQS.clearH, SEQS.clearB, SEQS.clearD),
+  death: jingle(132, SEQS.deathL, SEQS.deathH, SEQS.deathB),
+  extra: jingle(200, SEQS.lifeL, SEQS.lifeH, SEQS.lifeB, SEQS.lifeD)
+};
+
+/* Boss stages get their own theme, and the last life turns the music up. */
+function stageMusic() {
+  if (isBossStage) return 'boss';
+  return lives <= 1 ? 'hurry' : 'main';
+}
+
+function stopMusic() { audio.track = null; }
+
+/* Each voice keeps its own step and schedule time, so a sixteenth-note arp can
+   run under an eighth-note lead and every part still ends together. */
+function musicStep() {
+  var tr = audio.track;
+  if (!tr) return;
+  var def = tr.def;
+  var horizon = audio.ctx.currentTime + 0.18;
+  for (var v = 0; v < def.voices.length; v++) {
+    var vo = def.voices[v];
+    if (!vo.notes.length) continue;
+    var spb = (60 / def.bpm / 2) * (vo.div || 1);
+    var guard = 0;
+    while (tr.nexts[v] < horizon && guard++ < 400) {
+      var idx = def.loop ? tr.steps[v] % vo.notes.length : tr.steps[v];
+      var n = vo.notes[idx];
+      if (n) {
+        if (n.d) {
+          if (vo.drums) playDrum(n.d, tr.nexts[v], vo.vol * n.v);
+        } else if (n.f > 0) {
+          tone(n.f, tr.nexts[v], n.l * spb * 0.92 * n.st, vo.wave, vo.vol * n.v, audio.musicGain);
+        }
+      }
+      tr.nexts[v] += spb;
+      tr.steps[v]++;
+    }
+  }
+  if (!def.loop) {
+    var done = true;
+    for (var d = 0; d < def.voices.length; d++) {
+      if (tr.steps[d] < def.voices[d].notes.length) done = false;
+    }
+    if (done) {
+      var cb = tr.onend;
+      stopMusic();
+      if (cb) cb();
+    }
+  }
+}
+
+function playMusic(name, onend) {
+  initAudio();
+  if (audio.ctx.state === 'suspended') audio.ctx.resume();
+  var def = TRACKS[name];
+  if (!def) return;
+  var nexts = [], steps = [], t0 = audio.ctx.currentTime + 0.06;
+  for (var i = 0; i < def.voices.length; i++) { nexts.push(t0); steps.push(0); }
+  audio.track = { def:def, nexts:nexts, steps:steps, onend:onend };
+  if (!audio.timer) audio.timer = setInterval(musicStep, 25);
+  musicStep();
+}
+
+function sfxShoot() {
+  if (!audio.ctx) return;
+  sweep(1250, 430, audio.ctx.currentTime, 0.07, 'square', 0.045);
+}
+function sfxEnemyShoot() {
+  if (!audio.ctx) return;
+  sweep(520, 190, audio.ctx.currentTime, 0.10, 'square', 0.028);
+}
+function sfxHit() {
+  if (!audio.ctx) return;
+  tone(720, audio.ctx.currentTime, 0.045, 'square', 0.032, audio.sfxGain);
+}
+function sfxKill() {
+  if (!audio.ctx) return;
+  var t = audio.ctx.currentTime;
+  sweep(620, 95, t, 0.22, 'sawtooth', 0.055);
+  noise(t, 0.16, 0.042);
+}
+function sfxCapture() {
+  if (!audio.ctx) return;
+  var t = audio.ctx.currentTime;
+  for (var i = 0; i < 5; i++) tone(300 + i * 170, t + i * 0.045, 0.07, 'triangle', 0.042, audio.sfxGain);
+}
+function sfxBossShoot() {
+  if (!audio.ctx) return;
+  var t = audio.ctx.currentTime;
+  for (var i = 0; i < 3; i++) tone(900 - i * 140, t + i * 0.035, 0.07, 'square', 0.030, audio.sfxGain);
+}
+function sfxBossDeath() {
+  if (!audio.ctx) return;
+  var t = audio.ctx.currentTime;
+  noise(t, 0.9, 0.10);
+  sweep(320, 30, t, 0.85, 'sawtooth', 0.070);
+}
+function sfxPlayerDeath() {
+  if (!audio.ctx) return;
+  var t = audio.ctx.currentTime;
+  noise(t, 1.1, 0.11);
+  sweep(540, 40, t, 1.0, 'sawtooth', 0.075);
+}
+
+/* ============================== STATE ================================== */
+var score = 0, hiScore = 0, lives = 3, stage = 1;
+var enemies = [], bosses = [], pBullets = [], eBullets = [], particles = [], stars = [];
+var player = null, gameState = 'title';
+var introT = 0, readyT = 0, dyingT = 0, clearT = 0, overT = 0;
+var formation = { x:0, y:FORM_Y0, dir:1, anim:0, animT:0 };
+var capGroup = { y:80, dir:1, t:0, fireT:2, halfW:0, topH:0, members:[] };
+var diveTimer = 1.6, boss2T = 0, bossPending = 0;
+// One shared firing cue for the whole enemy fleet: at most one new enemy
+// bullet is created per enemyFireInterval(), no matter how many ships are
+// diving, so the player never gets a simultaneous double shot.
+var enemyFireCd = 0;
+var hurryOn = false, shotCd = 0, dualUsed = false, shake = 0, frames = 0;
+var isBossStage = false, hitCount = 0, nextExtra = 0;
+var paused = false, muted = false, mutedTrack = null;
+var EXTRA_AT = [20000, 70000, 140000, 210000, 280000, 350000, 420000, 490000, 560000];
+var msgText = '', msgT = 0, msgColor = '#ffffff';
+var keys = {};
+// Analog thumbstick state, driven by the on-screen stick on touch devices.
+// x/y are the stick offset normalised to [-1,1]; magnitude scales the speed.
+var stick = { x:0, y:0, active:false, id:null, cx:0, cy:0, R:1 };
+
+try { hiScore = parseInt(localStorage.getItem('galaga-hi') || '0', 10) || 0; } catch (e) { hiScore = 0; }
+function saveHi() { try { localStorage.setItem('galaga-hi', String(hiScore)); } catch (e) {} }
+
+for (var si = 0; si < 90; si++) {
+  stars.push({ x:Math.random() * W, y:Math.random() * H,
+               s:Math.random() < 0.3 ? 4 : 2,
+               b:0.30 + Math.random() * 0.70, v:5 + Math.random() * 22 });
+}
+
+/* ============================= HELPERS ================================= */
+function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+function rand(a, b) { return a + Math.random() * (b - a); }
+function near(ax, ay, bx, by, r) { var dx = ax - bx, dy = ay - by; return dx * dx + dy * dy <= r * r; }
+function say(t, c, d) { msgText = t; msgColor = c || '#ffffff'; msgT = d; }
+function pad(n, w) { var s = String(n); while (s.length < w) s = '0' + s; return s; }
+
+/* Difficulty scaling: enemies get 3% faster every stage. */
+var SPEED_PER_LEVEL = 1.03;
+function speedMul() { return Math.pow(SPEED_PER_LEVEL, stage - 1); }
+
+/* Player fire rate: 3 shots a second on stage 1, one more each stage after,
+   capped so late stages stay playable. */
+var BASE_FIRE_RATE = 3, MAX_FIRE_RATE = 10;
+function fireRate() { return Math.min(MAX_FIRE_RATE, BASE_FIRE_RATE + (stage - 1)); }
+/* Shots allowed in flight at once, so the rate is what limits fire, not the
+   number of bullets that happen to be on screen. */
+function maxShots() { return Math.max(2, Math.ceil(fireRate() * 1.2) + 2); }
+
+/* Enemy fire interval: one shot a second on stage 1, shrinking 5% per stage
+   until it bottoms out at half a second, which is the hardest the game gets. */
+var ENEMY_FIRE_INTERVAL = 1.0, ENEMY_FALLOFF = 0.95, MIN_ENEMY_FIRE_INTERVAL = 0.5;
+function enemyFireInterval() {
+  return Math.max(MIN_ENEMY_FIRE_INTERVAL, Math.pow(ENEMY_FALLOFF, stage - 1));
+}
+/* Keep the varied per-role gaps, but re-centre them on the new interval so
+   stage 1 averages one shot a second. `spread` widens the random jitter, which
+   is symmetric so the average stays exactly on the interval. */
+function enemyFireGap(spread) {
+  return enemyFireInterval() * rand(1 - 0.4 * spread, 1 + 0.4 * spread);
+}
+
+function bez(p, t) {
+  var u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+  return { x:a * p.p0.x + b * p.p1.x + c * p.p2.x + d * p.p3.x,
+           y:a * p.p0.y + b * p.p1.y + c * p.p2.y + d * p.p3.y };
+}
+
+function pushScore(n) {
+  score += n;
+  if (score > hiScore) { hiScore = score; saveHi(); }
+  while (nextExtra < EXTRA_AT.length && score >= EXTRA_AT[nextExtra]) {
+    nextExtra++;
+    lives++;
+    say('EXTRA SHIP!', '#00ff88', 2.2);
+    sfxCapture();
+  }
+}
+
+function burst(x, y, color, n, spd, life) {
+  for (var i = 0; i < n; i++) {
+    var a = Math.random() * Math.PI * 2, s = spd * (0.3 + Math.random() * 0.95);
+    particles.push({ x:x, y:y, vx:Math.cos(a) * s, vy:Math.sin(a) * s,
+                     c:color, t:life * (0.55 + Math.random() * 0.75), tl:life });
+  }
+}
+
+function updateParticles(dt) {
+  for (var i = particles.length - 1; i >= 0; i--) {
+    var p = particles[i];
+    p.t -= dt;
+    if (p.t <= 0) { particles.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vx *= 0.986; p.vy *= 0.986;
+  }
+}
+
+/* ========================== FORMATION / STAGES ========================= */
+var KINDS = {
+  zako:{ spr:SPR_ZAKO, pts:50,  col:'#3a5cff' },
+  goei:{ spr:SPR_GOEI, pts:80,  col:'#22dd44' },
+  bosc:{ spr:SPR_BOSC, pts:150, col:'#ff2a2a' }
+};
+var CAPTURED_COL = '#00ff66';
+
+function slotPos(e) { return { x:formation.x + e.col * COL_SPACING, y:formation.y + e.row * ROW_SPACING }; }
+function formEnemies() { var a = []; for (var i = 0; i < enemies.length; i++) if (enemies[i].state === 'formation') a.push(enemies[i]); return a; }
+function diversNow() { var n = 0; for (var i = 0; i < enemies.length; i++) if (enemies[i].state !== 'formation') n++; return n; }
+
+function stageLayout() {
+  var s = stage;
+  isBossStage = (s % 3 === 0);
+  var rows, cols = 8, mix;
+  if (isBossStage) {
+    rows = (s == 3) ? 1 : 2;
+    mix = [];
+    for (var r = 0; r < rows; r++) { mix.push(r === 0 ? 'zako' : 'goei'); }
+  } else {
+    rows = (s <= 2) ? 4 : 5;
+    mix = ['bosc', 'goei', 'zako', 'zako', 'zako'];
+  }
+  if (s >= 5 && !isBossStage) cols = 9;
+  return { rows:rows, cols:cols, mix:mix };
+}
+
+function loadStage() {
+  var L = stageLayout();
+  enemies = []; bosses = []; pBullets = []; eBullets = [];
+  enemyFireCd = 0;
+  capGroup.members = []; capGroup.y = FORM_Y0 - 10; capGroup.dir = 1; capGroup.t = 0; capGroup.fireT = 2;
+  hitCount = 0; bossPending = (isBossStage ? (stage == 3 ? 1 : 2) : 0);
+  diveTimer = 1.6; hurryOn = false; shake = 0;
+  var totalW = (L.cols - 1) * COL_SPACING;
+  formation.x = Math.round((W - totalW) / 2);
+  formation.y = FORM_Y0;
+  formation.dir = 1;
+  formation.anim = 0; formation.animT = 0;
+
+  for (var r = 0; r < L.rows; r++) {
+    var kind = L.mix[Math.min(r, L.mix.length - 1)];
+    for (var c = 0; c < L.cols; c++) {
+      var s = slotFor(r, c);
+      enemies.push({ type:kind, col:c, row:r, x:s.x, y:s.y,
+                     state:'entry', captured:false, t:0, dive:null, fireT:rand(0.8, 2.4),
+                     wait:0, capOx:0, capOy:0, delay:(r * L.cols + c) * 0.022,
+                     side:(r % 2 === 0 ? -1 : 1), frame:0 });
+    }
+  }
+  if (bossPending > 0) spawnBoss(0);
+}
+
+function slotFor(row, col) {
+  var totalW = (stageLayout().cols - 1) * COL_SPACING;
+  return { x:Math.round((W - totalW) / 2) + col * COL_SPACING, y:FORM_Y0 + row * ROW_SPACING };
+}
+
+function updateFormation(dt) {
+  var fe = formEnemies();
+  if (!fe.length) return;
+  formation.animT += dt;
+  if (formation.animT > 0.09) { formation.animT = 0; formation.anim = 1 - formation.anim; }
+  var minCol = 99, maxCol = -99;
+  for (var i = 0; i < fe.length; i++) {
+    if (fe[i].col < minCol) minCol = fe[i].col;
+    if (fe[i].col > maxCol) maxCol = fe[i].col;
+  }
+  var totalW = (maxCol - minCol) * COL_SPACING;
+  var lo = 20 + minCol * COL_SPACING;
+  var hi = W - 20 - (stageLayout().cols - 1 - maxCol) * COL_SPACING;
+  if (hi < lo) hi = lo;
+  var speed = (26 + Math.min(30, stage * 2.2)) * speedMul();
+  formation.x += formation.dir * speed * dt;
+  if (formation.x < lo)      { formation.x = lo;      formation.dir = 1;  formation.y += 14; }
+  if (formation.x > hi - totalW) { formation.x = hi - totalW; formation.dir = -1; formation.y += 14; }
+  if (formation.y > 190) formation.y = 190;
+}
+
+function spawnBoss(n) {
+  bosses.push({ x:n === 0 ? 90 : W - 90, y:56, dir:n === 0 ? 1 : -1,
+                hp:2, flash:0, fireT:1.0, alive:true, frame:0, pts:1000 });
+}
+
+function startDive(e) {
+  e.state = 'dive';
+  e.t = 0;
+  var dir = e.x < W / 2 ? 1 : -1;
+  if (Math.random() < 0.3) dir = -dir;
+  var tx = rand(50, W - 50), ty = H - 74;
+  e.dive = {
+    p0:{ x:e.x, y:e.y },
+    p1:{ x:clamp(e.x + dir * rand(150, 230), FIELD_PAD, W - FIELD_PAD), y:e.y + 30 },
+    p2:{ x:clamp(tx - dir * 150, FIELD_PAD, W - FIELD_PAD), y:H * 0.80 },
+    p3:{ x:tx, y:ty },
+    dur:rand(1.9, 2.6) / speedMul()
+  };
+  e.fireT = enemyFireGap(1);
+}
+
+function beginReturn(e) {
+  var slot = slotPos(e);
+  var from = { x:e.x, y:e.y };
+  var dir = slot.x >= from.x ? 1 : -1;
+  e.state = 'return';
+  e.t = 0;
+  e.dive = {
+    p0:from,
+    p1:{ x:clamp(from.x - dir * 70, FIELD_PAD, W - FIELD_PAD), y:from.y - 85 },
+    p2:{ x:clamp(slot.x + dir * 60, FIELD_PAD, W - FIELD_PAD), y:slot.y + 135 },
+    p3:{ x:slot.x, y:slot.y },
+    dur:1.55 / speedMul()
+  };
+  e.fireT = enemyFireGap(0.5);
+}
+
+function capture(e) {
+  e.state = 'captured';
+  e.captured = true;
+  e.t = 0;
+  e.fireT = enemyFireGap(0.7);
+  capGroup.members.push(e);
+  if (capGroup.members.length === 1) capGroup.y = e.y;
+  relayoutCapture();
+  sfxCapture();
+}
+
+function relayoutCapture() {
+  var n = capGroup.members.length;
+  if (!n) { capGroup.halfW = 0; capGroup.topH = 0; return; }
+  // A single V-shaped row cannot fit a big capture on a 480px screen, so the
+  // captured fleet is laid out as a grid that always fits between the borders.
+  var cols = Math.min(CAP_MAX_COLS, n);
+  var rows = Math.ceil(n / cols);
+  cols = Math.ceil(n / rows);
+  capGroup.halfW = (cols - 1) * CAP_COL_SPACING / 2;
+  capGroup.topH = (rows - 1) * CAP_ROW_SPACING;
+  for (var i = 0; i < n; i++) {
+    var r = Math.floor(i / cols);
+    var idx = i - r * cols;
+    var inRow = Math.min(cols, n - r * cols);
+    var k = idx - (inRow - 1) / 2;
+    capGroup.members[i].capOx = k * CAP_COL_SPACING;
+    capGroup.members[i].capOy = -r * CAP_ROW_SPACING;
+  }
+}
+
+function killEnemy(e) {
+  var i = enemies.indexOf(e);
+  if (i < 0) return;
+  var pts;
+  if (e.captured) {
+    pts = 400;
+    enemies.splice(i, 1);
+    var ci = capGroup.members.indexOf(e);
+    if (ci >= 0) { capGroup.members.splice(ci, 1); relayoutCapture(); }
+    burst(e.x, e.y, CAPTURED_COL, 20, 190, 0.55);
+  } else {
+    pts = KINDS[e.type].pts;
+    enemies.splice(i, 1);
+    burst(e.x, e.y, KINDS[e.type].col, 18, 170, 0.5);
+    if (e.state === 'formation' || e.state === 'entry') capture(e);
+  }
+  pushScore(pts);
+  hitCount++;
+  sfxKill();
+  say(String(pts), '#ffffff', 0.55);
+}
+
+function killBoss(b) {
+  b.alive = false;
+  pushScore(b.pts);
+  burst(b.x, b.y, '#ff2a2a', 34, 230, 0.8);
+  burst(b.x, b.y, '#ffe000', 22, 170, 0.9);
+  burst(b.x, b.y, '#ffffff', 16, 260, 0.6);
+  shake = 12;
+  sfxBossDeath();
+  say('1000', '#ffffff', 0.9);
+}
+
+// Every enemy bullet in the game leaves through here, so there is only ever
+// one new bullet per interval and it always comes out of a ship you can see.
+// A shot is also refused if the shooter is almost on top of the player, so
+// bullets can never appear on the player from nowhere.
+function enemyShoot(e, spread) {
+  if (enemyFireCd > 0) return false;
+  if (eBullets.length >= MAX_E_BULLETS) return false;
+  if (player && gameState === 'play' && e.y + 8 > player.y - 30) return false;
+  var a = Math.PI / 2 + rand(-0.30, 0.30);
+  var sp = rand(150, 205) * speedMul();
+  eBullets.push({ x:e.x, y:e.y + 8, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp });
+  enemyFireCd = enemyFireGap(spread === undefined ? 1 : spread);
+  sfxEnemyShoot();
+  return true;
+}
+
+function bossShoot(b) {
+  if (enemyFireCd > 0) return false;
+  if (eBullets.length >= MAX_E_BULLETS) return false;
+  if (player && gameState === 'play' && b.y + 22 > player.y - 30) return false;
+  var a = Math.PI / 2 + rand(-0.09, 0.09);
+  var sp = 170 * speedMul();
+  eBullets.push({ x:b.x, y:b.y + 22, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp });
+  enemyFireCd = enemyFireGap(0.5);
+  sfxBossShoot();
+  return true;
+}
+
+function playerShoot() {
+  if (shotCd > 1e-4 || gameState !== 'play') return;
+  if (pBullets.length >= maxShots()) return;
+  var dual = (pBullets.length >= 2 && !dualUsed && maxShots() >= 2);
+  if (dual) dualUsed = true;
+  pBullets.push({ x:player.x - (dual ? 8 : 0), y:player.y - 14, vy:-480 });
+  if (dual) pBullets.push({ x:player.x + 8, y:player.y - 14, vy:-480 });
+  shotCd = (dual ? 2 : 1) / fireRate();
+  sfxShoot();
+}
+
+function killPlayer() {
+  if (gameState !== 'play') return;
+  gameState = 'dying';
+  dyingT = 0;
+  lives--;
+  pBullets.length = 0;
+  eBullets.length = 0;
+  burst(player.x, player.y, '#ffffff', 24, 200, 0.6);
+  burst(player.x, player.y, '#66ccff', 20, 150, 0.8);
+  shake = 10;
+  sfxPlayerDeath();
+}
+
+/* ============================ GAME FLOW ================================ */
+function startGame() {
+  score = 0; lives = 3; stage = 1; nextExtra = 0;
+  loadStage();
+  newPlayer();
+  gameState = 'intro';
+  introT = 0;
+  playMusic(stageMusic());
+}
+
+function newPlayer() {
+  player = { x:W / 2, y:PLAYER_Y, inv:0, moving:false, animT:0 };
+  pBullets = []; eBullets = [];
+  shotCd = 0; dualUsed = false;
+}
+
+function advanceStage() {
+  stage++;
+  loadStage();
+  newPlayer();
+  gameState = 'intro';
+  introT = 0;
+  diveTimer = 1.6;
+  playMusic(stageMusic());
+}
+
+function startTitle() {
+  gameState = 'title';
+  enemies = []; bosses = []; pBullets = []; eBullets = []; particles = [];
+  enemyFireCd = 0;
+  capGroup.members = [];
+  player = null;
+  playMusic(stageMusic());
+}
+
+/* ============================== UPDATE ================================= */
+function update(dt) {
+  frames++;
+  if (msgT > 0) msgT -= dt;
+  if (shake > 0) shake = Math.max(0, shake - dt * 32);
+  if (muted) return;
+
+  for (var i = 0; i < stars.length; i++) {
+    var s = stars[i];
+    s.y += s.v * dt;
+    if (s.y > H) { s.y = -4; s.x = Math.random() * W; }
+  }
+  updateParticles(dt);
+
+  if (gameState === 'title' || gameState === 'gameover') return;
+  if (paused) return;
+
+  if (gameState === 'intro') {
+    introT += dt;
+    for (var j = 0; j < enemies.length; j++) {
+      var e = enemies[j];
+      if (e.state !== 'entry') continue;
+      var p = clamp((introT - e.delay) / 0.85, 0, 1);
+      var k = 1 - Math.pow(1 - p, 3);
+      var slot = slotPos(e);
+      var from = e.side < 0 ? -50 : W + 50;
+      e.x = from + (slot.x - from) * k;
+      e.y = slot.y;
+      if (p >= 1) e.state = 'formation';
+    }
+    if (introT > 1.5) { gameState = 'play'; say('GO!', '#00ff66', 0.7); }
+    return;
+  }
+
+  if (gameState === 'ready') {
+    readyT -= dt;
+    updateFormation(dt);
+    stepEnemies(dt);
+    stepBosses(dt);
+    stepCapture(dt);
+    stepBullets(dt);
+    if (player) player.inv = Math.max(0, player.inv - dt);
+    if (readyT <= 0) gameState = 'play';
+    return;
+  }
+
+  if (gameState === 'dying') {
+    dyingT += dt;
+    stepCapture(dt);
+    stepBullets(dt);
+    if (dyingT > 1.9) {
+      if (lives <= 0) {
+        gameState = 'gameover';
+        overT = 0;
+        playMusic('death');
+      } else {
+        newPlayer();
+        player.inv = 2.2;
+        gameState = 'ready';
+        readyT = 1.2;
+        say('READY', '#00ff66', 1.2);
+        playMusic(stageMusic());
+      }
+    }
+    return;
+  }
+
+  if (gameState === 'clear') {
+    clearT += dt;
+    stepCapture(dt);
+    updateFormation(dt);
+    if (clearT > 3.4) advanceStage();
+    return;
+  }
+
+  /* ------------------------------ PLAY ------------------------------ */
+  if (player) {
+    player.animT += dt;
+    var mv = 0, mvv = 0;
+    if (keys['arrowleft'] || keys['a']) mv -= 1;
+    if (keys['arrowright'] || keys['d']) mv += 1;
+    if (keys['arrowup'] || keys['w']) mvv -= 1;
+    if (keys['arrowdown'] || keys['s']) mvv += 1;
+    mv += stick.x; mvv += stick.y;
+    var mag = Math.sqrt(mv * mv + mvv * mvv);
+    if (mag > 1) { mv /= mag; mvv /= mag; mag = 1; }
+    player.x = clamp(player.x + mv * PLAYER_SPEED * dt, 20, W - 20);
+    player.y = clamp(player.y + mvv * PLAYER_SPEED * dt, PLAYER_Y_MIN, PLAYER_Y_MAX);
+    player.moving = (mag > 0.05);
+    if (keys[' '] || keys['z'] || keys['x']) playerShoot();
+    if (player.inv > 0) player.inv -= dt;
+  }
+  if (shotCd > 0) shotCd -= dt;
+  if (pBullets.length < 2) dualUsed = false;
+
+  updateFormation(dt);
+  stepEnemies(dt);
+  stepBosses(dt);
+  stepCapture(dt);
+  stepBullets(dt);
+  stepDiveTimer(dt);
+
+  var liveB = 0;
+  for (var b = 0; b < bosses.length; b++) if (bosses[b].alive) liveB++;
+  if (enemies.length === 0 && liveB === 0) {
+    gameState = 'clear';
+    clearT = 0;
+    var bonus = 1000 + 100 * lives;
+    pushScore(bonus);
+    say('STAGE ' + stage + ' CLEAR  +' + bonus, '#ffff00', 3.2);
+    playMusic('clear', function () { if (gameState === 'clear') playMusic(stageMusic()); });
+  }
+}
+
+function stepDiveTimer(dt) {
+  if (enemies.length === 0) return;
+  var maxDivers = isBossStage ? 1 : Math.min(4, 2 + Math.floor(stage / 3));
+  diveTimer -= dt;
+  if (diveTimer <= 0) {
+    diveTimer = Math.max(0.35, (rand(1.1, 2.4) - Math.min(0.6, stage * 0.07)) / speedMul());
+    var fe = formEnemies();
+    var busy = 0;
+    for (var i = 0; i < enemies.length; i++) if (enemies[i].state !== 'formation') busy++;
+    if (fe.length && busy < maxDivers) {
+      var pick = null;
+      if (Math.random() < 0.6) {
+        var scouts = [];
+        for (var j = 0; j < fe.length; j++) if (fe[j].type === 'zako') scouts.push(fe[j]);
+        if (scouts.length) pick = scouts[(Math.random() * scouts.length) | 0];
+      }
+      if (!pick) pick = fe[(Math.random() * fe.length) | 0];
+      if (pick) startDive(pick);
+    }
+  }
+  if (isBossStage && bossPending > 0) {
+    var live = 0;
+    for (var k = 0; k < bosses.length; k++) if (bosses[k].alive) live++;
+    if (live === 0) {
+      boss2T -= dt;
+      if (boss2T <= 0) { spawnBoss(1); bossPending--; }
+    }
+  }
+}
+
+function stepEnemies(dt) {
+  for (var i = enemies.length - 1; i >= 0; i--) {
+    var e = enemies[i];
+    if (e.captured) continue;
+    var p, s, dx, dy;
+    switch (e.state) {
+      case 'formation':
+        s = slotPos(e); e.x = s.x; e.y = s.y;
+        break;
+      case 'entry':
+        s = slotPos(e);
+        e.x += (s.x - e.x) * Math.min(1, dt * 5);
+        e.y = s.y;
+        if (Math.abs(s.x - e.x) < 1.5) e.state = 'formation';
+        break;
+      case 'dive':
+        e.t += dt / e.dive.dur;
+        p = bez(e.dive, Math.min(1, e.t)); e.x = p.x; e.y = p.y;
+        e.fireT -= dt;
+        if (e.fireT <= 0 && enemyShoot(e, 1)) e.fireT = enemyFireCd;
+        if (e.t >= 1) { e.state = 'loiter'; e.wait = rand(0.6, 1.3) / speedMul(); }
+        break;
+      case 'loiter':
+        e.y = Math.min(H - 52, e.y + 46 * speedMul() * dt);
+        e.fireT -= dt;
+        if (e.fireT <= 0 && enemyShoot(e, 0.7)) e.fireT = enemyFireCd;
+        e.wait -= dt;
+        if (e.wait <= 0) beginReturn(e);
+        break;
+      case 'return':
+        e.t += dt / e.dive.dur;
+        p = bez(e.dive, Math.min(1, e.t)); e.x = p.x; e.y = p.y;
+        e.fireT -= dt;
+        if (e.fireT <= 0 && enemyShoot(e, 1.1)) e.fireT = enemyFireCd;
+        if (e.t >= 1) e.state = 'seek';
+        break;
+      case 'seek':
+        s = slotPos(e);
+        dx = s.x - e.x; dy = s.y - e.y;
+        e.x += dx * Math.min(1, dt * 7);
+        e.y += dy * Math.min(1, dt * 7);
+        if (Math.abs(dx) + Math.abs(dy) < 3) { e.x = s.x; e.y = s.y; e.state = 'formation'; }
+        break;
+    }
+    clampToField(e);
+    if (player && gameState === 'play' && player.inv <= 0 && isAttacking(e) &&
+        near(e.x, e.y + 8, player.x, player.y, 12)) killPlayer();
+  }
+}
+
+function isAttacking(e) { return e.state === 'dive' || e.state === 'loiter' || e.state === 'return'; }
+
+// Invisible playfield border: nothing may leave the visible area, whatever
+// path it is on. Dive and return curves get flattened at the edges rather
+// than sliding off into nothing.
+function clampToField(e) {
+  e.x = clamp(e.x, FIELD_PAD, W - FIELD_PAD);
+  e.y = clamp(e.y, FIELD_PAD, H - FIELD_PAD);
+}
+
+function stepCapture(dt) {
+  if (!capGroup.members.length) return;
+  capGroup.t += dt;
+  // Sweep left and right, but the amplitude shrinks as the fleet grows so the
+  // whole grid always stays between the borders.
+  var amp = Math.max(0, (W - 2 * FIELD_PAD) / 2 - capGroup.halfW);
+  if (amp > CAP_SWEEP) amp = CAP_SWEEP;
+  var cx = W / 2 + Math.sin(capGroup.t * 1.15) * amp;
+  var loY = FIELD_PAD + capGroup.topH;
+  if (loY < 58) loY = 58;
+  capGroup.y += capGroup.dir * 74 * speedMul() * dt;
+  if (capGroup.y > H - 96) { capGroup.y = H - 96; capGroup.dir = -1; }
+  if (capGroup.y < loY)     { capGroup.y = loY;     capGroup.dir = 1; }
+  // Only the leading ships at the front of the captured formation open fire,
+  // and they go through the shared fleet cue, so the group can never dump a
+  // wall of bullets no matter how big the capture gets.
+  var frontY = -Infinity;
+  for (var f = 0; f < capGroup.members.length; f++) {
+    if (capGroup.members[f].capOy > frontY) frontY = capGroup.members[f].capOy;
+  }
+  // The captured fleet shares the one fleet firing cue: the forward row fires
+  // a single bullet while sweeping down, never a simultaneous volley.
+  for (var i = 0; i < capGroup.members.length; i++) {
+    var e = capGroup.members[i];
+    e.x = cx + e.capOx;
+    e.y = capGroup.y + e.capOy;
+    clampToField(e);
+    if (player && gameState === 'play' && player.inv <= 0 &&
+        near(e.x, e.y + 8, player.x, player.y, 12)) killPlayer();
+  }
+  capGroup.fireT -= dt;
+  if (capGroup.dir > 0 && capGroup.fireT <= 0) {
+    var shooters = [];
+    for (var sf = 0; sf < capGroup.members.length; sf++)
+      if (capGroup.members[sf].capOy >= frontY - 1) shooters.push(capGroup.members[sf]);
+    var sh = shooters[(Math.random() * shooters.length) | 0];
+    if (sh && enemyShoot(sh, 1.4)) capGroup.fireT = enemyFireCd;
+  }
+}
+
+function stepBosses(dt) {
+  for (var i = bosses.length - 1; i >= 0; i--) {
+    var b = bosses[i];
+    if (!b.alive) { bosses.splice(i, 1); continue; }
+    b.x += b.dir * 62 * speedMul() * dt;
+    if (b.x < 40) { b.x = 40; b.dir = 1; }
+    if (b.x > W - 40) { b.x = W - 40; b.dir = -1; }
+    clampToField(b);
+    if (b.flash > 0) b.flash -= dt;
+    b.fireT -= dt;
+    if (b.fireT <= 0 && bossShoot(b)) b.fireT = enemyFireCd;
+    if (player && gameState === 'play' && player.inv <= 0 &&
+        near(b.x, b.y, player.x, player.y, 22)) killPlayer();
+  }
+}
+
+function stepBullets(dt) {
+  if (enemyFireCd > 0) enemyFireCd = Math.max(0, enemyFireCd - dt);
+  for (var i = pBullets.length - 1; i >= 0; i--) {
+    var b = pBullets[i];
+    b.y += b.vy * dt;
+    if (b.y < -10) { pBullets.splice(i, 1); continue; }
+    var hit = false;
+    for (var j = 0; j < enemies.length; j++) {
+      var e = enemies[j];
+      if (near(b.x, b.y, e.x, e.y + 8, 13)) { killEnemy(e); hit = true; break; }
+    }
+    if (!hit) {
+      for (var k = 0; k < bosses.length; k++) {
+        var bs = bosses[k];
+        if (!bs.alive) continue;
+        if (near(b.x, b.y, bs.x, bs.y, 26)) {
+          bs.hp--; bs.flash = 0.12; sfxHit();
+          if (bs.hp <= 0) killBoss(bs); else shake = 4;
+          hit = true; break;
+        }
+      }
+    }
+    if (hit) pBullets.splice(i, 1);
+  }
+  for (var m = eBullets.length - 1; m >= 0; m--) {
+    var s2 = eBullets[m];
+    s2.x += s2.vx * dt; s2.y += s2.vy * dt;
+    if (s2.y > H + 8 || s2.x < -12 || s2.x > W + 12) { eBullets.splice(m, 1); continue; }
+    if (player && gameState === 'play' && player.inv <= 0 &&
+        near(s2.x, s2.y, player.x, player.y, 12)) {
+      eBullets.splice(m, 1);
+      killPlayer();
+      break;
+    }
+  }
+}
+
+/* =============================== DRAW ================================== */
+function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); }
+
+function drawStars() {
+  for (var i = 0; i < stars.length; i++) {
+    var s = stars[i];
+    var tw = 0.55 + 0.45 * Math.sin(frames * 0.05 + s.x * 0.11);
+    ctx.globalAlpha = s.b * tw;
+    px(s.x, s.y, s.s, s.s, '#ffffff');
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawEnemy(e) {
+  var spr = KINDS[e.type].spr;
+  var f = (e.state === 'formation' || e.state === 'entry') ? formation.anim : (frames >> 3) & 1;
+  var over = e.captured ? CAPTURED_COL : null;
+  var bx = Math.round(e.x - 8 * ESC), by = Math.round(e.y - 8 * ESC);
+  drawSprite(bx, by, spr[f], ESC, over);
+  if (e.captured) {
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = CAPTURED_COL;
+    ctx.fillRect(bx - 2, by - 2, 32 + 4, 32 + 4);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawPlayer() {
+  if (!player || gameState === 'dying' || gameState === 'gameover') return;
+  if (player.inv > 0 && ((frames >> 2) & 1)) return;
+  var bob = player.moving ? Math.round(Math.sin(player.animT * 22) * 1.5) : 0;
+  drawSprite(Math.round(player.x - 8 * ESC), Math.round(player.y - 8 * ESC + bob), SPR_SHIP, ESC, null);
+  ctx.globalAlpha = 0.30;
+  px(player.x - 14, player.y + 6 + bob, 28, 4, '#66ccff');
+  ctx.globalAlpha = 1;
+}
+
+function drawBase() {
+  var by = (player ? player.y : PLAYER_Y) + 20;
+  px(8, by, 96, 3, '#2a4a8a');
+  px(W - 104, by, 96, 3, '#2a4a8a');
+}
+
+function drawBullets() {
+  for (var i = 0; i < pBullets.length; i++) {
+    var b = pBullets[i];
+    px(b.x - 1, b.y - 6, 2, 12, '#ffffff');
+    px(b.x - 2, b.y - 5, 4, 3, '#aaddff');
+  }
+  for (var j = 0; j < eBullets.length; j++) {
+    var s = eBullets[j];
+    ctx.globalAlpha = 0.30;
+    px(s.x - 4, s.y - 4, 8, 8, '#00ff66');
+    ctx.globalAlpha = 1;
+    px(s.x - 2, s.y - 2, 4, 4, '#00ff66');
+    px(s.x - 1, s.y - 1, 2, 2, '#eafff0');
+    px(s.x - 1, s.y + 3, 2, 5, '#00c84a');
+  }
+}
+
+function drawParticles() {
+  for (var i = 0; i < particles.length; i++) {
+    var p = particles[i];
+    ctx.globalAlpha = Math.max(0.12, p.t / p.tl);
+    px(p.x, p.y, 4, 4, p.c);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawHUD() {
+  ctx.textBaseline = 'top';
+  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.textAlign = 'left';
+  px(8, 9, 6, 6, '#ff3b3b');
+  ctx.fillStyle = '#ff3b3b';
+  ctx.fillText('1UP', 20, 8);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(pad(score, 6), 8, 22);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ff3b3b';
+  ctx.fillText('HIGH SCORE', W / 2, 8);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(pad(hiScore, 6), W / 2, 22);
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#66ccff';
+  ctx.fillText('STAGE ' + stage, W - 8, 8);
+  ctx.fillStyle = '#8888ff';
+  ctx.fillText('ENEMY ' + enemyFireInterval().toFixed(2) + 'S', W - 8, H - 12);
+  if (isBossStage) {
+    ctx.fillStyle = '#ff2a2a';
+    ctx.fillText('BOSS', W - 8, 22);
+  } else {
+    ctx.fillStyle = '#888888';
+    var n = 0;
+    for (var i = 0; i < enemies.length; i++) if (!enemies[i].captured) n++;
+    ctx.fillText(n + ' LEFT', W - 8, 22);
+  }
+
+  for (var k = 0; k < Math.min(lives, 6); k++) {
+    drawSprite(8 + k * 22, H - 20, SPR_SHIP, 1, null);
+  }
+}
+
+function drawMessage() {
+  if (msgT <= 0) return;
+  ctx.textAlign = 'center';
+  ctx.font = '10px "Press Start 2P", monospace';
+  var y = 120;
+  var tw = ctx.measureText(msgText).width;
+  ctx.globalAlpha = Math.min(1, msgT * 2.5);
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(W / 2 - tw / 2 - 10, y - 7, tw + 20, 24);
+  ctx.fillStyle = msgColor;
+  ctx.fillText(msgText, W / 2, y);
+  ctx.globalAlpha = 1;
+}
+
+function drawTitle() {
+  ctx.textAlign = 'center';
+  ctx.font = '40px "Press Start 2P", monospace';
+  ctx.fillStyle = '#ff2a2a';
+  ctx.fillText('GALAGA', W / 2 + 3, 76 + 3);
+  ctx.fillStyle = '#ffdd55';
+  ctx.fillText('GALAGA', W / 2, 76);
+
+  drawSprite(W / 2 - 26, 130, SPR_ZAKO[0], 2, null);
+  drawSprite(W / 2 - 26, 168, SPR_GOEI[0], 2, null);
+  drawSprite(W / 2 + 4, 168, SPR_GOEI[1], 2, null);
+  drawSprite(W / 2 - 8, 206, SPR_BOSC[0], 2, null);
+  drawSprite(W / 2 - 8, 244, SPR_SHIP, 2, null);
+  drawSprite(W / 2 - 40, 244, SPR_SHIP, 2, '#00ff66');
+
+  if ((frames >> 4) & 1) {
+    ctx.textAlign = 'center';
+    ctx.font = '12px "Press Start 2P", monospace';
+    ctx.fillStyle = '#00ff88';
+    ctx.fillText('PRESS SPACE TO START', W / 2, 306);
+  }
+  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.fillStyle = '#8888ff';
+  ctx.fillText('ARROWS / A D  MOVE    SPACE  FIRE', W / 2, 334);
+  ctx.fillStyle = '#888888';
+  ctx.fillText('2 SHOTS AT ONCE = DOUBLE SHOT', W / 2, 350);
+  ctx.fillStyle = '#ffdd55';
+  ctx.fillText('HI-SCORE  ' + pad(hiScore, 6), W / 2, 370);
+  ctx.fillStyle = '#444444';
+  ctx.font = '7px "Press Start 2P", monospace';
+  ctx.fillText('M MUTE    P PAUSE', W / 2, 386);
+}
+
+function drawGameOver() {
+  ctx.fillStyle = 'rgba(0,0,0,0.78)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.font = '28px "Press Start 2P", monospace';
+  ctx.fillStyle = '#ff2a2a';
+  ctx.fillText('GAME OVER', W / 2, 118);
+  ctx.font = '10px "Press Start 2P", monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('SCORE  ' + pad(score, 6), W / 2, 168);
+  ctx.fillStyle = '#ffdd55';
+  ctx.fillText('STAGE ' + stage, W / 2, 190);
+  ctx.fillStyle = '#00ff88';
+  ctx.fillText('HI  ' + pad(hiScore, 6), W / 2, 212);
+  if (overT > 1.2 && ((frames >> 4) & 1)) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('PRESS SPACE', W / 2, 262);
+  }
+  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.fillStyle = '#666666';
+  ctx.fillText('AI ARCADE  -  CODED BY AI', W / 2, 330);
+}
+
+function draw() {
+  ctx.save();
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, W, H);
+  if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+
+  drawStars();
+
+  if (gameState !== 'title') {
+    drawBase();
+    for (var i = 0; i < enemies.length; i++) drawEnemy(enemies[i]);
+    for (var j = 0; j < bosses.length; j++) {
+      var b = bosses[j];
+      if (b.alive) drawFlagship(b.x, b.y, b.flash);
+    }
+    drawBullets();
+    drawPlayer();
+    drawParticles();
+    drawHUD();
+    drawMessage();
+    if (muted) { ctx.textAlign = 'right'; ctx.font = '8px "Press Start 2P", monospace'; ctx.fillStyle = '#ff5555'; ctx.fillText('MUTED', W - 8, H - 12); }
+    if (paused) {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = 'center';
+      ctx.font = '20px "Press Start 2P", monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('PAUSED', W / 2, H / 2 - 14);
+      ctx.font = '8px "Press Start 2P", monospace';
+      ctx.fillStyle = '#888888';
+      ctx.fillText('PRESS P TO RESUME', W / 2, H / 2 + 16);
+    }
+  }
+
+  if (gameState === 'title') drawTitle();
+  if (gameState === 'gameover') drawGameOver();
+  ctx.restore();
+}
+
+/* ============================== INPUT ================================== */
+document.addEventListener('keydown', function (e) {
+  var k = e.key.toLowerCase();
+  if ([' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].indexOf(k) >= 0) e.preventDefault();
+  if (keys[k]) return;
+  keys[k] = true;
+
+  if (k === 'm') {
+    muted = !muted;
+    if (audio.master) audio.master.gain.value = muted ? 0 : 0.85;
+    return;
+  }
+  if (k === 'p' || k === 'escape') {
+    if (gameState === 'play' || gameState === 'ready' || gameState === 'dying') paused = !paused;
+    return;
+  }
+  if (paused) return;
+
+  if (gameState === 'title') {
+    if (k === ' ' || k === 'enter' || k === 'x' || k === 'z') { initAudio(); startGame(); }
+    return;
+  }
+  if (gameState === 'gameover') {
+    if (k === ' ' || k === 'enter' || k === 'x' || k === 'z') {
+      if (overT > 0.8) { startTitle(); }
+    }
+    return;
+  }
+  if (gameState === 'clear' && (k === ' ' || k === 'enter')) {
+    clearT = Math.max(clearT, 3.3);
+  }
+});
+document.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+window.addEventListener('blur', function () { keys = {}; });
+
+function bindBtn(id, onDown, onUp) {
+  var btn = document.getElementById(id);
+  if (!btn) return;
+  function start(e) { e.preventDefault(); initAudio(); onDown(); }
+  function end(e) { if (e) e.preventDefault(); if (onUp) onUp(); }
+  btn.addEventListener('touchstart', start, { passive:false });
+  btn.addEventListener('touchend', end, { passive:false });
+  btn.addEventListener('touchcancel', end, { passive:false });
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('mouseup', end);
+  btn.addEventListener('mouseleave', end);
+  btn.addEventListener('click', function (e) { e.preventDefault(); });
+}
+
+// Tapping the canvas / fire button also confirms menus, like Space does.
+function tapStart() {
+  initAudio();
+  if (gameState === 'title') { startGame(); return; }
+  if (gameState === 'gameover') { if (overT > 0.8) startTitle(); return; }
+  if (gameState === 'clear') { clearT = Math.max(clearT, 3.3); }
+}
+
+bindBtn('btnFire', function () { tapStart(); keys[' '] = true; }, function () { keys[' '] = false; });
+canvas.addEventListener('touchstart', function (e) { e.preventDefault(); tapStart(); }, { passive:false });
+
+// Analog thumbstick: drag the knob anywhere in the ring and the ship follows
+// the stick's direction and distance from centre at a proportional speed.
+function setupStick() {
+  var stick_el = document.getElementById('stick');
+  var knob = document.getElementById('stickKnob');
+  if (!stick_el || !knob) return;
+  function draw(dx, dy) { knob.style.transform = 'translate(-50%,-50%) translate(' + dx + 'px,' + dy + 'px)'; }
+  function place(px, py) {
+    var dx = px - stick.cx, dy = py - stick.cy, d = Math.sqrt(dx * dx + dy * dy);
+    if (d > stick.R) { dx = dx / d * stick.R; dy = dy / d * stick.R; }
+    draw(dx, dy);
+    stick.x = dx / stick.R; stick.y = dy / stick.R;
+  }
+  function grab(px, py, id) {
+    var r = stick_el.getBoundingClientRect();
+    stick.cx = r.left + r.width / 2; stick.cy = r.top + r.height / 2; stick.R = r.width / 2;
+    stick.active = true; stick.id = id;
+    place(px, py);
+  }
+  function release() { stick.active = false; stick.id = null; stick.x = 0; stick.y = 0; draw(0, 0); }
+  stick_el.addEventListener('touchstart', function (e) {
+    e.preventDefault(); initAudio();
+    var t = e.changedTouches[0]; grab(t.clientX, t.clientY, t.identifier);
+  }, { passive:false });
+  stick_el.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var t = e.changedTouches[i];
+      if (t.identifier === stick.id) place(t.clientX, t.clientY);
+    }
+  }, { passive:false });
+  function onEnd(e) {
+    e.preventDefault();
+    for (var i = 0; i < e.changedTouches.length; i++)
+      if (e.changedTouches[i].identifier === stick.id) release();
+  }
+  stick_el.addEventListener('touchend', onEnd, { passive:false });
+  stick_el.addEventListener('touchcancel', function (e) { e.preventDefault(); release(); }, { passive:false });
+  stick_el.addEventListener('mousedown', function (e) { e.preventDefault(); initAudio(); grab(e.clientX, e.clientY, 'mouse'); });
+  window.addEventListener('mousemove', function (e) { if (stick.active && stick.id === 'mouse') place(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', function () { if (stick.id === 'mouse') release(); });
+}
+
+// Touch controls only exist on phones/tablets: a touch screen with a coarse
+// (finger) pointer. Desktops keep the keyboard and never show the stick.
+var isPhone = false;
+try {
+  var hasTouch = (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) ||
+    ('ontouchstart' in window);
+  var coarse = !window.matchMedia || window.matchMedia('(pointer: coarse)').matches;
+  isPhone = hasTouch && coarse;
+} catch (err) { isPhone = false; }
+if (isPhone && document.body && document.body.classList) {
+  document.body.classList.add('touch');
+  setupStick();
+}
+
+/* =============================== BOOT ================================== */
+var last = 0;
+function frame(ts) {
+  var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016;
+  last = ts;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+gameState = 'title';
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
