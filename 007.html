@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>AGENT 7 — Severnaya Sub-Level 3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,6 +23,10 @@ html, body {
   cursor: none;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
 canvas#gl {
@@ -837,6 +844,263 @@ canvas#gl {
   text-transform: uppercase;
   pointer-events: none;
 }
+
+/* ══════════════════════════════════════════════════════════
+   TOUCH CONTROLS (phones / tablets)
+   Same actions as keyboard+mouse, mapped to on-screen widgets.
+   ══════════════════════════════════════════════════════════ */
+
+/* Look zone: whole screen, sits under the widgets. Drag to look, tap to fire. */
+#touch-look {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: none;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#touch-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 960;
+  display: none;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#touch-ui.on { display: block; }
+
+/* ── Virtual Stick (W A S D) ──────────────────────────────── */
+#stick {
+  position: absolute;
+  left: calc(16px + env(safe-area-inset-left, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: 27vmin;
+  height: 27vmin;
+  max-width: 132px;
+  max-height: 132px;
+  min-width: 88px;
+  min-height: 88px;
+  border-radius: 50%;
+  border: 2px solid rgba(136, 255, 102, 0.32);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(136, 255, 102, 0.10), rgba(5, 15, 5, 0.42) 70%);
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#stick .ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 78%;
+  height: 78%;
+  margin-left: -39%;
+  margin-top: -39%;
+  border-radius: 50%;
+  border: 1px dashed rgba(136, 255, 102, 0.18);
+}
+
+#stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40%;
+  height: 40%;
+  margin-left: -20%;
+  margin-top: -20%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(160, 255, 140, 0.55), rgba(40, 90, 40, 0.55));
+  border: 2px solid rgba(160, 255, 140, 0.55);
+  box-shadow: 0 0 14px rgba(136, 255, 102, 0.35);
+  transition: background 0.12s;
+}
+
+#stick.on #stick-knob {
+  background: radial-gradient(circle at 40% 35%, rgba(220, 255, 200, 0.8), rgba(60, 130, 60, 0.7));
+}
+
+#stick .lbl {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -16px;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(136, 255, 102, 0.45);
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.tbtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid rgba(136, 255, 102, 0.35);
+  background: rgba(8, 20, 8, 0.5);
+  color: #b6ffb0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  line-height: 1.1;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.45);
+  transition: background 0.08s, border-color 0.08s, transform 0.08s;
+}
+
+.tbtn.down {
+  background: rgba(60, 140, 60, 0.6);
+  border-color: rgba(180, 255, 170, 0.95);
+  transform: scale(0.94);
+}
+
+.tbtn.fire {
+  width: 23vmin;
+  height: 23vmin;
+  max-width: 104px;
+  max-height: 104px;
+  min-width: 72px;
+  min-height: 72px;
+  border-color: rgba(255, 90, 90, 0.6);
+  background: rgba(50, 8, 8, 0.45);
+  color: #ffb3b3;
+  font-size: 14px;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+.tbtn.fire.down {
+  background: rgba(190, 40, 40, 0.65);
+  border-color: #ff8080;
+}
+
+.tbtn.aim {
+  width: 15vmin;
+  height: 15vmin;
+  max-width: 70px;
+  max-height: 70px;
+  min-width: 52px;
+  min-height: 52px;
+  border-color: rgba(201, 162, 39, 0.6);
+  color: #e8d38a;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.tbtn.sm {
+  width: 12.5vmin;
+  height: 12.5vmin;
+  max-width: 56px;
+  max-height: 56px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Bottom-right cluster: two small columns beside the fire/aim stack */
+#t-cluster {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+#t-cluster .tcol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#t-cluster .tstack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Weapon swap + pause, top centre (the compass sits there on desktop) */
+#t-top {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+
+#t-top .tbtn {
+  width: auto;
+  height: auto;
+  min-width: 60px;
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+/* Rotate hint (portrait phones only) */
+#rotate-hint {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 970;
+  display: none;
+  pointer-events: none;
+  background: rgba(5, 10, 5, 0.85);
+  border: 1px solid rgba(201, 162, 39, 0.4);
+  color: #c9a227;
+  font-size: 12px;
+  letter-spacing: 2px;
+  padding: 14px 20px;
+  text-align: center;
+  animation: blink 1.6s step-end infinite;
+}
+
+/* ── Touch mode: compact the HUD so nothing hides behind the widgets ── */
+body.touch-mode #touch-look { display: block; }
+body.touch-mode #objectives { transform: scale(0.68); transform-origin: top left; }
+body.touch-mode #alert { transform: scale(0.68); transform-origin: top right; }
+body.touch-mode #compass, body.touch-mode #timer { display: none; }
+body.touch-mode #bossbar { display: none !important; }
+/* Health + ammo move to the top strip; the bottom belongs to the thumbs. */
+body.touch-mode #bottom {
+  top: calc(74px + env(safe-area-inset-top, 0px));
+  bottom: auto;
+  padding: 0 12px;
+  align-items: flex-start;
+}
+body.touch-mode .bar-track { width: 96px; height: 8px; }
+body.touch-mode .bar-label { width: 20px; font-size: 8px; }
+body.touch-mode #weapon .ammo-current { font-size: 22px; }
+body.touch-mode #weapon .ammo-reserve { font-size: 12px; }
+body.touch-mode #weapon .wname { font-size: 10px; }
+body.touch-mode #subtitles { bottom: 48%; max-width: 74%; font-size: 12px; }
+body.touch-mode #prompt { bottom: 50%; font-size: 12px; }
+body.touch-mode #hackwrap { bottom: 46%; }
+body.touch-mode #hitui { display: none; }
+body.touch-mode .desktop-ref { display: none; }
+body.touch-mode .touch-ref { display: block; }
+.touch-ref { display: none; }
+
+/* Portrait: tighter widgets, stacked above the stick */
+@media (orientation: portrait) {
+  #rotate-hint { display: block; }
+  #t-cluster { flex-direction: column; align-items: flex-end; }
+  #t-cluster .tstack { flex-direction: row; align-items: center; }
+  body.touch-mode #subtitles { bottom: 56%; }
+  body.touch-mode #prompt { bottom: 58%; }
+}
 </style>
 </head>
 <body>
@@ -952,7 +1216,7 @@ canvas#gl {
     reaches critical. You are deniable. Good luck, 007.
   </div>
   <div id="hint" class="hint">PRESS ENTER TO DEPLOY</div>
-  <div class="controls-panel">
+  <div class="controls-panel desktop-ref">
     <div class="cp-title">Controls Reference</div>
     <div class="keys">
       <span class="k">W A S D</span><span class="d">Move</span>
@@ -967,12 +1231,29 @@ canvas#gl {
       <span class="k">Esc</span><span class="d">Pause</span>
     </div>
   </div>
+  <div class="controls-panel touch-ref">
+    <div class="cp-title">Touch Controls</div>
+    <div class="keys">
+      <span class="k">STICK</span><span class="d">Move</span>
+      <span class="k">DRAG</span><span class="d">Look (tap to fire)</span>
+      <span class="k">FIRE</span><span class="d">Shoot (hold = auto)</span>
+      <span class="k">AIM</span><span class="d">Aim Down Sights (hold)</span>
+      <span class="k">RLD</span><span class="d">Reload</span>
+      <span class="k">USE</span><span class="d">Interact / Hack (hold)</span>
+      <span class="k">TAKE</span><span class="d">Takedown</span>
+      <span class="k">RUN</span><span class="d">Sprint (hold)</span>
+      <span class="k">SNEAK</span><span class="d">Crouch (hold)</span>
+      <span class="k">JUMP</span><span class="d">Jump</span>
+      <span class="k">WPN</span><span class="d">Switch Weapon</span>
+      <span class="k">II</span><span class="d">Pause</span>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ PAUSE SCREEN ══════════════════════════════════════ -->
 <div id="pause">
   <h3>PAUSED</h3>
-  <div class="keys">
+  <div class="keys desktop-ref">
     <div class="pk-title">Controls</div>
     <div class="kgrid">
       <span class="k">W A S D</span><span class="d">Move</span>
@@ -985,6 +1266,22 @@ canvas#gl {
       <span class="k">Shift</span><span class="d">Sprint</span>
       <span class="k">Space</span><span class="d">Jump</span>
       <span class="k">Esc</span><span class="d">Resume</span>
+    </div>
+  </div>
+  <div class="keys touch-ref">
+    <div class="pk-title">Touch Controls</div>
+    <div class="kgrid">
+      <span class="k">STICK</span><span class="d">Move</span>
+      <span class="k">DRAG</span><span class="d">Look (tap to fire)</span>
+      <span class="k">FIRE</span><span class="d">Shoot (hold = auto)</span>
+      <span class="k">AIM</span><span class="d">Aim Down Sights (hold)</span>
+      <span class="k">RLD</span><span class="d">Reload</span>
+      <span class="k">USE</span><span class="d">Interact / Hack (hold)</span>
+      <span class="k">TAKE</span><span class="d">Takedown</span>
+      <span class="k">RUN</span><span class="d">Sprint (hold)</span>
+      <span class="k">SNEAK</span><span class="d">Crouch (hold)</span>
+      <span class="k">JUMP</span><span class="d">Jump</span>
+      <span class="k">WPN</span><span class="d">Switch Weapon</span>
     </div>
   </div>
   <div class="pause-hint">PRESS ESC TO RESUME</div>
@@ -1016,6 +1313,41 @@ canvas#gl {
     <label for="hui-hitbox">SHOW HITBOXES</label>
   </div>
 </div>
+
+<!-- ═══ TOUCH CONTROLS (phones / tablets) ══════════════════════ -->
+<div id="touch-look"></div>
+
+<div id="touch-ui">
+  <div id="stick">
+    <div class="ring"></div>
+    <div id="stick-knob"></div>
+    <div class="lbl">MOVE</div>
+  </div>
+
+  <div id="t-cluster">
+    <div class="tcol">
+      <div class="tbtn sm" id="t-use">USE</div>
+      <div class="tbtn sm" id="t-reload">RLD</div>
+      <div class="tbtn sm" id="t-take">TAKE</div>
+    </div>
+    <div class="tcol">
+      <div class="tbtn sm" id="t-jump">JUMP</div>
+      <div class="tbtn sm" id="t-sprint">RUN</div>
+      <div class="tbtn sm" id="t-crouch">SNEAK</div>
+    </div>
+    <div class="tstack">
+      <div class="tbtn aim" id="t-aim">AIM</div>
+      <div class="tbtn fire" id="t-fire">FIRE</div>
+    </div>
+  </div>
+
+  <div id="t-top">
+    <div class="tbtn" id="t-weapon">WPN</div>
+    <div class="tbtn" id="t-pause">II</div>
+  </div>
+</div>
+
+<div id="rotate-hint">ROTATE DEVICE<br>FOR BEST VIEW</div>
 
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
@@ -1769,6 +2101,245 @@ class AudioEngine {
     this.nodes.push({ stop: () => clearInterval(this._melodyInterval) });
   }
 
+  // ── LEVEL 2 THEME: "RUNWAY" (Industrial Spy, 115 BPM, N64-style) ──
+  // Based on the classic GoldenEye "Runway" structure:
+  //   Drums:  THUMP | CLANG | thump-thump | CLANG   (metallic factory beat)
+  //   Bass:   C2 C2 C2...  Eb2 Eb2...  D2 D2 Db2 Db2 (pulsing distorted saw)
+  //   Pad:    C3->Eb3, G3->F#3, Ab3->G3, Db3(long->C3)  (eerie strings)
+  //   Brass:  C4! Eb4-C4! stabs every few bars (007 action accents)
+  startMusicRunway() {
+    this.stopMusic();
+
+    const bpm = 115;
+    const beatDur = 60 / bpm;
+    const eighth = beatDur / 2;
+    const sixteenth = beatDur / 4;
+    let barT; // shared global timeline, set per-bar-package callbacks
+
+    // ── 1. THE INDUSTRIAL FACTORY BEAT (Drums) ──
+    // THUMP | CLANG | thump-thump | CLANG  (metallic anvil snare, 1-bar loop)
+    const drumFilter = this.ctx.createBiquadFilter();
+    drumFilter.type = 'lowpass';
+    drumFilter.frequency.value = 700;
+    drumFilter.Q.value = 2;
+    const drumGain = this.ctx.createGain();
+    drumGain.gain.value = 0.16;
+    drumFilter.connect(drumGain).connect(this.music);
+    this.nodes.push(drumFilter, drumGain);
+
+    const anvilFilter = this.ctx.createBiquadFilter();
+    anvilFilter.type = 'bandpass';
+    anvilFilter.frequency.value = 3400;
+    anvilFilter.Q.value = 1.2;
+    const anvilGain = this.ctx.createGain();
+    anvilGain.gain.value = 0.1;
+    anvilFilter.connect(anvilGain).connect(this.music);
+    this.nodes.push(anvilFilter, anvilGain);
+
+    const kickAt = (t, vol) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(160, t);
+      osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      const env = this.ctx.createGain();
+      env.gain.setValueAtTime(vol, t);
+      env.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      osc.connect(env).connect(drumFilter);
+      osc.start(t);
+      osc.stop(t + 0.18);
+      this.nodes.push(osc, env);
+    };
+    const anvilAt = (t, vol) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(2200, t);
+      osc.frequency.exponentialRampToValueAtTime(900, t + 0.04);
+      const env = this.ctx.createGain();
+      env.gain.setValueAtTime(vol, t);
+      env.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+      osc.connect(env).connect(anvilFilter);
+      osc.start(t);
+      osc.stop(t + 0.1);
+      this.nodes.push(osc, env);
+    };
+
+    const scheduleDrums = () => {
+      const t0 = barT + beatDur * 0;
+      const t1 = barT + beatDur * 1;
+      const t2 = barT + beatDur * 2;
+      const t3 = barT + beatDur * 3;
+      // Beat 1: heavy kick (THUMP)
+      kickAt(t0, 0.5);
+      // Beat 2: kick + metallic anvil (CLANG)
+      kickAt(t1, 0.4);
+      anvilAt(t1, 0.45);
+      // Beat 3: double-tap kick "boom-boom" (thump-thump)
+      kickAt(t2, 0.45);
+      kickAt(t2 + eighth * 0.9, 0.3);
+      // Beat 4: sharp anvil (CLANG)
+      anvilAt(t3, 0.5);
+      kickAt(t3, 0.25);
+    };
+
+    // ── 2. THE PULSING BASS LOOP (distorted saw, every 8th) ──
+    // Bar1: C2 x8 | Bar2: Eb2 x8 | Bar3: D2 x4 + Db2 x4 (repeat)
+    const C2 = 65.41, Eb2 = 77.78, D2 = 73.42, Db2 = 69.30;
+    const bassSeq = [
+      C2, C2, C2, C2, C2, C2, C2, C2,
+      Eb2, Eb2, Eb2, Eb2, Eb2, Eb2, Eb2, Eb2,
+      D2, D2, D2, D2, Db2, Db2, Db2, Db2,
+    ];
+    const bassFilter = this.ctx.createBiquadFilter();
+    bassFilter.type = 'lowpass';
+    bassFilter.frequency.value = 260;
+    bassFilter.Q.value = 7;
+    const bassGain = this.ctx.createGain();
+    bassGain.gain.value = 0.24;
+    bassFilter.connect(bassGain).connect(this.music);
+    this.nodes.push(bassFilter, bassGain);
+
+    const scheduleBass = () => {
+      for (let i = 0; i < bassSeq.length; i++) {
+        const t = barT + i * eighth;
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = bassSeq[i];
+        osc.type = 'sawtooth';
+        // add a slight distorted sub-octave doubling
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.4, t + 0.006);
+        env.gain.setValueAtTime(0.4, t + eighth * 0.65);
+        env.gain.exponentialRampToValueAtTime(0.001, t + eighth);
+        osc.connect(env).connect(bassFilter);
+        osc.start(t);
+        osc.stop(t + eighth + 0.01);
+        this.nodes.push(osc, env);
+      }
+    };
+
+    // ── 3. THE EERIE SUSPENSE PAD (dark strings, long sustain) ──
+    // Bar1: C3(2beats)->Eb3(2) | Bar2: G3(2)->F#3(2)
+    // Bar3: Ab3(2)->G3(2) | Bar4: Db3(4, slide back to C3)
+    const C3 = 130.81, Eb3 = 155.56, G3 = 196.00, Fs3 = 185.00, Ab3 = 207.65, Db3 = 138.59;
+    const padNotes = [
+      { f: C3,  t: 0 * beatDur          },
+      { f: Eb3, t: 2 * beatDur          },
+      { f: G3,  t: 4 * beatDur          },
+      { f: Fs3, t: 6 * beatDur          },
+      { f: Ab3, t: 8 * beatDur          },
+      { f: G3,  t: 10 * beatDur         },
+      { f: Db3, t: 12 * beatDur         },
+    ];
+    const padLow = this.ctx.createBiquadFilter();
+    padLow.type = 'lowpass';
+    padLow.frequency.value = 900;
+    const padGain = this.ctx.createGain();
+    padGain.gain.value = 0.05;
+    padLow.connect(padGain).connect(this.music);
+    this.nodes.push(padLow, padGain);
+
+    const schedulePad = () => {
+      for (let i = 0; i < padNotes.length; i++) {
+        const n = padNotes[i];
+        const t = barT + n.t;
+        const dur = (i < padNotes.length - 1) ? (padNotes[i + 1].t - n.t) : (beatDur * 4);
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = n.f;
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.5, t + beatDur * 0.25);
+        env.gain.setValueAtTime(0.5, t + dur - beatDur * 0.2);
+        env.gain.linearRampToValueAtTime(0.001, t + dur);
+        osc.connect(env).connect(padLow);
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+        this.nodes.push(osc, env);
+        // warm detuned octave layer
+        const osc2 = this.ctx.createOscillator();
+        osc2.type = 'triangle';
+        osc2.frequency.value = n.f * 2;
+        const env2 = this.ctx.createGain();
+        env2.gain.setValueAtTime(0, t);
+        env2.gain.linearRampToValueAtTime(0.2, t + beatDur * 0.25);
+        env2.gain.setValueAtTime(0.2, t + dur - beatDur * 0.2);
+        env2.gain.linearRampToValueAtTime(0.001, t + dur);
+        osc2.connect(env2).connect(padLow);
+        osc2.start(t);
+        osc2.stop(t + dur + 0.05);
+        this.nodes.push(osc2, env2);
+      }
+    };
+
+    // ── 4. THE 007 BRASS ACTION STABS ──
+    // C4! -> Eb4 (quick) -> C4!   every 2 bars, staccato brass spike
+    const C4 = 261.63, Eb4 = 311.13;
+    const brassFilter = this.ctx.createBiquadFilter();
+    brassFilter.type = 'highpass';
+    brassFilter.frequency.value = 400;
+    const brassGain = this.ctx.createGain();
+    brassGain.gain.value = 0.09;
+    brassFilter.connect(brassGain).connect(this.music);
+    this.nodes.push(brassFilter, brassGain);
+
+    const brassAt = (t) => {
+      const env = this.ctx.createGain();
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(0.6, t + 0.004);
+      env.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      env.connect(brassFilter);
+      for (const [f, det] of [[C4, 0], [C4 * 1.005, 0], [Eb4, 0.02]]) {
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = f;
+        osc.detune.value = det * 100;
+        osc.connect(env);
+        osc.start(t);
+        osc.stop(t + 0.25);
+        this.nodes.push(osc);
+      }
+      this.nodes.push(env);
+    };
+    const scheduleBrass = () => {
+      // stab at beat 1 of bar 2 and bar 4 (every 2 bars)
+      brassAt(barT + beatDur * 5);
+      brassAt(barT + beatDur * 13);
+      brassAt(barT + beatDur * 9 + sixteenth * 2);
+    };
+
+    // ── LOOP DRIVER: 12-bar cycle (bass loops every 3 bars, pad every 4 bars → LCM=12) ──
+    const loopDur = beatDur * 48; // 12 bars x 4 beats
+    const scheduleAll = () => {
+      const b0 = this.ctx.currentTime + 0.05;
+      // Bass: 3-bar loop (12 beats) → play 4 times across the 48-beat cycle
+      for (let b = 0; b < 48; b += 12) {
+        barT = b0 + beatDur * b;
+        scheduleBass();
+      }
+      // Pad: 4-bar loop (16 beats) → play 3 times
+      for (let b = 0; b < 48; b += 16) {
+        barT = b0 + beatDur * b;
+        schedulePad();
+      }
+      // Brass: stems laid across the first 16 beats → repeat every 16 beats
+      for (let b = 0; b < 48; b += 16) {
+        barT = b0 + beatDur * b;
+        scheduleBrass();
+      }
+      // Drums: 1-bar loop → play every bar (12 times)
+      for (let b = 0; b < 48; b += 4) {
+        barT = b0 + beatDur * b;
+        scheduleDrums();
+      }
+    };
+    scheduleAll();
+    this._runwayInterval = setInterval(() => {
+      scheduleAll();
+    }, loopDur * 1000);
+    this.nodes.push({ stop: () => clearInterval(this._runwayInterval) });
+  }
+
   startAlarm() {
     this.startMusic();
 
@@ -1957,6 +2528,8 @@ const keys = {};
 const colliders = [];
 const floors = [];
 const occluders = [];
+const levelObjs = [];
+let levelRoot = null;
 const lights = [];
 const enemies = [];
 const securityCams = [];
@@ -1980,6 +2553,8 @@ const state = {
   ak47Ammo: 30,
   ak47MaxAmmo: 30,
   ak47Reserve: 60,
+  level: 1,
+  l2Inside: false,
   reloading: 0,
   fireCd: 0,
   ads: false,
@@ -2141,6 +2716,93 @@ const tGreen = tex((g, s) => {
   g.fillRect(0, s - 2, s, 2);
 });
 
+const tPlaneRed = tex((g, s) => {
+  g.fillStyle = "#c8251e";
+  g.fillRect(0, 0, s, s);
+  for (let i = 0; i < 300; i++) {
+    g.fillStyle = nrand(i + 9) < 0.5 ? "rgba(122,18,12,0.3)" : "rgba(255,92,82,0.16)";
+    g.fillRect(nrand(i + 3) * s, nrand(i + 7) * s, 2, 2);
+  }
+  const grad = g.createRadialGradient(s * 0.4, s * 0.35, s * 0.1, s / 2, s / 2, s * 0.8);
+  grad.addColorStop(0, "rgba(255,180,170,0.22)");
+  grad.addColorStop(1, "rgba(255,180,170,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, s, s);
+  g.strokeStyle = "#8c120d";
+  g.lineWidth = 2;
+  g.strokeRect(1, 1, s - 2, s - 2);
+  g.fillStyle = "#e8a09a";
+  for (const [cx, cy] of [[2, 2], [s - 3, 2], [2, s - 3], [s - 3, s - 3]]) {
+    g.beginPath();
+    g.arc(cx, cy, 1.5, 0, Math.PI * 2);
+    g.fill();
+  }
+});
+
+const tPlaneWhite = tex((g, s) => {
+  g.fillStyle = "#efe9dd";
+  g.fillRect(0, 0, s, s);
+  for (let i = 0; i < 260; i++) {
+    g.fillStyle = nrand(i + 41) < 0.5 ? "rgba(150,145,135,0.3)" : "rgba(255,255,255,0.35)";
+    g.fillRect(nrand(i + 43) * s, nrand(i + 61) * s, 2, 2);
+  }
+  g.strokeStyle = "#b5ae9e";
+  g.lineWidth = 2;
+  g.strokeRect(1, 1, s - 2, s - 2);
+  g.fillStyle = "#ffffff";
+  for (const [cx, cy] of [[2, 2], [s - 3, 2], [2, s - 3], [s - 3, s - 3]]) {
+    g.beginPath();
+    g.arc(cx, cy, 1.5, 0, Math.PI * 2);
+    g.fill();
+  }
+});
+
+const tBlur = tex((g, s) => {
+  g.clearRect(0, 0, s, s);
+  const r = s / 2;
+  const grad = g.createRadialGradient(r, r, r * 0.12, r, r, r);
+  grad.addColorStop(0, "rgba(255,255,255,0)");
+  grad.addColorStop(0.45, "rgba(210,210,200,0.08)");
+  grad.addColorStop(0.85, "rgba(150,150,140,0.2)");
+  grad.addColorStop(1, "rgba(90,90,80,0.32)");
+  g.fillStyle = grad;
+  g.beginPath();
+  g.arc(r, r, r - 1, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "rgba(18,18,16,0.28)";
+  for (let i = 0; i < 6; i++) {
+    g.save();
+    g.translate(r, r);
+    g.rotate(i * Math.PI / 3 + 0.3);
+    g.beginPath();
+    g.moveTo(r * 0.18, -Math.max(1.5, r * 0.03));
+    g.lineTo(r * 0.96, -r * 0.05);
+    g.lineTo(r * 0.96, r * 0.05);
+    g.lineTo(r * 0.18, r * 0.02);
+    g.closePath();
+    g.fill();
+    g.restore();
+  }
+});
+
+const tMark = tex((g, s) => {
+  g.clearRect(0, 0, s, s);
+  g.fillStyle = "#f2ede0";
+  g.beginPath();
+  g.arc(s / 2, s / 2, s * 0.33, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = "#c8251e";
+  g.lineWidth = Math.max(2.5, s * 0.045);
+  g.beginPath();
+  g.arc(s / 2, s / 2, s * 0.33, 0, Math.PI * 2);
+  g.stroke();
+  g.fillStyle = "#c8251e";
+  g.font = "bold " + Math.floor(s * 0.28) + "px monospace";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText("007", s / 2, s / 2 + 1);
+});
+
 const tPipe = tex((g, s) => {
   const grad = g.createLinearGradient(0, 0, 0, s);
   grad.addColorStop(0, "#4a4a4a");
@@ -2229,6 +2891,14 @@ const mats = {
   emitter: new THREE.MeshLambertMaterial({ color: 0x888888, emissive: 0x444444 }),
   yellow: new THREE.MeshLambertMaterial({ color: 0xccaa00, emissive: 0x332200 }),
   concrete2: new THREE.MeshLambertMaterial({ color: 0x6a6858 }),
+  sandbag: new THREE.MeshLambertMaterial({ color: 0x9c8a5a }),
+  sandbagDark: new THREE.MeshLambertMaterial({ color: 0x7d6d45 }),
+  planeRed: new THREE.MeshLambertMaterial({ map: tPlaneRed }),
+  planeWhite: new THREE.MeshLambertMaterial({ map: tPlaneWhite }),
+  prop: new THREE.MeshLambertMaterial({ color: 0x181818 }),
+  wheel: new THREE.MeshLambertMaterial({ color: 0x141414 }),
+  marks: new THREE.MeshLambertMaterial({ map: tMark, transparent: true }),
+  glass: new THREE.MeshLambertMaterial({ color: 0x224466, emissive: 0x0a1822 }),
 };
 
 // ── GEOMETRY HELPERS ──────────────────────────────────────
@@ -2243,6 +2913,7 @@ function addFloor(minx, maxx, minz, maxz, y = 0) {
   mesh.material.map.repeat.set(w / 2, d / 2);
   mesh.material.map.needsUpdate = true;
   scene.add(mesh);
+  levelObjs.push(mesh);
 }
 
 function addBox(w, h, d, x, y, z, mat, opt = {}) {
@@ -2257,6 +2928,7 @@ function addBox(w, h, d, x, y, z, mat, opt = {}) {
     }
   }
   scene.add(mesh);
+  levelObjs.push(mesh);
   if (opt.occlude !== false) occluders.push(mesh);
   if (opt.collide !== false) {
     colliders.push({
@@ -2273,6 +2945,7 @@ function addCylinder(rt, rb, h, seg, x, y, z, mat, opt = {}) {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
   mesh.position.set(x, y, z);
   scene.add(mesh);
+  levelObjs.push(mesh);
   if (opt.occlude !== false) occluders.push(mesh);
   return mesh;
 }
@@ -2284,6 +2957,7 @@ function addRail(x1, y1, z1, x2, y2, z2, mat = mats.railing) {
   mesh.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
   mesh.lookAt(x2, y2, z2);
   scene.add(mesh);
+  levelObjs.push(mesh);
   occluders.push(mesh);
   return mesh;
 }
@@ -2296,6 +2970,7 @@ function addPipe(x1, y1, z1, x2, y2, z2, r = 0.06) {
   mesh.lookAt(x2, y2, z2);
   mesh.rotateX(Math.PI / 2);
   scene.add(mesh);
+  levelObjs.push(mesh);
   return mesh;
 }
 
@@ -2367,12 +3042,13 @@ function addLamp(x, y, z, color = 0xe8f0c8, intensity = 8.0, dist = 22) {
   const l = new THREE.PointLight(color, intensity, dist, 2);
   l.position.set(x, y - 0.2, z);
   scene.add(l);
+  levelObjs.push(l);
   lights.push({ l, base: intensity, phase: Math.random() * 12 });
   return l;
 }
 
 // ── LEVEL BUILD ──────────────────────────────────────
-function buildLevel() {
+function buildLevel1() {
   // ═══ VENT SHAFT (0→14) ═══
   addFloor(0, 2.2, 0, 14.6, 0);
   addBox(0.2, 1.2, 14.6, -0.1, 0.6, 7.3, mats.conc);
@@ -2476,9 +3152,11 @@ function buildLevel() {
   const cg1 = new THREE.PointLight(0x1dff6a, 8, 24);
   cg1.position.set(-4, 0.4, 57);
   scene.add(cg1);
+  levelObjs.push(cg1);
   const cg2 = new THREE.PointLight(0x1dff6a, 8, 24);
   cg2.position.set(12.5, 0.4, 57);
   scene.add(cg2);
+  levelObjs.push(cg2);
 
   // Catwalk railings over coolant
   addBox(0.08, 0.7, 14, 1.02, 0.35, 57, mats.warn, { occlude: false });
@@ -2543,6 +3221,7 @@ function buildLevel() {
   const consoleGlow = new THREE.PointLight(0x33ff66, 3, 8);
   consoleGlow.position.set(3, 1.6, 34);
   scene.add(consoleGlow);
+  levelObjs.push(consoleGlow);
 
   // ═══ ALARM LIGHTS ═══
   alarmLights = [
@@ -2553,6 +3232,7 @@ function buildLevel() {
   alarmLights[1].position.set(4, 4, 58);
   scene.add(alarmLights[0]);
   scene.add(alarmLights[1]);
+  levelObjs.push(alarmLights[0], alarmLights[1]);
 
   // ═══ INTERACTABLES ═══
   interacts.push({
@@ -2597,6 +3277,1162 @@ function buildLevel() {
   securityCams.push(makeCamera(15.5, 3.4, 19.5, new THREE.Vector3(-1, -0.3, 0.4)));
   securityCams.push(makeCamera(6.6, 3.6, 47.2, new THREE.Vector3(-0.2, -0.25, 1)));
   securityCams.push(makeCamera(-3.5, 3.4, 30, new THREE.Vector3(1, -0.2, -0.5)));
+}
+
+// ── LEVEL SYSTEM ──────────────────────────────────────
+function clearLevel() {
+  for (const m of levelObjs) {
+    scene.remove(m);
+  }
+  levelObjs.length = 0;
+  floors.length = 0;
+  colliders.length = 0;
+  occluders.length = 0;
+  enemies.length = 0;
+  securityCams.length = 0;
+  interacts.length = 0;
+  pickups.length = 0;
+  noises.length = 0;
+  lights.length = 0;
+  fx.length = 0;
+  doorMesh = null; doorCollider = null; codesMesh = null; liftMesh = null;
+  alarmLights = null;
+  doorY = 1.6;
+  player.x = 0; player.z = 0; player.y = 0; state.vy = 0; state.grounded = true;
+  state.fireCd = 0; state.reloading = 0;
+}
+
+function buildLevel(level) {
+  clearLevel();
+  if (level === 2) {
+    buildLevel2();
+  } else {
+    buildLevel1();
+  }
+}
+
+let soldiersRemaining = 0;
+function updateSoldierCount() {
+  soldiersRemaining = enemies.filter((e) => !e.dead && !e.boss).length;
+}
+
+// ═══ LEVEL 2: LINEAR OUTDOOR COMPOUND / AIRPORT ═══
+function buildLevel2() {
+  // Sky / outdoor lighting
+  scene.background = new THREE.Color(0x87b7e0);
+  scene.fog = new THREE.Fog(0x87b7e0, 45, 130);
+  const sun = new THREE.DirectionalLight(0xfff4d6, 1.6);
+  sun.position.set(50, 90, -20);
+  scene.add(sun);
+  levelObjs.push(sun);
+  const groundAmb = new THREE.AmbientLight(0xcfd6dd, 0.9);
+  scene.add(groundAmb);
+  levelObjs.push(groundAmb);
+
+  // ── MAIN NORTH-SOUTH CHANNEL (wide, open) ──
+  // Ground: a wide open channel from z=-34 (start) to z=22, x -18..18 wide so guards
+  // have plenty of empty space to spread out instead of clustering in a narrow corridor.
+  addFloor(-18, 18, -34, 22, 0);
+  // East/west channel boundary walls (keep the player on the path, but wide open)
+  addBox(0.8, 4, 56, -18, 2, -6, mats.conc);
+  addBox(0.8, 4, 56, 18, 2, -6, mats.conc);
+  // South wall behind player start
+  addBox(36, 4, 1, 0, 2, -33.5, mats.conc);
+  // North wall boundary (behind airport, z=46)
+  addBox(86, 4, 1, 0, 2, 46, mats.conc);
+  // Terminal-side walls far east/west framing the airport pad
+  addBox(1, 4, 24, -40, 2, 34, mats.conc);
+  addBox(1, 4, 24, 46, 2, 34, mats.conc);
+
+  // ── LOW CROUCH COVER WALLS (50% taller → full standing-height bunker) ──
+  // Tall 1.95 walls: fully cover a standing player (eye ~1.55), so guards can never
+  // shoot you through them. Stand/jump to peek and fire over the top, or shoot around
+  // the open ends. Each leaves a clear gap down the middle to keep advancing.
+  // Cover line 1 (near start, z=-19)
+  addBox(12, 1.95, 0.6, -11, 0.975, -19, mats.sandbag);
+  addBox(12, 1.95, 0.6, 11, 0.975, -19, mats.sandbag);
+  // Cover line 2 (mid yard, z=-11)
+  addBox(12, 1.95, 0.6, -11, 0.975, -11, mats.sandbag);
+  addBox(12, 1.95, 0.6, 11, 0.975, -11, mats.sandbag);
+  // Cover line 3 (north yard approach, z=16)
+  addBox(10, 1.95, 0.6, -9, 0.975, 16, mats.sandbag);
+  addBox(10, 1.95, 0.6, 9, 0.975, 16, mats.sandbag);
+  // Cover line 4 (airport apron, z=30) — flanks the runway, keeps the center plane path open
+  addBox(8, 1.95, 0.6, -8, 0.975, 30, mats.sandbag);
+  addBox(8, 1.95, 0.6, 8, 0.975, 30, mats.sandbag);
+
+  // ── CHOKE POINT 1 (near start) ──
+  addBox(1.2, 1.6, 1.2, -4, 0.8, -24, mats.crate);
+  addBox(1.2, 1.6, 1.2, -2.6, 0.8, -23, mats.crate);
+  addBox(1.2, 1.6, 1.2, 4, 0.8, -24, mats.crate);
+  addBox(1.2, 1.6, 1.2, 2.6, 0.8, -23, mats.crate);
+  addBox(2, 1.1, 0.3, 0, 0.55, -20, mats.warn);
+  addBox(2, 1.1, 0.3, -5, 0.55, -20, mats.warn);
+  addBox(2, 1.1, 0.3, 5, 0.55, -20, mats.warn);
+
+  // ── MID YARD cover ──
+  addBox(1.2, 1.2, 1.2, -6, 0.6, -14, mats.crate);
+  addBox(1.2, 1.2, 1.2, -6, 1.8, -14, mats.crate);
+  addBox(1.2, 1.2, 1.2, 6, 0.6, -16, mats.crate);
+  addBox(1.4, 1.1, 0.3, 3, 0.55, -12, mats.warn);
+  addBox(1.4, 1.1, 0.3, -3, 0.55, -12, mats.warn);
+  addBox(0.8, 1.9, 0.8, 0, 0.95, -18, mats.metal);
+  addBox(0.8, 1.9, 0.8, -7, 0.95, -8, mats.metal);
+  addBox(0.8, 1.9, 0.8, 7, 0.95, -8, mats.metal);
+
+  // ── ARCHIVES BUILDING (choke at z=-4..10) ──
+  const bw = 14, bd = 14;
+  const bcx = 0, bcz = 3;
+  // Interior floor
+  addFloor(bcx - bw / 2, bcx + bw / 2, bcz - bd / 2, bcz + bd / 2, 0);
+  // Walls with door gap on south side (z = bcz+bd/2 = 10)
+  addBox((bw - 2) / 2, 4, 0.5, bcx - (2 + (bw - 2) / 2) / 2, 2, 10, mats.conc);
+  addBox((bw - 2) / 2, 4, 0.5, bcx + (2 + (bw - 2) / 2) / 2, 2, 10, mats.conc);
+  addBox(0.5, 4, bd, bcx - bw / 2, 2, bcz, mats.conc);
+  addBox(0.5, 4, bd, bcx + bw / 2, 2, bcz, mats.conc);
+  addBox(bw, 4, 0.5, bcx, 2, bcz - bd / 2, mats.conc);
+  addBox(bw + 0.5, 0.4, bd + 0.5, bcx, 4.2, bcz, mats.dark, { type: "ceiling" });
+  // Interior furniture + archives cabinet
+  addBox(1.3, 1.1, 0.6, -4, 0.55, 1, mats.metal);
+  addBox(0.8, 1.9, 0.8, -4, 0.95, -2, mats.metal);
+  addBox(0.8, 1.9, 0.8, 4, 0.95, -2, mats.metal);
+  addBox(3, 0.9, 1, 5, 0.45, 1, mats.metal);
+  const archiveCab = addBox(2.4, 2, 0.7, -5.5, 1, 6, mats.metal);
+  archiveCab.userData.archive = true;
+  addBox(0.12, 0.12, 0.12, -5.5, 1.2, 6.4, mats.yellow, { collide: false, occlude: false });
+  spawnPickup("healthbig", -4.5, 0.4, 4);
+  addLamp(bcx, 3.4, bcz, 0xe8f0c8, 8, 20);
+
+  // ── NORTH YARD / APPROACH TO AIRPORT (z 10..22) ──
+  addBox(1.2, 1.6, 1.2, -6, 0.8, 15, mats.crate);
+  addBox(1.2, 1.6, 1.2, 6, 0.8, 14, mats.crate);
+  addBox(1.4, 1.1, 0.3, 0, 0.55, 18, mats.warn);
+  addBox(1.4, 1.1, 0.3, -5, 0.55, 18, mats.warn);
+  addBox(1.4, 1.1, 0.3, 5, 0.55, 18, mats.warn);
+  addBox(0.8, 1.9, 0.8, -7, 0.95, 20, mats.metal);
+  addBox(0.8, 1.9, 0.8, 7, 0.95, 20, mats.metal);
+
+  // ── AIRPORT / AIRSTRIP (north, open pad) ──
+  addFloor(-40, 46, 22, 46, 0);
+  const stripC = 30;
+  addBox(60, 0.08, 12, 3, 0.06, stripC, mats.concrete2, { collide: false, occlude: false });
+  addBox(60, 0.04, 12, 3, 0.03, stripC, mats.warn, { collide: false, occlude: false });
+  // Runway edge lights
+  for (let i = -2; i <= 2; i++) {
+    addLamp(3 - 4, 0.4, stripC + i * 3, 0xffaa33, 4, 8);
+    addLamp(3 + 40, 0.4, stripC + i * 3, 0xffaa33, 4, 8);
+  }
+  // ── ESCAPE RUNWAY (north–south, along the plane's -Z takeoff path) ──
+  // A clear 6-wide strip centered on x=3 running south from the apron so the
+  // getaway plane visibly accelerates straight down it before rotating up and
+  // climbing away over the field. Nothing stands on this corridor.
+  addBox(6, 0.06, 26, 3, 0.03, 26.5, mats.concrete2, { collide: false, occlude: false });
+  addBox(1.6, 0.02, 26, 3, 0.012, 26.5, mats.warn, { collide: false, occlude: false });
+  // Runway centreline dashes for motion feedback
+  for (let i = 0; i < 8; i++) {
+    const dz = 16 + i * 1.8;
+    addBox(0.2, 0.012, 0.9, 3, 0.013, dz, mats.yellow, { collide: false, occlude: false });
+  }
+  // Airport terminal building (parked OFF the runway at x=-9 so the takeoff
+  // corridor at x=3 stays completely clear)
+  addBox(14, 5, 6, -9, 2.5, 20, mats.conc);
+  addBox(14, 0.4, 6, -9, 5.2, 20, mats.dark, { type: "ceiling" });
+  addLamp(-9, 4.4, 20, 0xe8f0c8, 8, 20);
+
+  // Parked aircraft (for cutscene) — nose south toward the runway
+  plane2 = makePlane(3, 0.5, 37);
+  plane2.rotation.y = Math.PI;
+
+  // ── INTERACTS ──
+  interacts.push({
+    id: "bdoor", x: 0, y: 0, z: 9, r: 1.8,
+    prompt: "ENTER ARCHIVES  [E]", hold: 0.6,
+    ok: () => state.level >= 2 && soldiersRemaining <= 6,
+    use: () => {
+      state.l2Inside = !state.l2Inside;
+      subtitle(state.l2Inside ? "INSIDE ARCHIVES." : "BACK OUTSIDE.");
+      audio.ui();
+    },
+  });
+  interacts.push({
+    id: "archives", x: -5.5, y: 1, z: 6, r: 1.7,
+    prompt: "RECOVER ARCHIVES  [E]", hold: 1.5,
+    ok: () => state.level === 2 && !state.beta,
+    use: () => {
+      state.beta = true;
+      subtitle("DOSSIE ARCHIVES RECOVERED.");
+      audio.pickup();
+    },
+  });
+  interacts.push({
+    id: "airport", x: 3, y: 0, z: 36, r: 2.2,
+    prompt: "BOARD AIRCRAFT  [E]", hold: 1.0,
+    ok: () => state.level === 2 && state.beta && !state.gamma,
+    use: () => startCutscene(),
+  });
+}
+
+// ── PILATUS PC-6 PORTER (escape aircraft, retro N64 look) ─────
+function makePlane(x, y, z) {
+  const g = new THREE.Group();
+  const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const C = (r0, r1, len, seg) => new THREE.CylinderGeometry(r0, r1, len, seg);
+  const add = (geo, mat, px, py, pz, rx = 0, ry = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(px, py, pz);
+    m.rotation.set(rx, ry, rz);
+    g.add(m);
+    return m;
+  };
+
+  // Fuselage (nose toward +Z local) — compact, overlapping steps for a smooth silhouette
+  add(C(0.45, 0.4, 0.65, 6), mats.planeWhite, 0, 1.08, 2.84, Math.PI / 2);
+  add(B(0.75, 0.7, 0.88), mats.planeRed, 0, 1.08, 1.96);
+  add(B(0.8, 0.8, 1.04), mats.planeRed, 0, 1.08, 0.92);
+  add(B(0.83, 0.83, 1.76), mats.planeRed, 0, 1.08, -0.6);
+  add(B(0.69, 0.64, 1.04), mats.planeRed, 0, 1.04, -2.16);
+  add(B(0.48, 0.44, 1.2), mats.planeWhite, 0, 1.04, -3.52);
+  add(B(0.4, 0.38, 0.64), mats.planeWhite, 0, 1.04, -4.6);
+  // Cabin windows
+  add(B(0.04, 0.13, 0.6), mats.glass, 0.45, 1.18, -0.2);
+  add(B(0.04, 0.13, 0.6), mats.glass, -0.45, 1.18, -0.2);
+  add(B(0.04, 0.13, 0.6), mats.glass, 0.45, 1.18, -1.3);
+  add(B(0.04, 0.13, 0.6), mats.glass, -0.45, 1.18, -1.3);
+  add(B(0.04, 0.13, 0.5), mats.glass, 0.45, 1.16, -2.3);
+  add(B(0.04, 0.13, 0.5), mats.glass, -0.45, 1.16, -2.3);
+  add(B(0.48, 0.4, 0.56), mats.glass, 0, 1.38, 1.68);
+  // Tail fin + horizontal stabilizer
+  add(B(0.36, 1.12, 0.1), mats.planeRed, 0, 1.6, -4.64);
+  add(B(0.32, 0.15, 0.11), mats.planeRed, 0, 2.24, -4.64);
+  add(B(0.4, 0.4, 0.04), mats.marks, 0, 1.68, -4.58);
+  add(B(1.76, 0.13, 0.72), mats.planeWhite, 0, 1.44, -4.6);
+  // Fuselage roundels
+  add(B(0.05, 0.62, 0.45), mats.marks, 0.47, 1.08, -1.2);
+  add(B(0.05, 0.62, 0.45), mats.marks, -0.47, 1.08, -1.2);
+
+  // Wings with dihedral (white) + red tips
+  const wing = B(4.0, 0.13, 1.2);
+  const wl = new THREE.Mesh(wing, mats.planeWhite);
+  wl.position.set(-2.0, 2.12, -0.48);
+  wl.rotation.z = 0.05;
+  g.add(wl);
+  const wr = new THREE.Mesh(wing, mats.planeWhite);
+  wr.position.set(2.0, 2.12, -0.48);
+  wr.rotation.z = -0.05;
+  g.add(wr);
+  add(B(0.4, 0.15, 1.26), mats.planeRed, -3.92, 2.12, -0.48, 0, 0, 0.05);
+  add(B(0.4, 0.15, 1.26), mats.planeRed, 3.92, 2.12, -0.48, 0, 0, -0.05);
+  add(B(0.8, 0.34, 0.96), mats.planeRed, 0, 2.04, -0.48);
+  add(B(0.05, 0.7, 0.06), mats.metal, -1.1, 1.28, -0.56, 0, 0, 0.12);
+  add(B(0.05, 0.7, 0.06), mats.metal, 1.1, 1.28, -0.56, 0, 0, -0.12);
+
+  // Landing gear
+  const gear = new THREE.Group();
+  const wheelGeo = new THREE.CylinderGeometry(0.27, 0.27, 0.15, 10);
+  for (const sx of [-0.76, 0.76]) {
+    const w1 = new THREE.Mesh(wheelGeo, mats.wheel);
+    w1.rotation.z = Math.PI / 2;
+    w1.position.set(sx, 0.04, -0.3);
+    gear.add(w1);
+    const strut = new THREE.Mesh(B(0.06, 0.44, 0.06), mats.metal);
+    strut.position.set(sx, 0.26, -0.3);
+    strut.rotation.z = sx > 0 ? -0.12 : 0.12;
+    gear.add(strut);
+  }
+  const tw = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8), mats.wheel);
+  tw.rotation.z = Math.PI / 2;
+  tw.position.set(0, -0.04, -5.3);
+  gear.add(tw);
+  gear.position.set(0, 0.25, 0);
+  g.add(gear);
+
+  // Propeller (spins around Z) + motion blur disc
+  const prop = new THREE.Group();
+  prop.position.set(0, 1.08, 3.05);
+  const blade = B(0.11, 1.76, 0.04);
+  const b1 = new THREE.Mesh(blade, mats.prop);
+  prop.add(b1);
+  const b2 = new THREE.Mesh(blade, mats.prop);
+  b2.rotation.z = Math.PI / 2;
+  prop.add(b2);
+  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.8, 6), mats.planeRed);
+  spinner.rotation.x = Math.PI / 2;
+  spinner.position.set(0, 0, 0.4);
+  prop.add(spinner);
+  const blur = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.9, 1.9),
+    new THREE.MeshBasicMaterial({ map: tBlur, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })
+  );
+  blur.position.set(0, 0, 0.04);
+  prop.add(blur);
+  g.add(prop);
+
+  // ── CABIN DOOR (right side, hinged along the leading edge) ──
+  // Hangs on the +X local side just behind the cockpit so the agent can
+  // shut it from outside during the departure cutscene. Stored on userData
+  // so the cutscene can swing it open/closed on its vertical hinge.
+  const door = new THREE.Group();
+  door.position.set(0.42, 1.05, 0.55); // pivot at the front edge of the doorway
+  const doorPanel = new THREE.Mesh(B(0.04, 0.78, 0.5), mats.planeRed);
+  doorPanel.position.set(0.018, 0, 0);
+  door.add(doorPanel);
+  // Door window (small round-ish cabin porthole)
+  const doWin = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12), mats.glass);
+  doWin.rotation.x = Math.PI / 2;
+  doWin.position.set(0.03, 0.25, -0.02);
+  door.add(doWin);
+  // Exterior door handle (near the rear edge of the panel)
+  const handle = new THREE.Mesh(B(0.05, 0.045, 0.16), mats.metal);
+  handle.position.set(0.045, 0.05, 0.19);
+  door.add(handle);
+  // Hinge pins (top + bottom)
+  const hingeT = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.06, 6), mats.metal);
+  hingeT.position.set(0, 0.41, 0.26);
+  hingeT.rotation.x = Math.PI / 2;
+  door.add(hingeT);
+  const hingeB = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.06, 6), mats.metal);
+  hingeB.position.set(0, -0.41, 0.26);
+  hingeB.rotation.x = Math.PI / 2;
+  door.add(hingeB);
+  // The door keeps its rotation around Y: 0 = shut, positive = swinging outward (+X)
+  g.add(door);
+  g.userData = { prop, blur, door, gear };
+  g.position.set(x, y, z);
+  scene.add(g);
+  levelObjs.push(g);
+  return g;
+}
+
+// ── BOND AGENT MODEL (3rd person, for the departure cutscene) ──
+// Builds a detailed MI6 agent in a midnight-blue tux with animatable pivots:
+//   .body       — the whole agent group, origin at the feet (y=0), faces +Z
+//   .headPivot  — small group at the neck for head turns
+//   .armPivotL / .armPivotR — shoulder pivots driving each arm
+//   .legPivotL / .legPivotR — hip pivots driving each leg (for walking)
+//   .handR      — right hand mesh (used to track the door handle)
+//   .watch      — the tactical wristwatch
+//   .holster    — shoulder holster under the left lapel
+function makeBond() {
+  // A high-detail MI6 agent: every limb is articulated at its true joint so the
+  // cutscene animation can bend elbows, knees and wrists realistically instead
+  // of swinging rigid eggs on strings. Materials use specular highlights so the
+  // tailored suit, wet-look shoes and skin read with depth rather than flat matte.
+  const agent = new THREE.Group();
+
+  const P = (c, s = 90, e = 0, ei = 0) =>
+    new THREE.MeshPhongMaterial({ color: c, specular: s, shininess: 40, emissive: e, emissiveIntensity: ei });
+
+  // ── PALETTE ──
+  const suitCl = 0x16233c;          // midnight-blue Kevlar tux
+  const suitDarkCl = 0x0f1829;      // shadow lapel / shadow side
+  const suitLitCl = 0x21314f;       // lit fold on the jacket
+  const shirtCl = 0xf6f4ee;         // crisp white shirt
+  const shirtShadowCl = 0xd9d5ca;
+  const bowtieCl = 0x070706;
+  const skinCl = 0xc9a47e;          // warm skin
+  const skinHiCl = 0xe4c7a4;        // highlight tone
+  const skinShadowCl = 0xa97f58;    // shadow tone (stubble, creases)
+  const hairCl = 0x16100a;          // clean dark hair
+  const hairLitCl = 0x2a1e14;       // hair sheen
+  const blackCl = 0x090909;
+  const shoeCl = 0x0c0b0a;
+  const soleCl = 0x1d1b18;
+  const metalCl = 0x9aa0a6;
+  const metalDarkCl = 0x45494d;
+  const steelCl = 0x6a7178;
+  const chromeCl = 0xcfd4da;
+  const watchCl = 0x272b30;
+  const beltCl = 0x11100c;
+  const goldCl = 0xd4b53c;
+
+  const suit = P(suitCl, 30, 0x000000, 0.06);
+  const suitDark = P(suitDarkCl, 12, 0x000000, 0.04);
+  const suitLit = P(suitLitCl, 40, 0x000000, 0.08);
+  const shirt = P(0xf6f4ee, 16, 0x000000, 0.03);
+  const skin = P(skinCl, 6, 0x000000, 0);
+  const skinHi = P(skinHiCl, 10, 0x000000, 0);
+  const skinShadow = P(skinShadowCl, 4, 0x000000, 0);
+  const hair = P(hairCl, 20, 0x000000, 0);
+  const hairLit = P(hairLitCl, 20, 0x000000, 0.04);
+  const black = P(blackCl, 8, 0x000000, 0);
+  const shoe = P(shoeCl, 30, 0x000000, 0);
+  const sole = P(soleCl, 14, 0x000000, 0);
+  const metal = P(metalCl, 20, 0x000000, 0);
+  const metalDark = P(metalDarkCl, 14, 0x000000, 0);
+  const steel = P(steelCl, 18, 0x000000, 0);
+  const chrome = P(chromeCl, 30, 0x000000, 0);
+  const watch = P(watchCl, 20, 0x000000, 0);
+  const watchBlue = P(0x1a3f66, 60, 0x0a6bbf, 1.4);
+  const beltM = P(beltCl, 14, 0x000000, 0);
+  const gold = P(goldCl, 90, 0x6b4a06, 0.2);
+  const eyeWhite = P(0xf7f7f7, 30, 0x000000, 0);
+  const eyeIris = P(0x2c466e, 20, 0x101622, 0.05);
+  const eyeDark = P(0x090909, 10, 0x000000, 0);
+  const eyeShine = P(0xffffff, 40, 0xffffff, 0.25);
+
+  // ── Hands (shared builder: palm, four fingers, thumb) ──
+  function buildHand(isRight) {
+    const h = new THREE.Group();
+    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), skin);
+    palm.scale.set(1.0, 0.9, 0.9);
+    h.add(palm);
+    // fingers — slight spread and curl
+    for (let f = 0; f < 4; f++) {
+      const fy = -0.004 - f * 0.011;
+      const fg = new THREE.Group();
+      fg.position.set(0, fy, 0.02);
+      const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.05, 6), skin);
+      seg1.rotation.x = Math.PI / 2;
+      seg1.position.z = 0.022;
+      fg.add(seg1);
+      const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.009, 6, 6), skin);
+      knuckle.position.z = 0.045;
+      fg.add(knuckle);
+      const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.045, 6), skinShadow);
+      seg2.rotation.x = Math.PI / 2;
+      seg2.position.z = 0.062;
+      fg.add(seg2);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.0065, 6, 6), skin);
+      tip.position.z = 0.084;
+      fg.add(tip);
+      fg.rotation.x = -0.12;
+      h.add(fg);
+    }
+    // thumb
+    const th = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.009, 0.045, 6), skin);
+    const thSign = isRight ? 1 : -1;
+    th.position.set(0.011 * thSign, -0.012, 0.0);
+    th.rotation.z = 0.3 * thSign;
+    h.add(th);
+    const wrist = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.032, 0.04, 10), skinShadow);
+    wrist.position.y = 0.008;
+    h.add(wrist);
+    return h;
+  }
+
+  // ── LEGS (hip pivot → thigh → knee → shin → ankle → foot) ──
+  function buildLeg(side) {
+    const hip = new THREE.Group();
+    hip.position.set(0.08 * side, 0.78, 0);
+    // Thigh (trouser) segment
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.058, 0.3, 10), suit);
+    thigh.position.y = -0.15;
+    hip.add(thigh);
+    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 8), suitDark);
+    knee.scale.set(0.9, 0.7, 0.8);
+    knee.position.set(0, -0.32, 0.025);
+    hip.add(knee);
+    // Knee pivot: everything below the knee
+    const kneePivot = new THREE.Group();
+    kneePivot.position.y = -0.32;
+    hip.add(kneePivot);
+    // Shin
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.058, 0.25, 10), suit);
+    shin.position.y = -0.125;
+    kneePivot.add(shin);
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.05, 0.025, 10), suitDark);
+    cuff.position.set(0, -0.265, 0);
+    kneePivot.add(cuff);
+    // Foot (shoe)
+    const anklePivot = new THREE.Group();
+    anklePivot.position.y = -0.28;
+    kneePivot.add(anklePivot);
+    const bootFoot = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.17), shoe);
+    bootFoot.position.set(0, 0, 0.025);
+    anklePivot.add(bootFoot);
+    const shoeToe = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), shoe);
+    shoeToe.scale.set(1.1, 0.7, 0.8);
+    shoeToe.position.set(0, 0, 0.1);
+    anklePivot.add(shoeToe);
+    const heel = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.035, 0.04), sole);
+    heel.position.set(0, -0.02, -0.03);
+    anklePivot.add(heel);
+    const solePlate = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.015, 0.18), sole);
+    solePlate.position.set(0, -0.035, 0.025);
+    anklePivot.add(solePlate);
+    return { hip, kneePivot, anklePivot };
+  }
+
+  // ── ARMS (shoulder pivot → upper → elbow pivot → forearm → wrist → hand) ──
+  function buildArm(side) {
+    const shoulder = new THREE.Group();
+    shoulder.position.set(0.21 * side, 1.42, 0);
+    // Sleeve upper (same thickness as guard's arm)
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.058, 0.22, 10), suit);
+    upper.position.y = -0.11;
+    shoulder.add(upper);
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 8), suit);
+    elbow.position.y = -0.22;
+    shoulder.add(elbow);
+    // Elbow pivot: everything below the elbow
+    const elbowPivot = new THREE.Group();
+    elbowPivot.position.y = -0.22;
+    shoulder.add(elbowPivot);
+    // Forearm sleeve
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 10), suit);
+    forearm.position.y = -0.11;
+    elbowPivot.add(forearm);
+    // White shirt cuff
+    const cuffWhite = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.046, 0.025, 10), shirt);
+    cuffWhite.position.y = -0.235;
+    elbowPivot.add(cuffWhite);
+    // Wrist pivot
+    const wristPivot = new THREE.Group();
+    wristPivot.position.y = -0.25;
+    elbowPivot.add(wristPivot);
+    // Hand
+    const hand = buildHand(side > 0);
+    hand.position.y = 0;
+    wristPivot.add(hand);
+    return { shoulder, hand, cuff: cuffWhite, elbowPivot, wristPivot };
+  }
+
+  const legL = buildLeg(-1);
+  const legR = buildLeg(1);
+  agent.add(legL, legR);
+  const armL = buildArm(-1);
+  const armR = buildArm(1);
+  agent.add(armL.shoulder, armR.shoulder);
+
+  // ── TORSO (matching the guard's proportions: neck → chest → abdomen → belt → hips) ──
+  // Neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.1, 10), skin);
+  neck.position.y = 1.47;
+  agent.add(neck);
+  const adam = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), skinShadow);
+  adam.position.set(0, 1.46, 0.06);
+  agent.add(adam);
+  // Chest (wide, same as guard)
+  const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.3, 12), suit);
+  chest.position.y = 1.33;
+  agent.add(chest);
+  // Abdomen
+  const abdomen = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.25, 12), suit);
+  abdomen.position.y = 1.08;
+  agent.add(abdomen);
+  // Belt (wide leather, same as guard)
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.175, 0.05, 12), beltM);
+  belt.position.y = 0.92;
+  agent.add(belt);
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.032, 0.01), gold);
+  buckle.position.set(0, 0.92, 0.185);
+  agent.add(buckle);
+  // Hips / coat tails
+  const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.1, 12), suit);
+  hips.position.y = 0.85;
+  agent.add(hips);
+  // Suit lapels (left + right)
+  const lapelL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.015), suitDark);
+  lapelL.position.set(-0.045, 1.35, 0.16);
+  lapelL.rotation.z = 0.2;
+  agent.add(lapelL);
+  const lapelR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.015), suitDark);
+  lapelR.position.set(0.045, 1.35, 0.16);
+  lapelR.rotation.z = -0.2;
+  agent.add(lapelR);
+  // Shirt V + bow tie
+  const bowtieM = P(bowtieCl, 12, 0x000000, 0);
+  const shirtV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.01), shirt);
+  shirtV.position.set(0, 1.4, 0.165);
+  agent.add(shirtV);
+  const tieKnot = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.018, 0.012), bowtieM);
+  tieKnot.position.set(0, 1.41, 0.17);
+  agent.add(tieKnot);
+  // Starched collar
+  const collarL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.035, 0.02), shirt);
+  collarL.position.set(-0.05, 1.48, 0.155);
+  collarL.rotation.z = 0.5;
+  collarL.rotation.x = -0.06;
+  agent.add(collarL);
+  const collarR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.035, 0.02), shirt);
+  collarR.position.set(0.05, 1.48, 0.155);
+  collarR.rotation.z = -0.5;
+  collarR.rotation.x = -0.06;
+  agent.add(collarR);
+  // Jacket buttons
+  for (let i = 0; i < 3; i++) {
+    const btn = new THREE.Mesh(new THREE.SphereGeometry(0.01, 6, 6), chrome);
+    btn.position.set(0, 1.4 - i * 0.065, 0.178);
+    agent.add(btn);
+  }
+  // Centre seam
+  const seam = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.5, 0.005), suitDark);
+  seam.position.set(0, 1.2, 0.185);
+  agent.add(seam);
+  // Pocket square
+  const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.04, 0.008), shirt);
+  pocket.position.set(-0.08, 1.33, 0.17);
+  agent.add(pocket);
+  // Side pocket flaps
+  for (const sx of [-0.08, 0.08]) {
+    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.012, 0.006), suitDark);
+    flap.position.set(sx, 1.352, 0.175);
+    agent.add(flap);
+  }
+
+  // ── SHOULDER HOLSTER ──
+  const holsterStrap = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.02, 0.3), P(0x080807, 8, 0x000000, 0));
+  holsterStrap.position.set(-0.13, 1.4, 0.04);
+  holsterStrap.rotation.x = 0.12;
+  agent.add(holsterStrap);
+  const holsterBlock = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.1, 0.03), P(0x0d0c09, 10, 0x000000, 0));
+  holsterBlock.position.set(-0.11, 1.26, 0.1);
+  holsterBlock.rotation.z = 0.15;
+  agent.add(holsterBlock);
+  const holsterGrip = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.04, 0.014), black);
+  holsterGrip.position.set(-0.11, 1.2, 0.115);
+  agent.add(holsterGrip);
+  // Cross-strap
+  const strap2 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.34), P(0x080807, 8, 0x000000, 0));
+  strap2.position.set(0, 1.36, -0.06);
+  strap2.rotation.x = 0.15;
+  agent.add(strap2);
+
+  // ── SHOULDERS (matching guard's size and position) ──
+  const padL = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), suit);
+  padL.scale.set(1.1, 0.8, 0.9);
+  padL.position.set(-0.21, 1.42, 0);
+  agent.add(padL);
+  const padR = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), suit);
+  padR.scale.set(1.1, 0.8, 0.9);
+  padR.position.set(0.21, 1.42, 0);
+  agent.add(padR);
+
+  // ── HEAD (articulated at the neck) — a proven, realistic face just like the
+  // guards', finished with Bond's own short dark hair instead of the S.S. cap ──
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0, 1.56, 0);
+  agent.add(headPivot);
+
+  // Skull with a strong, structured face
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 11), skin);
+  head.scale.set(0.82, 1.4, 0.88);
+  headPivot.add(head);
+  const forehead = new THREE.Mesh(new THREE.SphereGeometry(0.09, 9, 8), skin);
+  forehead.scale.set(0.95, 0.45, 0.55);
+  forehead.position.set(0, 0.1, 0.03);
+  headPivot.add(forehead);
+  const cheekL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 7), skin);
+  cheekL.scale.set(0.6, 0.5, 0.55);
+  cheekL.position.set(-0.07, -0.02, 0.06);
+  headPivot.add(cheekL);
+  const cheekR = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 7), skin);
+  cheekR.scale.set(0.6, 0.5, 0.55);
+  cheekR.position.set(0.07, -0.02, 0.06);
+  headPivot.add(cheekR);
+  const jawL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 7), skin);
+  jawL.scale.set(0.55, 0.45, 0.5);
+  jawL.position.set(-0.065, -0.1, 0.03);
+  headPivot.add(jawL);
+  const jawR = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 7), skin);
+  jawR.scale.set(0.55, 0.45, 0.5);
+  jawR.position.set(0.065, -0.1, 0.03);
+  headPivot.add(jawR);
+  const chin = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 7), skin);
+  chin.scale.set(0.6, 0.55, 0.55);
+  chin.position.set(0, -0.14, 0.02);
+  headPivot.add(chin);
+  const browRidge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.014, 0.02), skin);
+  browRidge.position.set(0, 0.05, 0.09);
+  headPivot.add(browRidge);
+
+  // ── EYES (white, iris, pupil, catchlight, lids, bags, brows) ──
+  for (const side of [-1, 1]) {
+    const x = 0.042 * side;
+    const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.02, 9, 8), eyeWhite);
+    eyeW.scale.set(1.3, 0.5, 0.8);
+    eyeW.position.set(x, 0.02, 0.1);
+    eyeW.rotation.z = 0.15 * side;
+    headPivot.add(eyeW);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.012, 9, 8), eyeIris);
+    iris.scale.set(1.0, 0.9, 0.5);
+    iris.position.set(x, 0.02, 0.112);
+    headPivot.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.007, 7, 6), eyeDark);
+    pupil.scale.set(1.0, 0.7, 0.4);
+    pupil.position.set(x, 0.02, 0.117);
+    headPivot.add(pupil);
+    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.003, 5, 5), eyeShine);
+    shine.position.set(x + 0.004 * side, 0.025, 0.119);
+    headPivot.add(shine);
+    const lidU = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.008, 0.015), skin);
+    lidU.position.set(x, 0.038, 0.098);
+    lidU.rotation.z = 0.2 * side;
+    headPivot.add(lidU);
+    const lidLo = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.006, 0.012), skin);
+    lidLo.position.set(x, 0.005, 0.098);
+    headPivot.add(lidLo);
+    const eyeBag = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.004, 0.008), skinShadow);
+    eyeBag.position.set(x, -0.005, 0.1);
+    headPivot.add(eyeBag);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.014, 0.016), hair);
+    brow.position.set(x * 0.9, 0.052, 0.1);
+    brow.rotation.z = 0.4 * side;
+    headPivot.add(brow);
+  }
+  // Focused frown + crow's feet (MI6 intensity)
+  const frownL = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.028, 0.006), hair);
+  frownL.position.set(-0.012, 0.03, 0.105);
+  frownL.rotation.z = 0.15;
+  headPivot.add(frownL);
+  const frownR = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.028, 0.006), hair);
+  frownR.position.set(0.012, 0.03, 0.105);
+  frownR.rotation.z = -0.15;
+  headPivot.add(frownR);
+  for (const side of [-1, 1]) {
+    for (let ci = 0; ci < 2; ci++) {
+      const crow = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.003, 0.004), skinShadow);
+      crow.position.set(side * 0.07, 0.02 - ci * 0.008, 0.09);
+      crow.rotation.z = side * (0.5 + ci * 0.3);
+      headPivot.add(crow);
+    }
+  }
+
+  // ── NOSE (bridge, tip, nostrils, wings, wrinkle) ──
+  const noseBridge = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.045, 0.022), skinShadow);
+  noseBridge.position.set(0, -0.01, 0.11);
+  headPivot.add(noseBridge);
+  const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.016, 9, 8), skin);
+  noseTip.scale.set(1.15, 0.75, 1.0);
+  noseTip.position.set(0, -0.035, 0.125);
+  headPivot.add(noseTip);
+  const nostrilL = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 5), skinShadow);
+  nostrilL.scale.set(1.0, 0.6, 0.8);
+  nostrilL.position.set(-0.01, -0.04, 0.12);
+  headPivot.add(nostrilL);
+  const nostrilR = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 5), skinShadow);
+  nostrilR.scale.set(1.0, 0.6, 0.8);
+  nostrilR.position.set(0.01, -0.04, 0.12);
+  headPivot.add(nostrilR);
+  const noseWingL = new THREE.Mesh(new THREE.SphereGeometry(0.01, 6, 6), skin);
+  noseWingL.scale.set(0.6, 0.5, 0.5);
+  noseWingL.position.set(-0.015, -0.038, 0.115);
+  headPivot.add(noseWingL);
+  const noseWingR = new THREE.Mesh(new THREE.SphereGeometry(0.01, 6, 6), skin);
+  noseWingR.scale.set(0.6, 0.5, 0.5);
+  noseWingR.position.set(0.015, -0.038, 0.115);
+  headPivot.add(noseWingR);
+  const noseWrinkle = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.003, 0.004), skinShadow);
+  noseWrinkle.position.set(0, -0.015, 0.118);
+  headPivot.add(noseWrinkle);
+
+  // ── MOUTH (philtrum, cupid's bow, lips, mouth line, corners, nasolabial folds) ──
+  const philtrum = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.018, 0.004), skinShadow);
+  philtrum.position.set(0, -0.06, 0.1);
+  headPivot.add(philtrum);
+  const lipColor = P(0xb07050, 14, 0x000000, 0);
+  const upperLip = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.006, 0.01), lipColor);
+  upperLip.position.set(0, -0.07, 0.102);
+  headPivot.add(upperLip);
+  const cupidL = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.004, 0.005), lipColor);
+  cupidL.position.set(-0.008, -0.067, 0.105);
+  cupidL.rotation.z = 0.3;
+  headPivot.add(cupidL);
+  const cupidR = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.004, 0.005), lipColor);
+  cupidR.position.set(0.008, -0.067, 0.105);
+  cupidR.rotation.z = -0.3;
+  headPivot.add(cupidR);
+  const mouthLine = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.004, 0.008), P(0x8b4513, 8));
+  mouthLine.position.set(0, -0.075, 0.1);
+  headPivot.add(mouthLine);
+  const lowerLip = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.009, 0.012), P(0xa06040, 10));
+  lowerLip.position.set(0, -0.082, 0.1);
+  headPivot.add(lowerLip);
+  const mcL = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.006, 0.006), P(0x8b4513, 8));
+  mcL.position.set(-0.025, -0.078, 0.098);
+  mcL.rotation.z = 0.5;
+  headPivot.add(mcL);
+  const mcR = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.006, 0.006), P(0x8b4513, 8));
+  mcR.position.set(0.025, -0.078, 0.098);
+  mcR.rotation.z = -0.5;
+  headPivot.add(mcR);
+  const nasoL = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.04, 0.004), skinShadow);
+  nasoL.position.set(-0.028, -0.045, 0.1);
+  nasoL.rotation.z = 0.1;
+  headPivot.add(nasoL);
+  const nasoR = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.04, 0.004), skinShadow);
+  nasoR.position.set(0.028, -0.045, 0.1);
+  nasoR.rotation.z = -0.1;
+  headPivot.add(nasoR);
+
+  // ── EARS (outer, inner, lobe) ──
+  for (const side of [-1, 1]) {
+    const earX = 0.11 * side;
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.022, 9, 8), skin);
+    ear.scale.set(0.4, 1.0, 0.55);
+    ear.position.set(earX, 0, -0.01);
+    headPivot.add(ear);
+    const earInner = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 5), skinShadow);
+    earInner.scale.set(0.35, 0.8, 0.4);
+    earInner.position.set(earX * 1.02, 0, 0.0);
+    headPivot.add(earInner);
+    const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.01, 6, 5), skin);
+    lobe.position.set(earX, -0.018, -0.005);
+    headPivot.add(lobe);
+  }
+
+  // ── BOND HAIR — clean, short, dark with a side-swept part, plus sideburns ──
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.105, 12, 10), hair);
+  hairCap.scale.set(1.02, 0.82, 1.02);
+  hairCap.position.set(0, 0.12, -0.01);
+  hairCap.rotation.x = -0.18;
+  headPivot.add(hairCap);
+  const hairSweep = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.03, 0.05), hair);
+  hairSweep.position.set(0.005, 0.145, 0.06);
+  hairSweep.rotation.z = 0.4;
+  headPivot.add(hairSweep);
+  const hairSweepHi = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.012, 0.04), hairLit);
+  hairSweepHi.position.set(0.005, 0.16, 0.05);
+  hairSweepHi.rotation.z = 0.4;
+  headPivot.add(hairSweepHi);
+  const hairPartL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.012, 0.03), hairLit);
+  hairPartL.position.set(-0.02, 0.135, 0.05);
+  hairPartL.rotation.z = 0.15;
+  hairPartL.rotation.y = 0.3;
+  headPivot.add(hairPartL);
+  // Sideburns (trimmed, not too long)
+  for (const side of [-1, 1]) {
+    const burn = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.05, 0.01), hair);
+    burn.position.set(side * 0.095, -0.01, -0.02);
+    headPivot.add(burn);
+  }
+
+  const body = new THREE.Group();
+  body.add(agent);
+  body.userData = {
+    headPivot,
+    armPivotL: armL.shoulder,
+    armPivotR: armR.shoulder,
+    legPivotL: legL.hip,
+    legPivotR: legR.hip,
+    elbowPivotL: armL.elbowPivot,
+    elbowPivotR: armR.elbowPivot,
+    kneePivotL: legL.kneePivot,
+    kneePivotR: legR.kneePivot,
+    anklePivotL: legL.anklePivot,
+    anklePivotR: legR.anklePivot,
+    wristPivotR: armR.wristPivot,
+    handR: armR.hand,
+    watch: watchBlue,
+    holster: holsterBlock,
+  };
+  scene.add(body);
+  levelObjs.push(body);
+  return body;
+}
+
+// ── MOBILE DOOR STAIRS (towed up to the plane for the cutscene) ──
+function makeDoorStairs(x, y, z) {
+  const s = new THREE.Group();
+  const M = (color) => new THREE.MeshLambertMaterial({ color });
+  const metal = M(0x555a60);
+  const metalDark = M(0x34383d);
+  const platform = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 1.0), metal);
+  platform.position.set(0, 1.0, 0);
+  s.add(platform);
+  // Last step (at plane door height)
+  const railL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.0, 0.03), metalDark);
+  railL.position.set(-0.36, 1.0, 0.42);
+  s.add(railL);
+  const railR = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.0, 0.03), metalDark);
+  railR.position.set(0.36, 1.0, 0.42);
+  s.add(railR);
+  // Descending steps (down toward the ground / -Y local)
+  for (let i = 0; i < 6; i++) {
+    const h = 1.0 - i * 0.17;
+    const tread = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.06, 0.28), metal);
+    tread.position.set(0, h, -0.28 - i * 0.28);
+    s.add(tread);
+    const riser = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.17, 0.06), metalDark);
+    riser.position.set(0, h - 0.11, -0.17 - i * 0.28);
+    s.add(riser);
+    // Handrails on both sides angling down
+    const hrail = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 1.6), metalDark);
+    hrail.position.set(-0.36, h + 0.18, -0.55 - i * 0.2 + 0.2);
+    hrail.rotation.x = 0.08;
+    s.add(hrail);
+    const hrailR = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 1.6), metalDark);
+    hrailR.position.set(0.36, h + 0.18, -0.55 - i * 0.2 + 0.2);
+    hrailR.rotation.x = 0.08;
+    s.add(hrailR);
+  }
+  // Side skirts
+  const skirtL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 1.6), metalDark);
+  skirtL.position.set(-0.42, 0.35, -0.85);
+  s.add(skirtL);
+  const skirtR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 1.6), metalDark);
+  skirtR.position.set(0.42, 0.35, -0.85);
+  s.add(skirtR);
+  // Towing hitch so it reads as a mobile staircase
+  const hitch = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.35), metalDark);
+  hitch.position.set(0, 0.25, 0.6);
+  s.add(hitch);
+  const wheelL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.04, 8), metalDark);
+  wheelL.rotation.z = Math.PI / 2;
+  wheelL.position.set(-0.3, 0.1, 0.85);
+  s.add(wheelL);
+  const wheelR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.04, 8), metalDark);
+  wheelR.rotation.z = Math.PI / 2;
+  wheelR.position.set(0.3, 0.1, 0.85);
+  s.add(wheelR);
+  s.position.set(x, y, z);
+  scene.add(s);
+  levelObjs.push(s);
+  return s;
+}
+
+// ── CUTSCENE (DOOR CLOSE + 3RD PERSON TAKE-OFF) ──────────────────
+let plane2 = null;
+let cutsceneT = 0;
+let cutsceneCamStart = null;
+let bondAgent = null;            // 3rd-person Bond model
+let bondStairs = null;           // mobile door stairs
+let engineFlameL = null;
+let engineFlameR = null;
+let cutsceneNoise = null;        // one-off containers cleaned up at end
+let cutsceneWarm = null;         // amber cabin light that dies when door shuts
+let cutsceneFov = 72;            // FOV restored to when the cutscene ends
+let cutsceneTrack = null;        // chase-cam anchor riding along with the plane
+let cutsceneFollow = null;       // persistent camera offset for the follow shot
+
+function startCutscene() {
+  state.gamma = true;
+  state.mode = "cutscene";
+  cutsceneT = 0;
+  cutsceneCamStart = camera.position.clone();
+
+  // Hidden first-person hands + weapon: the agent is now IN the plane, so the
+  // gun model parented to the camera must never show looking out the window.
+  if (weaponGroup) weaponGroup.visible = false;
+
+  // ── ZOOM OUT: widen the camera so boarding reveals far more of the scene.
+  // The default FOV is 72°; the cinematic pushes ≈2× wider so the doorway,
+  // Bond, and the whole runway sit in one dramatic frame.
+  cutsceneFov = camera.fov;
+  camera.fov = 118;
+  camera.updateProjectionMatrix();
+
+  document.exitPointerLock();
+  document.getElementById("hud").style.display = "none";
+
+  if (!plane2) return;
+  const ud = plane2.userData;
+  // Reset the door to open (swung wide) at the start of the shot
+  if (ud.door) ud.door.rotation.y = -1.5;
+
+  // Place the mobile stairs under the doorway (right side of the plane,
+  // world +X because the plane is rotated PI around Y: local +Z = world -Z)
+  if (!bondStairs) {
+    bondStairs = makeDoorStairs(plane2.position.x + 0.9, 0, plane2.position.z + 0.55);
+  } else {
+    bondStairs.position.set(plane2.position.x + 0.9, 0, plane2.position.z + 0.55);
+  }
+
+  // Spawn Bond down at the base of the stairs, facing back toward the plane door
+  if (!bondAgent) {
+    bondAgent = makeBond();
+  }
+  bondAgent.position.set(plane2.position.x + 1.5, 0, plane2.position.z - 0.9);
+  bondAgent.rotation.y = -Math.PI / 2; // faces -X (toward the plane's open door)
+
+  // Warm amber cabin light spilling from the open doorway
+  if (!cutsceneWarm) {
+    cutsceneWarm = new THREE.PointLight(0xffb347, 2.2, 12);
+    scene.add(cutsceneWarm);
+    levelObjs.push(cutsceneWarm);
+  }
+  cutsceneWarm.position.set(plane2.position.x + 0.9, 1.1, plane2.position.z + 0.5);
+
+  // Pre-build twin engine glow lights (hidden until ignition)
+  if (!engineFlameL) {
+    engineFlameL = new THREE.PointLight(0xff8822, 0, 14);
+    scene.add(engineFlameL);
+    levelObjs.push(engineFlameL);
+  }
+  if (!engineFlameR) {
+    engineFlameR = new THREE.PointLight(0xff6622, 0, 14);
+    scene.add(engineFlameR);
+    levelObjs.push(engineFlameR);
+  }
+
+  subtitle("BOND: Time to disappear.");
+  audio.startMusic();
+}
+
+function updateCutscene(dt) {
+  cutsceneT += dt;
+  if (!plane2) return;
+  const ud = plane2.userData;
+  const p = plane2.position;
+  const sstep = (a, b, t) => {
+    const x = Math.min(1, Math.max(0, (t - a) / (b - a)));
+    return x * x * (3 - 2 * x);
+  };
+
+  // ── Phase A: CLOSE THE DOOR (3rd person, 0 → 2.2s) ──
+  if (cutsceneT < 2.2) {
+    const t = cutsceneT;
+    // Bond's whole-body position: closes distance to the handle, then holds
+    const reach = sstep(0.2, 0.9, t);
+    const hold = sstep(1.0, 2.1, t);
+    const bx = 4.5 - reach * 0.55;          // steps in toward the plane
+    const bz = 36.1 - reach * 0.15;         // slight forward drift
+    if (bondAgent) {
+      bondAgent.position.x = bx;
+      bondAgent.position.z = bz;
+      bondAgent.position.y = 0;
+      bondAgent.rotation.y = -Math.PI / 2 + (hold ? 0.06 : 0); // face the door
+      const bu = bondAgent.userData;
+      // Legs locked (slight stance) once at the door
+      bu.legPivotL.rotation.x = reach * 0.06;
+      bu.legPivotR.rotation.x = -reach * 0.06;
+      // Right arm: swings up and out to reach the handle, elbow extending naturally
+      const armUp = sstep(0.55, 0.85, t);
+      bu.armPivotR.rotation.x = -armUp * 1.4;
+      bu.armPivotR.rotation.z = armUp * 0.35;
+      bu.armPivotR.rotation.y = -armUp * 0.4;
+      // Elbow straightens as the hand rises (1 = locked straight), then the wrist
+      // cups forward once the palm is in place at the handle.
+      if (bu.elbowPivotR) {
+        bu.elbowPivotR.rotation.x = armUp * (-0.25 - Math.sin(t * 5) * 0.04);
+        bu.elbowPivotR.rotation.z = armUp * 0.18;
+      }
+      if (bu.wristPivotR) bu.wristPivotR.rotation.x = armUp * 0.9;
+      // Left arm: comes across to support / steady during the swing
+      const armLIn = sstep(0.85, 1.05, t);
+      bu.armPivotL.rotation.x = armLIn * 0.5;
+      bu.armPivotL.rotation.z = armLIn * 0.5;
+      // Head tilts slightly toward the moving door
+      bu.headPivot.rotation.y = (1 - sstep(0.9, 1.6, t)) * 0.4;
+      bu.headPivot.rotation.x = sstep(0.7, 1.2, t) * -0.15;
+    }
+    // Swing the door shut (open -1.5 → shut 0) with a natural ease + latch snap
+    if (ud.door) {
+      let rot = -1.5 + 1.5 * sstep(0.75, 1.55, t);
+      // Add a small overshoot immediately before latching for weight
+      if (sstep(1.5, 1.62, t) > 0 && t < 1.72) rot = -1.5 + 1.5 * (0.94 + Math.sin((t - 1.5) * 28) * 0.06);
+      ud.door.rotation.y = rot;
+    }
+    // Amber cabin light dims as the door comes shut
+    if (cutsceneWarm) cutsceneWarm.intensity = 2.2 * (1 - sstep(1.4, 1.75, t));
+    // Slow prop spin while parked, still rolling up
+    ud.prop.rotation.z += dt * 26;
+    // ── Camera: 3rd person, tight and to the right of the agent ──
+    const camT = sstep(0, 0.5, t);
+    const cBase = new THREE.Vector3(bx + 0.9, 1.35 + camT * 0.15, bz + 1.1);
+    camera.position.lerp(cBase, Math.min(1, dt * 6));
+    camera.lookAt(bx - 0.1, 1.35, bz);
+  }
+
+  // ── Phase B: TRANSITION (crane up + back, 2.2 → 3.6s) ──
+  else if (cutsceneT < 3.6) {
+    const t = cutsceneT - 2.2;
+    const pr = sstep(0, 1.4, t);
+    // Bond takes a step back from the door and turns toward the runway
+    if (bondAgent) {
+      bondAgent.position.x = 4.5 - 0.55 * 1 - pr * 0.3;
+      bondAgent.position.z = 36.1 - 0.15 * 1 - pr * 0.1;
+      bondAgent.rotation.y = -Math.PI / 2 + pr * 0.4;
+      const bu = bondAgent.userData;
+      // Relax arm back down
+      bu.armPivotR.rotation.x = -1.4 * (1 - pr);
+      bu.armPivotR.rotation.z = 0.35 * (1 - pr);
+      bu.armPivotL.rotation.x = 0;
+      bu.armPivotL.rotation.z = 0;
+      // A couple of walking steps as he backs off — knees bend on each stride
+      const stride = Math.sin(t * 5);
+      bu.legPivotL.rotation.x = stride * 0.12 * pr;
+      bu.legPivotR.rotation.x = -stride * 0.12 * pr;
+      if (bu.kneePivotL) bu.kneePivotL.rotation.x = -Math.max(0, -stride) * 0.35 * pr;
+      if (bu.kneePivotR) bu.kneePivotR.rotation.x = -Math.max(0, stride) * 0.35 * pr;
+      // Let the free arm swing back and forth to counter the steps
+      bu.armPivotL.rotation.x = bu.armPivotL.rotation.x * 0.9 + stride * 0.18 * pr;
+      bu.armPivotL.rotation.z = 0;
+    }
+    // Door is fully latched
+    if (ud.door) ud.door.rotation.y = 0;
+    // Prop speeds up as engines spool
+    ud.prop.rotation.z += dt * (30 + pr * 40);
+    // Warm light out once sealed
+    if (cutsceneWarm) cutsceneWarm.intensity *= (1 - dt * 3);
+    // ── Camera: seamless crane up and back + slight orbit ──
+    const start = new THREE.Vector3(4.5 + 0.9, 1.35 + 0.15, 36.1 + 1.1 - 0.15);
+    const end = new THREE.Vector3(8.5, 3.4, 42.0);
+    camera.position.lerpVectors(start, end, pr);
+    camera.lookAt(p.x, p.y, p.z);
+  }
+
+  // ── Phase C: TAKE-OFF (wide/tracking, 3.6s → end) ──
+  else {
+    const t = cutsceneT - 3.6;
+    // Engines ignite with a fiery orange glow at the very start of the shot
+    const ignition = sstep(0.0, 0.35, t);
+    if (engineFlameL) {
+      engineFlameL.position.set(3.0, 0.9, -0.6 + p.z);
+      engineFlameL.intensity = 3 * ignition;
+    }
+    if (engineFlameR) {
+      engineFlameR.position.set(-3.0, 0.9, -0.6 + p.z);
+      engineFlameR.intensity = 3 * ignition;
+    }
+    // Rolling, accelerating + lifting off down the runway (-Z), banking left
+    const rollSpeed = 16 + t * 9;
+    p.z -= dt * rollSpeed;
+    // Steep, early rotation so the plane climbs clear of the buildings down the
+    // field (the archives block to the south) well before it reaches them.
+    const lift = sstep(0.35, 1.15, t);
+    p.y = 0.5 + lift * (14 + t * 3);
+    // Rotate nose up as it lifts, then bank left (roll around Z) while climbing
+    plane2.rotation.y = Math.PI;
+    plane2.rotation.x = Math.min(0.5, lift * 0.42 + t * 0.02);
+    plane2.rotation.z = -Math.sin(sstep(1.0, 2.2, t) * Math.PI) * 0.5; // left bank
+    // Prop spins hard + heat-blur ramp
+    ud.prop.rotation.z += dt * (120 + t * 8);
+    ud.blur.material.opacity = Math.min(0.55, ud.blur.material.opacity + dt * 0.7);
+    // Landing gear retracts into the underbelly after wheels leave the deck
+    if (ud.gear) {
+      const retract = sstep(1.6, 2.4, t);
+      ud.gear.position.y = (0.25 + lift * 1.0) * (1 - retract * 0.9);
+      ud.gear.rotation.x = -retract;
+    }
+    // ── Camera: CLOSE SIDE-CHASE ──
+    // Park the lens to the RIGHT of the aircraft (offset along +X), at roughly
+    // the plane's own height and Z, so it rides beside it rather than far behind
+    // and below. This keeps the whole airframe filling the frame and, because it
+    // hovers at plane height, it can never sink under the terrain while it climbs.
+    if (!cutsceneFollow) {
+      cutsceneFollow = new THREE.Vector3(p.x + 3.6, p.y + 1.4, p.z);
+    }
+    // Tightly track the plane: match its horizontal position instantaneously so
+    // the side shot never lags, and ease the height by a hair so the lens stays
+    // smooth without ever going below the deck.
+    const sideX = p.x + 3.6;     // ~4x closer than the old 15-unit chase cam
+    const sideY = p.y + 1.4;     // at plane height — never under the map
+    cutsceneFollow.x = sideX;
+    cutsceneFollow.y += (sideY - cutsceneFollow.y) * Math.min(1, dt * 4);
+    cutsceneFollow.z = p.z;
+    camera.position.copy(cutsceneFollow);
+    // Face the aircraft as it rolls, pitches up and banks left
+    camera.lookAt(p.x, p.y + 0.2, p.z - 1);
+    // Keep a slightly wide cinematic framing for the close side view
+    camera.fov = 118 - 14 * sstep(0.4, 2.0, t);
+    camera.updateProjectionMatrix();
+    // Bond walks off the apron out of frame, then the plane dominates
+    if (bondAgent) {
+      bondAgent.position.x += dt * 2;
+      bondAgent.position.y = -0.3;
+      bondAgent.rotation.y = 0;
+    }
+  }
+
+  // ☞ End the cutscene: drop the zoom back, unhide the weapon, paint the win screen
+  if (cutsceneT > 6.8) {
+    camera.fov = cutsceneFov;
+    camera.updateProjectionMatrix();
+    if (weaponGroup) weaponGroup.visible = true;
+    state.mode = "win";
+    showFinalWin();
+  }
 }
 
 let doorMesh, doorCollider, codesMesh, liftMesh, alarmLights, weaponGroup, gunGroup, ak47Group, watchGroup, muzzleLight;
@@ -2689,6 +4525,7 @@ function makeCamera(x, y, z, dir) {
   g.add(alertLight);
 
   scene.add(g);
+  levelObjs.push(g);
   dir.normalize();
   g.lookAt(x + dir.x, y + dir.y, z + dir.z);
   return { group: g, lens, light, alertLight, led, beam, ring, dir, disabled: false, lock: 0, range: 9 };
@@ -2696,9 +4533,10 @@ function makeCamera(x, y, z, dir) {
 
 // ── PICKUPS ──────────────────────────────────────
 function spawnPickup(type, x, y, z) {
-  const color = type === "health" ? 0xcc3333 : type === "armor" ? 0x3399ff : type === "ak47" ? 0x4a3018 : 0xc9a227;
+  const color = type === "health" ? 0xcc3333 : type === "healthbig" ? 0xff2222 : type === "armor" ? 0x3399ff : type === "ak47" ? 0x4a3018 : 0xc9a227;
   const g = new THREE.Group();
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.35), new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.25 }));
+  const sz = type === "healthbig" ? 1.5 : 1;
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.35 * sz, 0.28 * sz, 0.35 * sz), new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.25 }));
   g.add(mesh);
   const glow = new THREE.PointLight(color, 0.5, 3);
   glow.position.y = 0.2;
@@ -2713,6 +4551,7 @@ function spawnPickup(type, x, y, z) {
   }
   g.position.set(x, y, z);
   scene.add(g);
+  levelObjs.push(g);
   pickups.push({ type, mesh: g, y, taken: false });
 }
 
@@ -3364,6 +5203,7 @@ function makeSoldier(boss) {
   gunGroup.add(muzzle);
 
   scene.add(g);
+  levelObjs.push(g);
   
   // Boss is bigger and has a collision radius for hit detection
   if (boss) {
@@ -3396,6 +5236,8 @@ class Enemy {
     this.speed = this.boss ? 2.8 : 2.1;
     this.alertSpeed = this.boss ? 4.4 : 3.8;
     this.vision = this.boss ? 15 : 11;
+    // Proximity sensing: guards notice you when you get this close regardless of facing.
+    this.detectRange = this.boss ? 13 : 10;
     this.state = opt.state || "patrol";
     this.searchT = 0;
     this.lookT = 0;
@@ -3570,10 +5412,18 @@ class Enemy {
       audio.explosion();
     }
     const p = this.pos();
+    // A kill here draws nearby guards in to hunt the player.
+    if (!this.boss) alertGuardDeath(p.x, p.z);
     if (state.hasAK47) {
       if (Math.random() < 0.4) spawnPickup("ammo", p.x + (Math.random() - 0.5) * 0.5, 0.4, p.z + (Math.random() - 0.5) * 0.5);
     } else {
       spawnPickup("ak47", p.x + (Math.random() - 0.5) * 0.5, 0.4, p.z + (Math.random() - 0.5) * 0.5);
+    }
+    updateSoldierCount();
+    if (state.level === 2 && soldiersRemaining <= 0) {
+      state.alpha = true;
+      subtitle("AREA SECURED. ENTER THE ARCHIVES.");
+      audio.ui();
     }
   }
 
@@ -3604,15 +5454,21 @@ class Enemy {
     this.dying = false;
   }
 
-  los() {
+  los(omni) {
     const origin = this.pos().clone();
     origin.y = 1.5;
-    const target = new THREE.Vector3(player.x, player.y + 1.2, player.z);
+    // Aim at the player's torso, lowered when they crouch so they can hide behind
+    // low cover walls (standing ~1.2, crouching ~0.65).
+    const target = new THREE.Vector3(player.x, player.y + 1.2 - state.crouch * 0.55, player.z);
     const dist = origin.distanceTo(target);
-    if (dist > this.vision) return false;
+    // When omni is true we ignore the facing cone and only check distance + raycast:
+    // this is the "proximity hearing/sensing" used so guards react when you walk near them.
+    if (dist > (omni ? this.detectRange : this.vision)) return false;
     const dir = target.clone().sub(origin).normalize();
-    this.mesh.group.getWorldDirection(this.fwd);
-    if (this.fwd.dot(dir) < Math.cos((this.boss ? 60 : 45) * Math.PI / 180)) return false;
+    if (!omni) {
+      this.mesh.group.getWorldDirection(this.fwd);
+      if (this.fwd.dot(dir) < Math.cos((this.boss ? 60 : 45) * Math.PI / 180)) return false;
+    }
     ray.set(origin, dir);
     const hits = ray.intersectObjects(occluders, false);
     if (hits.length && hits[0].distance < dist - 0.4) return false;
@@ -3630,24 +5486,49 @@ class Enemy {
 
   moveToward(tx, tz, speed, dt) {
     const p = this.pos();
-    const dx = tx - p.x;
-    const dz = tz - p.z;
-    const len = Math.hypot(dx, dz);
+    const dxA = tx - p.x;
+    const dzA = tz - p.z;
+    const len = Math.hypot(dxA, dzA);
     if (len < 0.18) return len;
-    const vx = (dx / len) * speed * dt;
-    const vz = (dz / len) * speed * dt;
-    const r = collideXZ(p.x + vx, p.z + vz, 0.38, 0, 1.7);
-    p.x = r.x;
-    p.z = r.z;
+    const step = Math.max(0.002, speed * dt);
+    const baseAng = Math.atan2(dxA, dzA);
+    let movedX = p.x, movedZ = p.z;
+    let hitWall = true;
+    // Try the direct heading first; if a wall blocks us, fan out in alternating small
+    // angular increments up to ±~100° so the guard slides along the wall / un-sticks
+    // from corners instead of endlessly walking into the obstruction.
+    for (let k = 0; k < 18; k++) {
+      const sign = k % 2 === 0 ? 1 : -1;
+      const idx = Math.ceil(k / 2);
+      const off = sign * idx * (Math.PI / 18);
+      const a = baseAng + off;
+      const r = collideXZ(p.x + Math.sin(a) * step, p.z + Math.cos(a) * step, 0.38, 0, 1.7);
+      const gained = Math.hypot(r.x - p.x, r.z - p.z);
+      if (gained > step * 0.32) {
+        movedX = r.x;
+        movedZ = r.z;
+        hitWall = false;
+        break;
+      }
+    }
+    // If every direction is blocked, snap back to wherever collideXZ leaves us (a corner pocket).
+    if (hitWall) {
+      const r = collideXZ(p.x + Math.sin(baseAng) * step, p.z + Math.cos(baseAng) * step, 0.38, 0, 1.7);
+      movedX = r.x;
+      movedZ = r.z;
+    }
+    p.x = movedX;
+    p.z = movedZ;
     p.y = Math.max(0, groundAt(p.x, p.z));
-    this.mesh.group.lookAt(p.x + dx, p.y, p.z + dz);
+    // Face the intended target so the model tracks where it's going.
+    this.mesh.group.lookAt(p.x + dxA, p.y, p.z + dzA);
     this.walkT += dt * speed * 3;
-    // Leg walk cycle
-    this.mesh.legL.rotation.x = Math.sin(this.walkT) * 0.55;
-    this.mesh.legR.rotation.x = Math.sin(this.walkT + Math.PI) * 0.55;
-    // Arm swing (forearms now)
-    if (this.mesh.armL) this.mesh.armL.rotation.x = Math.sin(this.walkT + Math.PI) * 0.4;
-    if (this.mesh.armR) this.mesh.armR.rotation.x = Math.sin(this.walkT) * 0.4 - 0.5;
+    // Leg walk cycle (slower when wall-blocked so they don't slide in place)
+    const stride = hitWall ? 0.12 : 1;
+    this.mesh.legL.rotation.x = Math.sin(this.walkT) * 0.55 * stride;
+    this.mesh.legR.rotation.x = Math.sin(this.walkT + Math.PI) * 0.55 * stride;
+    if (this.mesh.armL) this.mesh.armL.rotation.x = Math.sin(this.walkT + Math.PI) * 0.4 * stride;
+    if (this.mesh.armR) this.mesh.armR.rotation.x = Math.sin(this.walkT) * 0.4 * stride - 0.5;
     return len;
   }
 
@@ -3867,13 +5748,17 @@ class Enemy {
     }
 
     const heard = this.hear();
-    const sees = this.los();
+    // Vision is TRUE sight: the player must actually be in front of the guard
+    // (within the facing cone + line of sight). Guards do NOT notice you from
+    // behind/beside them — they only react to what their eyes can see.
+    const sees = this.los(false);
+    const distP = Math.hypot(player.x - p.x, player.z - p.z);
 
     if (sees) {
+      // Locked eyes: guard immediately turns to engage and open fire.
+      if (this.state !== "combat") this.state = "combat";
       this.lastSeen.set(player.x, 0, player.z);
-      if (this.state === "patrol" || this.state === "suspicious" || this.state === "search") {
-        this.state = state.alarm || this.boss ? "combat" : "alarmrun";
-      }
+      this.cool = Math.min(this.cool, 0.25);
     } else if (heard && this.state === "patrol") {
       this.state = "suspicious";
       this.investigate.set(heard.x, 0, heard.z);
@@ -3931,16 +5816,27 @@ class Enemy {
         this.mesh.headGroup.rotation.x = THREE.MathUtils.clamp(-vDist * 0.05, -0.15, 0.15);
       }
       this.cool -= dt;
-      if (this.cool <= 0 && sees) {
-        this.cool = this.boss ? 0.35 : 0.8 + Math.random() * 0.3;
-        const didShoot = Math.random() < (this.boss ? 0.2 : 0.4);
-        if (didShoot) shootPlayer(this.boss ? 13 : 11);
+      const canSeePlayer = sees;
+      if (this.cool <= 0 && canSeePlayer) {
+        this.cool = this.boss ? 0.5 : 1.25 + Math.random() * 0.4;
+        // Re-validate a fresh line of sight at the instant of firing so guards can NEVER
+        // damage you through a wall/cover. The tracer still fires (and hits the wall) but
+        // the shot is blocked unless the torso is actually visible.
+        const fFrom = new THREE.Vector3(p.x, 1.15, p.z);
+        const fTo = new THREE.Vector3(player.x, player.y + 1.2 - state.crouch * 0.5, player.z);
+        const fDist = fFrom.distanceTo(fTo);
+        const fDir = fTo.clone().sub(fFrom).normalize();
+        ray.set(fFrom, fDir);
+        const fHits = ray.intersectObjects(occluders, false);
+        const shotBlocked = fHits.length && fHits[0].distance < fDist - 0.4;
+        const didShoot = Math.random() < (this.boss ? 0.18 : 0.28);
+        if (didShoot && !shotBlocked) shootPlayer(this.boss ? 12 : 9);
         this.strafe *= -1;
         playGunshot();
         spawnMuzzleFlash(this.pos().clone().setY(1.15));
         // Enemy bullet tracer
         const ePos = this.pos();
-        const eDir = new THREE.Vector3(player.x - ePos.x, (player.y + 1.2) - 1.15, player.z - ePos.z).normalize();
+        const eDir = new THREE.Vector3(player.x - ePos.x, (player.y + 1.2 - state.crouch * 0.5) - 1.15, player.z - ePos.z).normalize();
         eDir.x += (Math.random() - 0.5) * 0.08;
         eDir.y += (Math.random() - 0.5) * 0.06;
         eDir.normalize();
@@ -4003,8 +5899,64 @@ function triggerAlarm() {
   for (const e of enemies) {
     if (!e.dead && e.state !== "combat") e.state = "combat";
   }
-  enemies.push(new Enemy({ x: 1.2, z: 16, health: 50, state: "combat", waypoints: [] }));
-  enemies.push(new Enemy({ x: 2.2, z: 15.5, health: 50, state: "combat", waypoints: [] }));
+  if (state.level === 2) {
+    enemies.push(new Enemy({ x: 15, z: -10, health: 50, state: "combat", waypoints: [] }));
+    enemies.push(new Enemy({ x: 35, z: 5, health: 50, state: "combat", waypoints: [] }));
+  } else {
+    enemies.push(new Enemy({ x: 1.2, z: 16, health: 50, state: "combat", waypoints: [] }));
+    enemies.push(new Enemy({ x: 2.2, z: 15.5, health: 50, state: "combat", waypoints: [] }));
+  }
+  updateSoldierCount();
+}
+
+// ── TARGETED ENEMY ALERTS ──────────────────────────────────────
+// When the player fires and misses, the noise draws the attention of the N nearest
+// guards. hostile=true means they come to kill (combat); hostile=false means they only
+// come to investigate / hunt the noise source (search).
+function alertNearestGuards(count, hostile) {
+  const pool = enemies.filter((e) => !e.dead && !e.dying && e.state !== "combat");
+  pool.sort((a, b) => {
+    const da = Math.hypot(a.pos().x - player.x, a.pos().z - player.z);
+    const db = Math.hypot(b.pos().x - player.x, b.pos().z - player.z);
+    return da - db;
+  });
+  const n = Math.min(count, pool.length);
+  for (let i = 0; i < n; i++) {
+    const e = pool[i];
+    if (hostile) {
+      e.state = "combat";
+      e.lastSeen.set(player.x, 0, player.z);
+      e.cool = Math.min(e.cool, 0.3);
+    } else {
+      e.state = "suspicious";
+      e.investigate.set(player.x, 0, player.z);
+      e.searchT = 6;
+    }
+  }
+}
+
+// When a guard is killed, only guards who see the death RIGHT IN FRONT of them
+// (within 6 units and clear line of sight) come to kill the player.
+function alertGuardDeath(dx, dz) {
+  const pool = enemies.filter((e) => !e.dead && !e.dying && !e.boss && e.state !== "combat");
+  const deathPos = new THREE.Vector3(dx, 1.15, dz);
+  let alerted = 0;
+  for (const e of pool) {
+    const ep = e.pos();
+    const dist = Math.hypot(ep.x - dx, ep.z - dz);
+    if (dist > 6) continue;
+    // Check line of sight to the dying guard's position
+    const origin = new THREE.Vector3(ep.x, 1.5, ep.z);
+    const dir = deathPos.clone().sub(origin).normalize();
+    ray.set(origin, dir);
+    const hits = ray.intersectObjects(occluders, false);
+    if (hits.length && hits[0].distance < dist - 0.4) continue;
+    e.state = "combat";
+    e.lastSeen.set(player.x, 0, player.z);
+    e.cool = Math.min(e.cool, 0.4);
+    alerted++;
+  }
+  if (alerted > 0) subtitle("GUARD DOWN — THEY SAW YOU.");
 }
 
 function subtitle(t) {
@@ -4119,7 +6071,8 @@ function fire() {
     muzzleLight.intensity = 8;
     state.muzzleFlashT = 0.05;
     emitNoise(2.0);
-    hitscan(25, 0.012);
+    // A missed pistol shot alerts only the single nearest guard to come hunt you.
+    if (!hitscan(25, 0.012)) alertNearestGuards(1, false);
   } else if (state.weapon === 2) {
     if (state.ak47Ammo <= 0) {
       audio.empty();
@@ -4134,7 +6087,8 @@ function fire() {
     muzzleLight.intensity = 10;
     state.muzzleFlashT = 0.04;
     emitNoise(2.5);
-    hitscan(22, 0.025);
+    // A missed AK-47 burst is loud: the 3 nearest guards hear it and come to kill you.
+    if (!hitscan(22, 0.025)) alertNearestGuards(3, true);
   } else {
     state.fireCd = 0.16;
     audio.laser();
@@ -4158,12 +6112,14 @@ function hitscan(dmg, spread, laser = false) {
   if (!hits.length) {
     if (laser) spawnBeam(_v.clone(), _v.clone().addScaledVector(dir, 40), true);
     spawnPlayerTracer(dir, null);
-    return;
+    return false;
   }
   const h = hits[0];
   spawnPlayerTracer(dir, h.point);
   const en = h.object.userData.enemy;
+  let hitEnemy = false;
   if (en) {
+    hitEnemy = true;
     en.takeDamage(dmg, h.point);
     spawnBlood(h.point);
     spawnSparks(h.point, 6);
@@ -4187,6 +6143,7 @@ function hitscan(dmg, spread, laser = false) {
     }
   }
   if (laser) spawnBeam(camera.getWorldPosition(new THREE.Vector3()), h.point, true);
+  return hitEnemy;
 }
 
 function spawnMuzzleFlash(p) {
@@ -4403,7 +6360,7 @@ function updateCameras(dt) {
 
 // ── PLAYER UPDATE ──────────────────────────────────────
 function updatePlayer(dt) {
-  state.wantCrouch = !!keys.ShiftLeft || !!keys.ShiftRight;
+  state.wantCrouch = !!keys.ShiftLeft || !!keys.ShiftRight || touch.crouch;
   const ceil = ceilingAt(player.x, player.z);
   const standH = 1.7;
   const crouchH = 0.95;
@@ -4415,7 +6372,7 @@ function updatePlayer(dt) {
 
   let speed = state.wantCrouch ? 2.5 : 5.0;
   if (state.ads) speed *= 0.6;
-  state.sprint = keys.ShiftLeft && !state.wantCrouch && !state.ads;
+  state.sprint = (keys.ShiftLeft || touch.sprint) && !state.wantCrouch && !state.ads;
   if (state.sprint) speed = 7.0;
 
   camera.rotation.order = "YXZ";
@@ -4435,12 +6392,21 @@ function updatePlayer(dt) {
   if (keys.KeyS) { mx -= fx; mz -= fz; }
   if (keys.KeyA) { mx += rx; mz += rz; }
   if (keys.KeyD) { mx -= rx; mz -= rz; }
+  // On-screen stick: up = forward, left = strafe left (matches W A S D).
+  const sf = -touch.move.y;
+  const ss = -touch.move.x;
+  if (sf || ss) { mx += fx * sf + rx * ss; mz += fz * sf + rz * ss; }
   const ml = Math.hypot(mx, mz);
   if (ml > 0) { mx /= ml; mz /= ml; }
+  // Analogue tilt: a partly-pushed stick walks slower.
+  if (!keys.KeyW && !keys.KeyS && !keys.KeyA && !keys.KeyD) {
+    speed *= Math.max(0.35, Math.min(1, Math.hypot(sf, ss)));
+  }
 
-  if (state.grounded && keys.Space && !state.wantCrouch) {
+  if (state.grounded && (keys.Space || touch.jump) && !state.wantCrouch) {
     state.vy = 7;
     state.grounded = false;
+    touch.jump = false;
   }
   state.vy -= 20 * dt;
 
@@ -4478,7 +6444,10 @@ function updatePlayer(dt) {
     if (state.footT > 1) {
       state.footT = 0;
       audio.foot(state.wantCrouch);
-      emitNoise(state.wantCrouch ? 1.2 : 5);
+      // Footsteps are (near) silent for enemy awareness — you can sneak up behind a
+      // guard and they won't hear you. Guards only find you by sight (in front of
+      // them), by spotting a dead comrade, by hearing an actual gunshot, or by being shot.
+      emitNoise(state.wantCrouch ? 0.3 : 0.6);
     }
   }
 
@@ -4548,6 +6517,10 @@ function updatePickups(dt) {
       p.mesh.visible = false;
       audio.pickup();
       if (p.type === "health") state.health = Math.min(100, state.health + 50);
+      if (p.type === "healthbig") {
+        state.health = Math.min(100, state.health + 65);
+        subtitle("FIRST AID KIT — HEALTH RESTORED.");
+      }
       if (p.type === "armor") state.armor = Math.min(100, state.armor + 50);
       if (p.type === "ammo") state.reserve = Math.min(49, state.reserve + 14);
       if (p.type === "ak47") {
@@ -4662,10 +6635,17 @@ function updateHud() {
 
   const obj = document.getElementById("objectives");
   if (obj) {
-    obj.innerHTML =
-      `<div class="${state.alpha ? "done" : "todo"}">${state.alpha ? "\u2713" : "\u25CB"} ALPHA  DISABLE UPLINK</div>` +
-      `<div class="${state.beta ? "done" : "todo"}">${state.beta ? "\u2713" : "\u25CB"} BETA   RECOVER CODES</div>` +
-      `<div class="${state.gamma ? "done" : "todo"}">${state.gamma ? "\u2713" : "\u25CB"} GAMMA  EXTRACT</div>`;
+    if (state.level === 2) {
+      obj.innerHTML =
+        `<div class="${state.alpha ? "done" : "todo"}">${state.alpha ? "\u2713" : "\u25CB"} ALPHA  ELIMINATE HOSTILES</div>` +
+        `<div class="${state.beta ? "done" : "todo"}">${state.beta ? "\u2713" : "\u25CB"} BETA   RECOVER ARCHIVES</div>` +
+        `<div class="${state.gamma ? "done" : "todo"}">${state.gamma ? "\u2713" : "\u25CB"} GAMMA  ESCAPE VIA AIRCRAFT</div>`;
+    } else {
+      obj.innerHTML =
+        `<div class="${state.alpha ? "done" : "todo"}">${state.alpha ? "\u2713" : "\u25CB"} ALPHA  DISABLE UPLINK</div>` +
+        `<div class="${state.beta ? "done" : "todo"}">${state.beta ? "\u2713" : "\u25CB"} BETA   RECOVER CODES</div>` +
+        `<div class="${state.gamma ? "done" : "todo"}">${state.gamma ? "\u2713" : "\u25CB"} GAMMA  EXTRACT</div>`;
+    }
   }
 
   // Boss health bar
@@ -4727,12 +6707,12 @@ function updateFx(dt) {
     lp.l.intensity = lp.base * (0.88 + Math.sin(performance.now() * 0.008 + lp.phase) * 0.08);
     if (Math.random() < 0.012) lp.l.intensity *= 0.35;
   }
-  if (state.alarm) {
+  if (state.alarm && alarmLights) {
     const pulse = 1.4 + Math.sin(performance.now() * 0.01) * 1.2;
     alarmLights[0].intensity = pulse;
     alarmLights[1].intensity = pulse;
   }
-  if (state.doorOpen && doorMesh.position.y < 4.6) {
+  if (state.doorOpen && doorMesh && doorMesh.position.y < 4.6) {
     doorMesh.position.y += dt * 2.2;
     doorY = doorMesh.position.y;
   }
@@ -4760,7 +6740,24 @@ function die() {
 
 function win() {
   state.gamma = true;
+  if (state.level === 1) {
+    // ── TRANSITION TO LEVEL 2 ──
+    document.exitPointerLock();
+    document.getElementById("hud").style.display = "none";
+    const end = document.getElementById("end");
+    end.style.display = "flex";
+    document.getElementById("end-title").textContent = "OBJECTIVE COMPLETE";
+    document.getElementById("end-body").innerHTML =
+      `LAUNCH CODES RECOVERED<br>AGENT 7 EXTRACTED<br><br>` +
+      `PROCEEDING TO EXTERIOR COMPOUND.<br><br>${hintContinue()}`;
+    state.mode = "level2";
+    return;
+  }
   state.mode = "win";
+  showFinalWin();
+}
+
+function showFinalWin() {
   document.exitPointerLock();
   document.getElementById("hud").style.display = "none";
   const end = document.getElementById("end");
@@ -4769,7 +6766,7 @@ function win() {
   const mins = (state.time / 60) | 0;
   const secs = (state.time % 60) | 0;
   document.getElementById("end-body").innerHTML =
-    `UPLINK DISABLED<br>LAUNCH CODES RECOVERED<br>AGENT 7 EXTRACTED<br><br>` +
+    `ALL HOSTILES ELIMINATED<br>ARCHIVES RECOVERED<br>AGENT 7 ESCAPED<br><br>` +
     `TIME: ${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}<br>` +
     `KILLS: ${state.killCount}<br>` +
     (state.everAlarm ? "ALARM: TRIGGERED" : "ALARM: SILENT \u2014 PERFECT STEALTH");
@@ -4803,13 +6800,14 @@ function startPlay() {
   state.time = 0;
   document.getElementById("overlay").classList.add("hidden");
   document.getElementById("hud").style.display = "block";
-  canvas.requestPointerLock();
+  if (!touchMode) canvas.requestPointerLock();
   audio.startMusic();
   loadGrunts();
   loadGunSounds();
 }
 
 // ── INPUT BINDING ──────────────────────────────────────
+let cheatBuffer = "";
 function bind() {
   window.addEventListener("resize", resize);
   document.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -4817,6 +6815,27 @@ function bind() {
   document.addEventListener("keydown", (e) => {
     keys[e.code] = true;
     if (["Space", "ArrowUp", "ArrowDown", "Enter"].includes(e.code) || e.code.startsWith("Key")) e.preventDefault();
+
+    // ── CHEAT: type 2014 on the title screen to skip straight to level 2 ──
+    if (state.mode === "title") {
+      if (/^Digit\d$/.test(e.code)) {
+        cheatBuffer += e.code.slice(5);
+        if (cheatBuffer.length > 4) cheatBuffer = cheatBuffer.slice(-4);
+        if (cheatBuffer === "2014") {
+          cheatBuffer = "";
+          document.getElementById("overlay").classList.add("hidden");
+          audio.resume();
+          loadLevel(2);
+          startPlay();
+          audio.startMusicRunway();
+          return;
+        }
+      } else if (!/^Digit\d$/.test(e.code) && e.code !== "Space") {
+        if (e.code !== "Enter" && e.code !== "KeyW" && e.code !== "KeyA" && e.code !== "KeyS" && e.code !== "KeyD") {
+          cheatBuffer = "";
+        }
+      }
+    }
 
     const isStartKey = e.code === "Enter" || e.code === "NumpadEnter" || e.code === "Space" || e.code === "KeyW" || e.code === "KeyA" || e.code === "KeyS" || e.code === "KeyD";
     if (isStartKey) {
@@ -4826,7 +6845,7 @@ function bind() {
         state.mode = "brief";
         document.getElementById("hint").textContent = "";
         typeBrief(BRIEF, document.getElementById("brief"), () => {
-          document.getElementById("hint").textContent = "PRESS ENTER TO DEPLOY";
+          document.getElementById("hint").textContent = hintDeploy();
           state.mode = "ready";
         });
         return;
@@ -4835,7 +6854,7 @@ function bind() {
         if (briefTimer) clearInterval(briefTimer);
         briefTimer = null;
         document.getElementById("brief").textContent = BRIEF;
-        document.getElementById("hint").textContent = "PRESS ENTER TO DEPLOY";
+        document.getElementById("hint").textContent = hintDeploy();
         state.mode = "ready";
         return;
       }
@@ -4845,12 +6864,15 @@ function bind() {
         return;
       }
       if (state.mode === "dead" || state.mode === "win") { location.reload(); return; }
-      if (state.mode === "pause") {
-        state.mode = "play";
-        document.getElementById("pause").style.display = "none";
-        canvas.requestPointerLock();
+      if (state.mode === "level2") {
+        document.getElementById("end").style.display = "none";
+        document.getElementById("hud").style.display = "block";
+        loadLevel(2);
+        startPlay();
+        audio.startMusicRunway();
         return;
       }
+      if (state.mode === "pause") { resumePlay(); return; }
     }
 
     if (state.mode === "play") {
@@ -4859,48 +6881,17 @@ function bind() {
       if (e.code === "Digit1") state.weapon = 0;
       if (e.code === "Digit2") state.weapon = 1;
       if (e.code === "KeyJ" && state.hasAK47) state.weapon = state.weapon === 2 ? 0 : 2;
-      if (e.code === "Escape") {
-        state.mode = "pause";
-        document.getElementById("pause").style.display = "flex";
-        document.exitPointerLock();
-      }
+      if (e.code === "Escape") pausePlay();
     } else if (state.mode === "pause" && e.code === "Escape") {
-      state.mode = "play";
-      document.getElementById("pause").style.display = "none";
-      canvas.requestPointerLock();
+      resumePlay();
     }
   });
 
   document.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
   document.addEventListener("mousedown", (e) => {
-    if (state.mode === "title") {
-      audio.resume();
-      audio.ui();
-      state.mode = "brief";
-      document.getElementById("hint").textContent = "";
-      typeBrief(BRIEF, document.getElementById("brief"), () => {
-        document.getElementById("hint").textContent = "PRESS ENTER TO DEPLOY";
-        state.mode = "ready";
-      });
-      return;
-    }
-    if (state.mode === "brief") {
-      if (briefTimer) clearInterval(briefTimer);
-      briefTimer = null;
-      document.getElementById("brief").textContent = BRIEF;
-      document.getElementById("hint").textContent = "PRESS ENTER TO DEPLOY";
-      state.mode = "ready";
-      return;
-    }
-    if (state.mode === "ready") { audio.resume(); startPlay(); return; }
-    if (state.mode === "pause") {
-      state.mode = "play";
-      document.getElementById("pause").style.display = "none";
-      canvas.requestPointerLock();
-      return;
-    }
-    if (state.mode === "dead" || state.mode === "win") { location.reload(); return; }
+    if (touchMode) return; // phones use the on-screen widgets, not the mouse
+    if (advanceFromInput()) return;
     if (state.mode !== "play") return;
     if (document.pointerLockElement !== canvas) { canvas.requestPointerLock(); return; }
     if (e.button === 0) fire();
@@ -4919,6 +6910,269 @@ function bind() {
   });
 }
 
+// ── SHARED SCREEN ADVANCE (click / tap) ────────────────────────
+// Walks the title → brief → ready → play → level2 chain, whatever the
+// input device. Returns true when the press was consumed by a menu.
+function advanceFromInput() {
+  if (state.mode === "title") {
+    audio.resume();
+    audio.ui();
+    state.mode = "brief";
+    document.getElementById("hint").textContent = "";
+    typeBrief(BRIEF, document.getElementById("brief"), () => {
+      document.getElementById("hint").textContent = hintDeploy();
+      state.mode = "ready";
+    });
+    return true;
+  }
+  if (state.mode === "brief") {
+    if (briefTimer) clearInterval(briefTimer);
+    briefTimer = null;
+    document.getElementById("brief").textContent = BRIEF;
+    document.getElementById("hint").textContent = hintDeploy();
+    state.mode = "ready";
+    return true;
+  }
+  if (state.mode === "ready") { audio.resume(); startPlay(); return true; }
+  if (state.mode === "pause") { resumePlay(); return true; }
+  if (state.mode === "dead" || state.mode === "win") { location.reload(); return true; }
+  if (state.mode === "level2") {
+    document.getElementById("end").style.display = "none";
+    document.getElementById("hud").style.display = "block";
+    loadLevel(2);
+    startPlay();
+    audio.startMusicRunway();
+    return true;
+  }
+  return false;
+}
+
+function resumePlay() {
+  state.mode = "play";
+  document.getElementById("pause").style.display = "none";
+  if (!touchMode) canvas.requestPointerLock();
+}
+
+function pausePlay() {
+  if (state.mode !== "play") return;
+  state.mode = "pause";
+  document.getElementById("pause").style.display = "flex";
+  if (!touchMode) document.exitPointerLock();
+}
+
+// ══════════════════════════════════════════════════════════════
+// TOUCH CONTROLS
+// Every widget writes to the same state the keyboard/mouse use, so the
+// game itself is untouched — on a phone you just get an on-screen stick,
+// a drag-to-look zone and a button per action.
+// ══════════════════════════════════════════════════════════════
+const touch = {
+  move: { x: 0, y: 0 },
+  joyId: -1,
+  lookId: -1,
+  lookX: 0,
+  lookY: 0,
+  lookTravel: 0,
+  lookStart: 0,
+  firing: false,
+  ads: false,
+  sprint: false,
+  crouch: false,
+  jump: false,
+  use: false,
+};
+
+let touchMode = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+
+function hintDeploy() { return touchMode ? "TAP TO DEPLOY" : "PRESS ENTER TO DEPLOY"; }
+function hintResume() { return touchMode ? "TAP TO RESUME" : "PRESS ESC TO RESUME"; }
+function hintRedeploy() { return touchMode ? "TAP TO REDEPLOY" : "CLICK TO REDEPLOY"; }
+function hintContinue() { return touchMode ? "TAP TO CONTINUE" : "PRESS ENTER TO CONTINUE"; }
+
+function setTouchMode(on) {
+  touchMode = !!on;
+  document.body.classList.toggle("touch-mode", touchMode);
+  const h = document.getElementById("hint");
+  const p = document.querySelector("#pause .pause-hint");
+  const e = document.querySelector("#end .end-hint");
+  if (h) h.textContent = touchMode ? "TAP TO DEPLOY" : "PRESS ENTER TO DEPLOY";
+  if (p) p.textContent = hintResume();
+  if (e) e.textContent = hintRedeploy();
+  if (!touchMode) {
+    touch.firing = false;
+    touch.ads = state.ads = false;
+    touch.use = keys.KeyE = false;
+    touch.sprint = false;
+    touch.crouch = false;
+    touch.jump = false;
+    touch.move.x = touch.move.y = 0;
+    const knob = document.getElementById("stick-knob");
+    if (knob) knob.style.transform = "translate(0px, 0px)";
+  }
+}
+
+function touchCycleWeapon() {
+  if (state.weapon === 0) state.weapon = 1;
+  else if (state.weapon === 1) state.weapon = state.hasAK47 ? 2 : 0;
+  else state.weapon = 0;
+}
+
+function bindTouch() {
+  const ui = document.getElementById("touch-ui");
+  const look = document.getElementById("touch-look");
+  const base = document.getElementById("stick");
+  const knob = document.getElementById("stick-knob");
+  if (!ui || !look || !base || !knob) return;
+
+  // ── Virtual stick ──
+  const stickMax = () => base.getBoundingClientRect().width * 0.34;
+  function stickTo(cx, cy) {
+    const r = base.getBoundingClientRect();
+    const max = stickMax();
+    let dx = cx - (r.left + r.width / 2);
+    let dy = cy - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy);
+    if (d > max) { dx = (dx / d) * max; dy = (dy / d) * max; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    touch.move.x = dx / max;
+    touch.move.y = dy / max;
+  }
+  function stickReset() {
+    touch.joyId = -1;
+    touch.move.x = 0;
+    touch.move.y = 0;
+    knob.style.transform = "translate(0px, 0px)";
+    base.classList.remove("on");
+  }
+
+  base.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    if (touch.joyId !== -1) return;
+    touch.joyId = t.identifier;
+    base.classList.add("on");
+    stickTo(t.clientX, t.clientY);
+  }, { passive: false });
+
+  base.addEventListener("touchmove", (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier !== touch.joyId) continue;
+      e.preventDefault();
+      stickTo(t.clientX, t.clientY);
+    }
+  }, { passive: false });
+
+  for (const ev of ["touchend", "touchcancel"]) {
+    base.addEventListener(ev, (e) => {
+      for (const t of e.changedTouches) if (t.identifier === touch.joyId) stickReset();
+    });
+  }
+
+  // ── Drag to look / tap to fire ──
+  look.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    if (state.mode !== "play" || touch.lookId !== -1) return;
+    const t = e.changedTouches[0];
+    touch.lookId = t.identifier;
+    touch.lookX = t.clientX;
+    touch.lookY = t.clientY;
+    touch.lookTravel = 0;
+    touch.lookStart = performance.now();
+  }, { passive: false });
+
+  look.addEventListener("touchmove", (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier !== touch.lookId || state.mode !== "play") continue;
+      e.preventDefault();
+      const dx = t.clientX - touch.lookX;
+      const dy = t.clientY - touch.lookY;
+      touch.lookX = t.clientX;
+      touch.lookY = t.clientY;
+      touch.lookTravel += Math.abs(dx) + Math.abs(dy);
+      const sens = 0.0032 * (state.ads ? 0.55 : 1);
+      state.yaw -= dx * sens;
+      state.pitch -= dy * sens;
+      state.pitch = Math.max(-1.35, Math.min(1.35, state.pitch));
+    }
+  }, { passive: false });
+
+  for (const ev of ["touchend", "touchcancel"]) {
+    look.addEventListener(ev, (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier !== touch.lookId) continue;
+        // A quick tap that barely moved is a shot.
+        if (ev === "touchend" && state.mode === "play" && touch.lookTravel < 16 && performance.now() - touch.lookStart < 320) fire();
+        touch.lookId = -1;
+      }
+    });
+  }
+
+  // ── Buttons ──
+  function holdButton(id, down, up) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      el.classList.add("down");
+      if (down) down();
+    }, { passive: false });
+    const release = (e) => {
+      e.preventDefault();
+      el.classList.remove("down");
+      if (up) up();
+    };
+    el.addEventListener("touchend", release);
+    el.addEventListener("touchcancel", release);
+  }
+
+  function tapButton(id, fn) {
+    holdButton(id, fn, null);
+  }
+
+  holdButton("t-fire", () => { touch.firing = true; }, () => { touch.firing = false; });
+  holdButton("t-aim", () => { touch.ads = true; state.ads = true; }, () => { touch.ads = false; state.ads = false; });
+  holdButton("t-use", () => { touch.use = true; keys.KeyE = true; }, () => { touch.use = false; keys.KeyE = false; });
+  holdButton("t-sprint", () => { touch.sprint = true; }, () => { touch.sprint = false; });
+  holdButton("t-crouch", () => { touch.crouch = true; }, () => { touch.crouch = false; });
+  tapButton("t-reload", () => reload());
+  tapButton("t-take", () => takedown());
+  tapButton("t-jump", () => { touch.jump = true; });
+  tapButton("t-weapon", () => touchCycleWeapon());
+  tapButton("t-pause", () => pausePlay());
+
+  // ── Taps anywhere else advance the menus (title / brief / ready / pause / end) ──
+  document.addEventListener("touchstart", (e) => {
+    if (!touchMode) setTouchMode(true); // hybrid laptops: first tap flips to touch
+    const t = e.target;
+    if (t && t.closest && (t.closest("#touch-ui") || t.closest("#hitui"))) return;
+    e.preventDefault();
+    advanceFromInput();
+  }, { passive: false });
+
+  // Kill iOS pinch/double-tap zoom and the pull-to-refresh bounce.
+  document.addEventListener("touchmove", (e) => {
+    const t = e.target;
+    if (t && t.closest && t.closest("#touch-ui")) e.preventDefault();
+  }, { passive: false });
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  document.addEventListener("dblclick", (e) => e.preventDefault());
+}
+
+// Hide the widgets whenever the player isn't actually in the mission.
+function updateTouchUi() {
+  const ui = document.getElementById("touch-ui");
+  if (!ui) return;
+  const on = touchMode && state.mode === "play";
+  if (ui.classList.contains("on") !== on) ui.classList.toggle("on", on);
+  if (!on && touch.firing) {
+    touch.firing = false;
+    touch.ads = state.ads = false;
+    touch.use = keys.KeyE = false;
+    touch.sprint = touch.crouch = touch.jump = false;
+    touch.move.x = touch.move.y = 0;
+  }
+}
+
 // ── GAME LOOP ──────────────────────────────────────
 let last = performance.now();
 function loop(now) {
@@ -4926,6 +7180,7 @@ function loop(now) {
   last = now;
   if (state.mode === "play") {
     state.time += dt;
+    if (touch.firing) fire();
     updatePlayer(dt);
     for (const e of enemies) e.update(dt);
     updateCameras(dt);
@@ -4933,46 +7188,108 @@ function loop(now) {
     updateInteract(dt);
     updateFx(dt);
     updateTracers(dt);
+    if (state.level === 2 && plane2) {
+      const pud = plane2.userData;
+      if (pud.prop) {
+        pud.prop.rotation.z += dt * 22;
+        if (pud.blur) pud.blur.material.opacity = Math.min(0.3, pud.blur.material.opacity + dt * 0.35);
+      }
+    }
     state.damageFlash = Math.max(0, state.damageFlash - dt * 2.5);
     for (let i = noises.length - 1; i >= 0; i--) {
       noises[i].t -= dt;
       if (noises[i].t <= 0) noises.splice(i, 1);
     }
     updateHud();
+  } else if (state.mode === "level2") {
+    // Waiting for player to continue into level 2
+  } else if (state.mode === "cutscene") {
+    updateCutscene(dt);
   }
   renderer.render(scene, camera);
   if (hitboxEls.length) updateHitboxPositions();
+  updateTouchUi();
   requestAnimationFrame(loop);
 }
 
-// ── INIT ──────────────────────────────────────
-buildLevel();
-buildWeapon();
-enemies.push(
-  new Enemy({
-    x: -6, z: 18,
-    waypoints: [
-      new THREE.Vector3(-6, 0, 18), new THREE.Vector3(12, 0, 18),
-      new THREE.Vector3(12, 0, 32), new THREE.Vector3(-6, 0, 32),
-    ],
-  })
-);
-enemies.push(
-  new Enemy({
-    x: 10, z: 28,
-    waypoints: [
-      new THREE.Vector3(10, 0, 22), new THREE.Vector3(10, 0, 30),
-      new THREE.Vector3(-3, 0, 30), new THREE.Vector3(-3, 0, 22),
-    ],
-  })
-);
-enemies.push(new Enemy({ x: 4, z: 62, health: 200, boss: true, state: "patrol", waypoints: [] }));
+// ── LEVEL LOADING / TRANSITIONS ───────────────────────────
+function spawnLevelEnemies(level) {
+  if (level === 2) {
+    // ── OPENING CHANNEL: 3 spaced guards ──
+    enemies.push(new Enemy({ x: -14, z: -24, waypoints: [new THREE.Vector3(-14,0,-24), new THREE.Vector3(-8,0,-26)] }));
+    enemies.push(new Enemy({ x: 15, z: -20, waypoints: [new THREE.Vector3(15,0,-20), new THREE.Vector3(9,0,-18)] }));
+    enemies.push(new Enemy({ x: -3, z: -16, waypoints: [new THREE.Vector3(-3,0,-16), new THREE.Vector3(-9,0,-13)] }));
+    // ── MID YARD: 3 spaced guards ──
+    enemies.push(new Enemy({ x: -15, z: -11, waypoints: [new THREE.Vector3(-15,0,-11), new THREE.Vector3(-9,0,-9)] }));
+    enemies.push(new Enemy({ x: 14, z: -9, waypoints: [new THREE.Vector3(14,0,-9), new THREE.Vector3(8,0,-7)] }));
+    enemies.push(new Enemy({ x: 0, z: -6, waypoints: [new THREE.Vector3(0,0,-6), new THREE.Vector3(6,0,-4)] }));
+    // ── ARCHIVES / DOORWAY: 2 guards (light inside) ──
+    enemies.push(new Enemy({ x: -5, z: 3, waypoints: [new THREE.Vector3(-5,0,3), new THREE.Vector3(-2,0,6)] }));
+    enemies.push(new Enemy({ x: 5, z: 6, waypoints: [new THREE.Vector3(5,0,6), new THREE.Vector3(2,0,3)] }));
+    // ── NORTH YARD APPROACH: 2 guards ──
+    enemies.push(new Enemy({ x: -11, z: 14, waypoints: [new THREE.Vector3(-11,0,14), new THREE.Vector3(-6,0,17)] }));
+    enemies.push(new Enemy({ x: 12, z: 16, waypoints: [new THREE.Vector3(12,0,16), new THREE.Vector3(7,0,19)] }));
+    // ── AIRPORT / NEAR THE PLANE: 2 guards ──
+    enemies.push(new Enemy({ x: -8, z: 32, waypoints: [new THREE.Vector3(-8,0,32), new THREE.Vector3(-4,0,35)] }));
+    enemies.push(new Enemy({ x: 6, z: 40, state: "patrol", waypoints: [] }));
+  } else {
+    enemies.push(
+      new Enemy({
+        x: -6, z: 18,
+        waypoints: [
+          new THREE.Vector3(-6, 0, 18), new THREE.Vector3(12, 0, 18),
+          new THREE.Vector3(12, 0, 32), new THREE.Vector3(-6, 0, 32),
+        ],
+      })
+    );
+    enemies.push(
+      new Enemy({
+        x: 10, z: 28,
+        waypoints: [
+          new THREE.Vector3(10, 0, 22), new THREE.Vector3(10, 0, 30),
+          new THREE.Vector3(-3, 0, 30), new THREE.Vector3(-3, 0, 22),
+        ],
+      })
+    );
+    enemies.push(new Enemy({ x: 4, z: 62, health: 200, boss: true, state: "patrol", waypoints: [] }));
+  }
+  updateSoldierCount();
+}
 
-camera.rotation.order = "YXZ";
-camera.rotation.y = state.yaw;
-camera.position.set(player.x, 0.85, player.z);
+function loadLevel(level) {
+  state.level = level;
+  buildLevel(level);
+  spawnLevelEnemies(level);
+  // Reset interior flag
+  state.l2Inside = false;
+  camera.rotation.order = "YXZ";
+  if (level === 2) {
+    state.yaw = Math.PI; // face +z toward building
+    player.x = 0; player.z = -30; player.y = 0;
+  } else {
+    player.x = 1.1; player.z = 2.4; player.y = 0;
+  }
+  state.pitch = 0;
+  state.time = 0;
+  state.alpha = state.beta = state.gamma = false;
+  state.hasCodes = false;
+  state.doorOpen = false;
+  state.alarm = false;
+  state.silent = true;
+  camera.rotation.y = state.yaw;
+  camera.rotation.x = 0;
+  camera.position.set(player.x, 0.85, player.z);
+  camera.fov = 72;
+  camera.updateProjectionMatrix();
+}
+
+// ── INIT ──────────────────────────────────────
+buildWeapon();
+loadLevel(1);
 resize();
 bind();
+bindTouch();
+setTouchMode(touchMode);
 requestAnimationFrame(loop);
 
 // ── HIT REACTION TEST UI ──────────────────────────────────────
