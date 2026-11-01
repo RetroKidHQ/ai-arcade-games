@@ -251,6 +251,8 @@
       const canvas = document.getElementById('game');
       const ctx = canvas.getContext('2d', { alpha: false });
       const stateEl = document.getElementById('state');
+      const locationNameEl = document.querySelector('.location__name');
+      const locationSubEl = document.querySelector('.location__sub');
 
       // 500 × 500 blocks. Each block is one 16px grass tile.
       const TILE = 16;
@@ -260,10 +262,28 @@
       const BOUNDARY_SIZE = BOUNDARY_BLOCKS * TILE;
       const PLAYER_SPEED = 74;
 
+      // Exterior home: 7 × 4 blocks, centered above the boundary door.
+      const HOME_W = 7 * TILE;
+      const HOME_D = 4 * TILE;
+      const HOME_X = (BOUNDARY_SIZE - HOME_W) / 2;
+      const HOME_Y = WORLD_H - BOUNDARY_SIZE - HOME_D;
+      const HOME_DOOR_W = 2 * TILE;
+      const HOME_DOOR_X = HOME_X + (HOME_W - HOME_DOOR_W) / 2;
+      const HOME_DOOR_Y = HOME_Y + HOME_D;
+
+      // Interior room: 9 × 9 blocks with a 1-block wall border.
+      const HOME_INNER_BLOCKS = 9;
+      const HOME_INNER_SIZE = HOME_INNER_BLOCKS * TILE;
+      const HOME_WALL = TILE;
+      const HOME_DOOR_INNER_W = 2 * TILE;
+      const HOME_DOOR_INNER_X = (HOME_INNER_SIZE - HOME_DOOR_INNER_W) / 2;
+      const HOME_DOOR_INNER_Y = HOME_INNER_SIZE - HOME_WALL;
+
       const view = { w: 480, h: 300 };
       const camera = { x: 0, y: 0 };
       let cameraSnap = true;
       let renderScale = 3;
+      let scene = 'meadow';
 
       const keys = new Set();
       const movementKeys = new Set([
@@ -302,6 +322,7 @@
       let musicInside = false;
 
       function playerInBoundary() {
+        if (scene !== 'meadow') return false;
         return player.x >= 0 && player.x <= BOUNDARY_SIZE &&
           player.y >= WORLD_H - BOUNDARY_SIZE && player.y <= WORLD_H;
       }
@@ -331,6 +352,64 @@
 
       function unlockBoundaryMusic() {
         if (musicInside && music.paused) startBoundaryMusic();
+      }
+
+      // ---------------------------------------------------------------------
+      // Home / scene transitions
+      // ---------------------------------------------------------------------
+
+      function setLocation(name, sub) {
+        if (locationNameEl.textContent !== name) locationNameEl.textContent = name;
+        if (locationSubEl.textContent !== sub) locationSubEl.textContent = sub;
+      }
+
+      function atHomeDoor() {
+        return player.x >= HOME_DOOR_X &&
+          player.x <= HOME_DOOR_X + HOME_DOOR_W &&
+          player.y >= HOME_DOOR_Y - 8 &&
+          player.y <= HOME_DOOR_Y + 14;
+      }
+
+      function homeBlocks(x, y) {
+        if (x < HOME_X || x > HOME_X + HOME_W ||
+            y < HOME_Y || y > HOME_Y + HOME_D) {
+          return false;
+        }
+
+        const inDoorway = x >= HOME_DOOR_X &&
+          x <= HOME_DOOR_X + HOME_DOOR_W &&
+          y >= HOME_DOOR_Y - 10;
+        return !inDoorway;
+      }
+
+      function enterHome() {
+        scene = 'home';
+        player.x = HOME_INNER_SIZE / 2;
+        player.y = HOME_DOOR_INNER_Y - 12;
+        player.dir = 'up';
+        player.state = 'idle';
+        player.frame = 0;
+        player.moving = false;
+        player.walkClock = 0;
+        player.idleClock = 0;
+        cameraSnap = true;
+        setLocation('HOME', 'COZY CABIN · 9 × 9');
+        syncBoundaryMusic();
+      }
+
+      function exitHome() {
+        scene = 'meadow';
+        player.x = HOME_X + HOME_W / 2;
+        player.y = HOME_DOOR_Y + 28;
+        player.dir = 'down';
+        player.state = 'idle';
+        player.frame = 0;
+        player.moving = false;
+        player.walkClock = 0;
+        player.idleClock = 0;
+        cameraSnap = true;
+        setLocation('WILDFIELD', 'ROUTE 01 · OPEN MEADOW');
+        syncBoundaryMusic();
       }
 
       // ---------------------------------------------------------------------
@@ -778,6 +857,159 @@
         ctx.fillRect(sx + BOUNDARY_SIZE - edge, sy, edge, BOUNDARY_SIZE); // right
       }
 
+      function drawHomeExterior(camX, camY) {
+        const sx = Math.round(HOME_X - camX);
+        const sy = Math.round(HOME_Y - camY);
+        const w = HOME_W;
+        const h = HOME_D;
+        const wallH = 26;
+        const wallY = sy + h - wallH;
+        const roofX = sx - 8;
+        const roofY = sy - 8;
+        const roofW = w + 16;
+        const roofH = h - wallH + 8;
+
+        // Ground shadow.
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+        ctx.fillRect(sx + 6, sy + 8, w, h);
+
+        // Chimney sits behind the roof.
+        ctx.fillStyle = '#7a5b49';
+        ctx.fillRect(sx + w - 30, sy - 20, 12, 24);
+        ctx.fillStyle = '#9b7a62';
+        ctx.fillRect(sx + w - 30, sy - 20, 12, 4);
+        ctx.fillStyle = '#5a3c2b';
+        ctx.fillRect(sx + w - 30, sy - 10, 12, 2);
+
+        // Shingled roof.
+        ctx.fillStyle = '#7a3f2a';
+        ctx.fillRect(roofX, roofY, roofW, roofH);
+        for (let row = 0; row < roofH; row += 6) {
+          const shingleH = Math.min(5, roofH - row);
+          ctx.fillStyle = row % 12 === 0 ? '#8a4a31' : '#7a3f2a';
+          ctx.fillRect(roofX, roofY + row, roofW, shingleH);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+          ctx.fillRect(roofX, roofY + row + shingleH, roofW, 1);
+          const offset = (row / 6) % 2 === 0 ? 0 : 6;
+          for (let x = roofX + offset; x < roofX + roofW; x += 12) {
+            ctx.fillRect(x, roofY + row, 1, shingleH);
+          }
+        }
+        ctx.fillStyle = '#a65f3e';
+        ctx.fillRect(roofX + 4, roofY + Math.floor(roofH / 2) - 1, roofW - 8, 2);
+        ctx.strokeStyle = '#4d281c';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(roofX, roofY, roofW, roofH);
+
+        // Front wall and foundation.
+        ctx.fillStyle = '#d8c7a0';
+        ctx.fillRect(sx, wallY, w, wallH);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillRect(sx, wallY, w, 3);
+        ctx.fillStyle = '#8f8272';
+        ctx.fillRect(sx, sy + h - 4, w, 4);
+        ctx.fillStyle = '#7a5b49';
+        ctx.fillRect(sx, wallY, 4, wallH);
+        ctx.fillRect(sx + w - 4, wallY, 4, wallH);
+
+        // Windows.
+        const windowY = wallY + 7;
+        for (const wx of [sx + 18, sx + w - 30]) {
+          ctx.fillStyle = '#4a2e1e';
+          ctx.fillRect(wx, windowY, 12, 9);
+          ctx.fillStyle = '#8fd3ff';
+          ctx.fillRect(wx + 2, windowY + 2, 8, 5);
+          ctx.fillStyle = '#5b3a28';
+          ctx.fillRect(wx + 5, windowY + 2, 2, 5);
+          ctx.fillRect(wx + 2, windowY + 4, 8, 2);
+        }
+
+        // Door.
+        const doorX = sx + (w - HOME_DOOR_W) / 2;
+        const doorY = wallY + 2;
+        const doorH = wallH - 4;
+        ctx.fillStyle = '#3b2417';
+        ctx.fillRect(doorX - 2, doorY - 2, HOME_DOOR_W + 4, doorH + 4);
+        ctx.fillStyle = '#6b4429';
+        ctx.fillRect(doorX, doorY, HOME_DOOR_W, doorH);
+        ctx.fillStyle = '#8b5a35';
+        ctx.fillRect(doorX + 2, doorY + 2, HOME_DOOR_W - 4, 2);
+        ctx.fillStyle = '#f2c94c';
+        ctx.fillRect(doorX + HOME_DOOR_W - 6, doorY + Math.floor(doorH / 2), 2, 2);
+        ctx.fillStyle = '#a89b83';
+        ctx.fillRect(doorX - 2, sy + h - 3, HOME_DOOR_W + 4, 3);
+      }
+
+      function drawHomeInterior(camX, camY) {
+        const sx = Math.round(-camX);
+        const sy = Math.round(-camY);
+        const size = HOME_INNER_SIZE;
+        const wall = HOME_WALL;
+        const doorX = HOME_DOOR_INNER_X;
+        const doorW = HOME_DOOR_INNER_W;
+
+        ctx.fillStyle = '#15110e';
+        ctx.fillRect(0, 0, view.w, view.h);
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fillRect(sx - 6, sy - 6, size + 12, size + 12);
+
+        // Wood floor.
+        for (let i = 0; i < HOME_INNER_BLOCKS - 2; i++) {
+          const px = sx + wall + i * TILE;
+          ctx.fillStyle = i % 2 === 0 ? '#b98a5a' : '#b18355';
+          ctx.fillRect(px, sy + wall, TILE, size - wall * 2);
+          ctx.fillStyle = '#8f633d';
+          ctx.fillRect(px, sy + wall, 1, size - wall * 2);
+          ctx.fillStyle = '#c99b6b';
+          ctx.fillRect(px + 1, sy + wall, 1, size - wall * 2);
+        }
+        ctx.fillStyle = 'rgba(74, 46, 30, 0.35)';
+        for (let y = sy + wall + 16; y < sy + size - wall; y += 16) {
+          ctx.fillRect(sx + wall, y, size - wall * 2, 1);
+        }
+
+        // Walls.
+        ctx.fillStyle = '#5b3a28';
+        ctx.fillRect(sx, sy, size, wall);
+        ctx.fillRect(sx, sy, wall, size);
+        ctx.fillRect(sx + size - wall, sy, wall, size);
+        ctx.fillRect(sx, sy + size - wall, doorX, wall);
+        ctx.fillRect(sx + doorX + doorW, sy + size - wall, size - doorX - doorW, wall);
+
+        // Wall highlights and baseboards.
+        ctx.fillStyle = '#7d5238';
+        ctx.fillRect(sx + wall, sy + wall, size - wall * 2, 2);
+        ctx.fillRect(sx + wall, sy + wall, 2, size - wall * 2);
+        ctx.fillRect(sx + size - wall - 2, sy + wall, 2, size - wall * 2);
+        ctx.fillStyle = '#3f281c';
+        ctx.fillRect(sx + wall, sy + wall + 2, size - wall * 2, 1);
+        ctx.fillRect(sx + wall + 2, sy + wall, 1, size - wall * 2);
+
+        // Open doorway.
+        ctx.fillStyle = '#24170f';
+        ctx.fillRect(sx + doorX, sy + size - wall, doorW, wall);
+        ctx.fillStyle = '#7d5238';
+        ctx.fillRect(sx + doorX - 2, sy + size - wall - 2, doorW + 4, 2);
+        ctx.fillStyle = '#c49a6c';
+        ctx.fillRect(sx + doorX, sy + size - 4, doorW, 4);
+
+        // Windows on the top wall.
+        for (const wx of [sx + 30, sx + size - 44]) {
+          ctx.fillStyle = '#2b1a10';
+          ctx.fillRect(wx, sy + 3, 14, 10);
+          ctx.fillStyle = '#8fd3ff';
+          ctx.fillRect(wx + 2, sy + 5, 10, 6);
+          ctx.fillStyle = '#5b3a28';
+          ctx.fillRect(wx + 6, sy + 5, 2, 6);
+          ctx.fillRect(wx + 2, sy + 7, 10, 2);
+        }
+
+        ctx.strokeStyle = '#2b1a10';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(sx, sy, size, size);
+      }
+
       function drawPlayer(camX, camY) {
         const screenX = Math.round(player.x - camX);
         const screenY = Math.round(player.y - camY);
@@ -801,7 +1033,7 @@
         return Math.max(min, Math.min(max, value));
       }
 
-      function update(dt) {
+      function updateHome(dt) {
         let dx = 0;
         let dy = 0;
 
@@ -815,8 +1047,16 @@
           dx /= length;
           dy /= length;
 
-          player.x = clamp(player.x + dx * PLAYER_SPEED * dt, 16, WORLD_W - 16);
-          player.y = clamp(player.y + dy * PLAYER_SPEED * dt, 36, WORLD_H - 12);
+          player.x = clamp(
+            player.x + dx * PLAYER_SPEED * dt,
+            HOME_WALL + 12,
+            HOME_INNER_SIZE - HOME_WALL - 12
+          );
+          player.y = clamp(
+            player.y + dy * PLAYER_SPEED * dt,
+            HOME_WALL + 28,
+            HOME_DOOR_INNER_Y
+          );
 
           let nextDir;
           if (Math.abs(dx) > Math.abs(dy)) {
@@ -849,6 +1089,94 @@
           player.frame = Math.floor(player.idleClock * 1.7) % 2;
         }
 
+        const movingDown = keys.has('ArrowDown') || keys.has('KeyS');
+        const inDoorway = player.x >= HOME_DOOR_INNER_X &&
+          player.x <= HOME_DOOR_INNER_X + HOME_DOOR_INNER_W &&
+          player.y >= HOME_DOOR_INNER_Y - 2;
+        if (movingDown && inDoorway) {
+          exitHome();
+          return;
+        }
+
+        syncBoundaryMusic();
+
+        camera.x = (HOME_INNER_SIZE - view.w) / 2;
+        camera.y = (HOME_INNER_SIZE - view.h) / 2;
+        cameraSnap = true;
+
+        const action = player.state === 'idle'
+          ? 'IDLE'
+          : 'WALK ' + walkLabels[player.dir];
+        if (stateEl.textContent !== action) stateEl.textContent = action;
+      }
+
+      function update(dt) {
+        if (scene === 'home') {
+          updateHome(dt);
+          return;
+        }
+
+        let dx = 0;
+        let dy = 0;
+
+        if (keys.has('ArrowLeft') || keys.has('KeyA')) dx -= 1;
+        if (keys.has('ArrowRight') || keys.has('KeyD')) dx += 1;
+        if (keys.has('ArrowUp') || keys.has('KeyW')) dy -= 1;
+        if (keys.has('ArrowDown') || keys.has('KeyS')) dy += 1;
+
+        if (dx !== 0 || dy !== 0) {
+          const length = Math.hypot(dx, dy);
+          dx /= length;
+          dy /= length;
+
+          const nextX = clamp(player.x + dx * PLAYER_SPEED * dt, 16, WORLD_W - 16);
+          const nextY = clamp(player.y + dy * PLAYER_SPEED * dt, 36, WORLD_H - 12);
+
+          if (homeBlocks(nextX, nextY)) {
+            if (!homeBlocks(nextX, player.y)) player.x = nextX;
+            if (!homeBlocks(player.x, nextY)) player.y = nextY;
+          } else {
+            player.x = nextX;
+            player.y = nextY;
+          }
+
+          let nextDir;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            nextDir = dx < 0 ? 'left' : 'right';
+          } else if (Math.abs(dy) > Math.abs(dx)) {
+            nextDir = dy < 0 ? 'up' : 'down';
+          } else if (player.dir === 'left' || player.dir === 'right') {
+            nextDir = dx < 0 ? 'left' : 'right';
+          } else {
+            nextDir = dy < 0 ? 'up' : 'down';
+          }
+
+          if (nextDir !== player.dir) {
+            player.dir = nextDir;
+            player.walkClock = 0;
+          }
+
+          player.state = 'walk';
+          player.moving = true;
+          player.walkClock += dt;
+          player.frame = Math.floor(player.walkClock * 8) % 4;
+        } else {
+          if (player.moving) {
+            player.idleClock = 0;
+          }
+
+          player.state = 'idle';
+          player.moving = false;
+          player.idleClock += dt;
+          player.frame = Math.floor(player.idleClock * 1.7) % 2;
+        }
+
+        const movingUp = keys.has('ArrowUp') || keys.has('KeyW');
+        if (movingUp && atHomeDoor()) {
+          enterHome();
+          return;
+        }
+
         syncBoundaryMusic();
 
         const targetX = clamp(player.x - view.w / 2, 0, WORLD_W - view.w);
@@ -867,8 +1195,21 @@
       function render() {
         const camX = Math.round(camera.x);
         const camY = Math.round(camera.y);
+
+        if (scene === 'home') {
+          drawHomeInterior(camX, camY);
+          drawPlayer(camX, camY);
+          return;
+        }
+
         drawGround(camX, camY);
-        drawPlayer(camX, camY);
+        if (player.y < HOME_Y) {
+          drawPlayer(camX, camY);
+          drawHomeExterior(camX, camY);
+        } else {
+          drawHomeExterior(camX, camY);
+          drawPlayer(camX, camY);
+        }
       }
 
       // ---------------------------------------------------------------------
@@ -956,8 +1297,13 @@
 
         // Snap immediately so the first painted frame already has the player
         // in view instead of starting on an empty patch of grass.
-        camera.x = clamp(player.x - view.w / 2, 0, WORLD_W - view.w);
-        camera.y = clamp(player.y - view.h / 2, 0, WORLD_H - view.h);
+        if (scene === 'home') {
+          camera.x = (HOME_INNER_SIZE - view.w) / 2;
+          camera.y = (HOME_INNER_SIZE - view.h) / 2;
+        } else {
+          camera.x = clamp(player.x - view.w / 2, 0, WORLD_W - view.w);
+          camera.y = clamp(player.y - view.h / 2, 0, WORLD_H - view.h);
+        }
         cameraSnap = false;
         render();
       }

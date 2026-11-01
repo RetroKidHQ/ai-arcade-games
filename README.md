@@ -11,7 +11,7 @@ Every game on this site was designed, coded, and debugged by AI — no human wro
 - **Pac-Man** — Clear the maze while avoiding ghosts
 - **Agent 7** — Infiltrate the bunker and escape undetected
 - **Galaga** — Shoot the alien swarm and destroy the flagships
-- **Wildfield** — Pokémon-style top-down meadow RPG
+- **Wildfield** — Pokémon-style top-down meadow RPG with an enterable cabin
 
 ## Tech
 
