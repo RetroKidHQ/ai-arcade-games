@@ -375,7 +375,10 @@
         flowerPink: '#ff9dc4',
         flowerYellow: '#ffd94e',
         pebble: '#aab9a2',
-        pebbleDark: '#819079'
+        pebbleDark: '#819079',
+        pathBase: '#9c8f78',
+        pathEdge: '#6f6452',
+        pathStones: ['#b9ad95', '#a69981', '#c6bba3', '#8f826d']
       };
 
       // ---------------------------------------------------------------------
@@ -725,6 +728,39 @@
               px(ctx, pxX, pxY + 1, 3, 1, ground.pebbleDark);
               px(ctx, pxX, pxY, 2, 1, ground.pebble);
             }
+          }
+        }
+
+        // Centered 1.5-block-wide stone path. It runs from the top edge to the
+        // bottom edge of the black boundary and stops there.
+        const pathWidth = TILE * 1.5;
+        const pathX = Math.round((BOUNDARY_SIZE - pathWidth) / 2 - camX);
+        const pathY = Math.round(WORLD_H - BOUNDARY_SIZE - camY);
+        const pathH = BOUNDARY_SIZE;
+
+        ctx.fillStyle = ground.pathEdge;
+        ctx.fillRect(pathX, pathY, pathWidth, pathH);
+        ctx.fillStyle = ground.pathBase;
+        ctx.fillRect(pathX + 2, pathY, pathWidth - 4, pathH);
+
+        const stoneH = 8;
+        const stoneW = 10;
+        const stoneGap = 2;
+        for (let row = 0, rowIndex = 0; row < pathH; row += stoneH, rowIndex++) {
+          const shift = rowIndex % 2 === 0 ? 0 : 5;
+          let colIndex = 0;
+          for (let x = -shift; x < pathWidth; x += stoneW + stoneGap, colIndex++) {
+            const left = Math.max(2, x);
+            const right = Math.min(pathWidth - 2, x + stoneW);
+            if (right <= left) continue;
+            const tone = hash(rowIndex, colIndex, 21);
+            ctx.fillStyle = ground.pathStones[Math.floor(tone * ground.pathStones.length)];
+            ctx.fillRect(
+              pathX + left,
+              pathY + row + 1,
+              right - left,
+              Math.min(stoneH - 2, pathH - row - 2)
+            );
           }
         }
 
