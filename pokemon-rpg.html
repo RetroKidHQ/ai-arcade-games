@@ -291,6 +291,49 @@
       };
 
       // ---------------------------------------------------------------------
+      // Boundary music
+      // ---------------------------------------------------------------------
+
+      const music = new Audio('homeworld.m4a');
+      music.loop = true;
+      music.preload = 'auto';
+      music.volume = 0.55;
+
+      let musicInside = false;
+
+      function playerInBoundary() {
+        return player.x >= 0 && player.x <= BOUNDARY_SIZE &&
+          player.y >= WORLD_H - BOUNDARY_SIZE && player.y <= WORLD_H;
+      }
+
+      function startBoundaryMusic() {
+        if (!musicInside || !music.paused) return;
+        const playAttempt = music.play();
+        if (playAttempt && typeof playAttempt.catch === 'function') {
+          playAttempt.catch(() => {
+            // Autoplay may be blocked until the player clicks or presses a key.
+          });
+        }
+      }
+
+      function syncBoundaryMusic() {
+        const inside = playerInBoundary();
+        if (inside === musicInside) return;
+
+        musicInside = inside;
+        if (inside) {
+          music.currentTime = 0;
+          startBoundaryMusic();
+        } else {
+          music.pause();
+        }
+      }
+
+      function unlockBoundaryMusic() {
+        if (musicInside && music.paused) startBoundaryMusic();
+      }
+
+      // ---------------------------------------------------------------------
       // Palette
       // ---------------------------------------------------------------------
 
@@ -770,6 +813,8 @@
           player.frame = Math.floor(player.idleClock * 1.7) % 2;
         }
 
+        syncBoundaryMusic();
+
         const targetX = clamp(player.x - view.w / 2, 0, WORLD_W - view.w);
         const targetY = clamp(player.y - view.h / 2, 0, WORLD_H - view.h);
         const follow = cameraSnap ? 1 : 1 - Math.exp(-11 * dt);
@@ -923,6 +968,7 @@
         if (code) {
           event.preventDefault();
           keys.add(code);
+          unlockBoundaryMusic();
         }
       });
 
@@ -942,7 +988,10 @@
         if (document.hidden) keys.clear();
       });
 
-      window.addEventListener('pointerdown', focusGame);
+      window.addEventListener('pointerdown', () => {
+        focusGame();
+        unlockBoundaryMusic();
+      });
       window.addEventListener('focus', focusGame);
       focusGame();
       setTimeout(showFocusPromptIfNeeded, 250);
@@ -960,6 +1009,7 @@
       }
 
       resize();
+      syncBoundaryMusic();
       requestAnimationFrame(tick);
     })();
   </script>

@@ -16,6 +16,6 @@ Every game on this site was designed, coded, and debugged by AI — no human wro
 ## Tech
 
 - Pure HTML/CSS/JavaScript (no frameworks)
-- Original chiptune music synthesized in-browser with the Web Audio API
+- Original music, including in-browser chiptunes and the Wildfield boundary loop
 - Hosted on GitHub Pages
 
