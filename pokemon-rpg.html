@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#74c457">
+  <title>Wildfield — Pokémon-style RPG Base</title>
+  <style>
+    :root {
+      --ink: #26311f;
+      --paper: #fff8df;
+      --paper-edge: #e8d9aa;
+      --accent: #e8524f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #74c457;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: none;
+    }
+
+    #game {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(22, 68, 28, 0.16) 100%);
+    }
+
+    .location {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 12px 8px 10px;
+      color: var(--ink);
+      background: rgba(255, 248, 223, 0.94);
+      border: 3px solid var(--ink);
+      border-radius: 4px;
+      box-shadow: 4px 4px 0 rgba(28, 52, 24, 0.18);
+      pointer-events: none;
+    }
+
+    .location__mark {
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 2px var(--paper);
+    }
+
+    .location__name {
+      display: block;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0.14em;
+    }
+
+    .location__sub {
+      display: block;
+      margin-top: 3px;
+      color: #6b735e;
+      font-size: 8px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.2em;
+    }
+
+    .hint {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 11px;
+      color: #fdf8e5;
+      background: rgba(30, 44, 28, 0.78);
+      border: 2px solid rgba(255, 248, 223, 0.28);
+      border-radius: 4px;
+      box-shadow: 3px 3px 0 rgba(20, 34, 18, 0.16);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      transform: translateX(-50%);
+      pointer-events: none;
+      backdrop-filter: blur(2px);
+    }
+
+    kbd {
+      display: inline-block;
+      min-width: 20px;
+      padding: 3px 4px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      border-bottom-width: 3px;
+      border-radius: 3px;
+      font: inherit;
+      font-size: 8px;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .hint__divider {
+      width: 1px;
+      height: 12px;
+      background: rgba(255, 248, 223, 0.25);
+    }
+
+    .hint__text {
+      white-space: nowrap;
+    }
+
+    .state {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      min-width: 112px;
+      padding: 7px 10px;
+      color: #fdf8e5;
+      background: rgba(30, 44, 28, 0.7);
+      border: 2px solid rgba(255, 248, 223, 0.22);
+      border-radius: 4px;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-align: right;
+      pointer-events: none;
+    }
+
+    .state__value {
+      display: block;
+      margin-top: 3px;
+      color: #ffe57c;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+    }
+
+    .focus-prompt {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .focus-prompt[hidden] {
+      display: none;
+    }
+
+    .focus-prompt span {
+      padding: 10px 16px;
+      color: var(--paper);
+      background: rgba(30, 44, 28, 0.88);
+      border: 3px solid var(--paper);
+      border-radius: 4px;
+      box-shadow: 4px 4px 0 rgba(20, 34, 18, 0.24);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      animation: focus-pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes focus-pulse {
+      50% {
+        opacity: 0.72;
+        transform: translateY(-2px);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .location {
+        top: 12px;
+        left: 12px;
+      }
+
+      .hint {
+        bottom: 12px;
+      }
+
+      .state {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" tabindex="0" autofocus aria-label="A top-down Pokémon-style grassy world. Use WASD or the arrow keys to walk."></canvas>
+  <div class="vignette"></div>
+
+  <div class="location">
+    <span class="location__mark"></span>
+    <span>
+      <span class="location__name">WILDFIELD</span>
+      <span class="location__sub">ROUTE 01 · OPEN MEADOW</span>
+    </span>
+  </div>
+
+  <div class="hint">
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+    <span class="hint__divider"></span>
+    <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>
+    <span class="hint__text">WALK</span>
+  </div>
+
+  <div class="state">
+    ACTION
+    <span class="state__value" id="state">IDLE</span>
+  </div>
+
+  <div class="focus-prompt" id="focusPrompt" hidden>
+    <span>CLICK TO PLAY</span>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // ---------------------------------------------------------------------
+      // Setup
+      // ---------------------------------------------------------------------
+
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d', { alpha: false });
+      const stateEl = document.getElementById('state');
+
+      // 500 × 500 blocks. Each block is one 16px grass tile.
+      const TILE = 16;
+      const WORLD_W = 500 * TILE;
+      const WORLD_H = 500 * TILE;
+      const BOUNDARY_BLOCKS = 35;
+      const BOUNDARY_SIZE = BOUNDARY_BLOCKS * TILE;
+      const PLAYER_SPEED = 74;
+
+      const view = { w: 480, h: 300 };
+      const camera = { x: 0, y: 0 };
+      let cameraSnap = true;
+      let renderScale = 3;
+
+      const keys = new Set();
+      const movementKeys = new Set([
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+        'KeyW', 'KeyA', 'KeyS', 'KeyD'
+      ]);
+
+      const player = {
+        // Spawn at the visible black boundary square in the bottom-left corner.
+        x: 16,
+        y: WORLD_H - 12,
+        dir: 'down',
+        state: 'idle',
+        frame: 0,
+        moving: false,
+        walkClock: 0,
+        idleClock: 0
+      };
+
+      const walkLabels = {
+        up: 'FORWARD',
+        down: 'BACK',
+        left: 'LEFT',
+        right: 'RIGHT'
+      };
+
+      // ---------------------------------------------------------------------
+      // Palette
+      // ---------------------------------------------------------------------
+
+      const C = {
+        outline: '#25213a',
+        hat: '#e94f4d',
+        hatDark: '#b52e3e',
+        hatLight: '#ff7d67',
+        hair: '#372b32',
+        hairLight: '#57404a',
+        skin: '#f4c58e',
+        skinShadow: '#d89a69',
+        eye: '#211e30',
+        mouth: '#7b3b3b',
+        blush: '#ee9a8e',
+        jacket: '#4e8fd5',
+        jacketLight: '#70b4ed',
+        jacketDark: '#30609d',
+        shirt: '#f4f0df',
+        pants: '#2d3c60',
+        pantsDark: '#202945',
+        shoe: '#f1ecdf',
+        shoeRed: '#e94f4d',
+        sole: '#3a3245',
+        bag: '#efc34b',
+        bagDark: '#b98a2f',
+        bagLight: '#ffe47d',
+        strap: '#5b462a'
+      };
+
+      const ground = {
+        base: '#79c95c',
+        light: 'rgba(255, 255, 255, 0.035)',
+        dark: 'rgba(23, 88, 33, 0.038)',
+        blade: '#5eae46',
+        bladeLight: '#96df76',
+        bladeDark: '#4c9638',
+        flowerWhite: '#fffbea',
+        flowerPink: '#ff9dc4',
+        flowerYellow: '#ffd94e',
+        pebble: '#aab9a2',
+        pebbleDark: '#819079'
+      };
+
+      // ---------------------------------------------------------------------
+      // Pixel sprite construction
+      // ---------------------------------------------------------------------
+
+      function px(g, x, y, w, h, color) {
+        g.fillStyle = color;
+        g.fillRect(x, y, w, h);
+      }
+
+      function makeSprite(draw) {
+        const sprite = document.createElement('canvas');
+        sprite.width = 24;
+        sprite.height = 32;
+        const g = sprite.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        draw(g);
+        return sprite;
+      }
+
+      function frontLeg(g, x, top, lift) {
+        const y = top + lift;
+
+        // Trouser leg.
+        px(g, x, y, 4, 6, C.pants);
+        px(g, x, y, 1, 6, C.pantsDark);
+        px(g, x + 3, y, 1, 6, C.pantsDark);
+
+        // Shoe.
+        px(g, x - 1, y + 6, 5, 3, C.shoe);
+        px(g, x - 1, y + 8, 5, 1, C.sole);
+        px(g, x, y + 6, 2, 1, C.shoeRed);
+      }
+
+      function sideLeg(g, x, top) {
+        px(g, x, top, 3, 6, C.pants);
+        px(g, x, top, 1, 6, C.pantsDark);
+
+        // Side-view shoe points in the facing direction.
+        px(g, x - 2, top + 6, 6, 2, C.shoe);
+        px(g, x - 2, top + 8, 6, 1, C.sole);
+        px(g, x - 1, top + 6, 2, 1, C.shoeRed);
+      }
+
+      function frontArm(g, x, y) {
+        px(g, x, y, 3, 7, C.outline);
+        px(g, x + 1, y + 1, 1, 5, C.jacket);
+        px(g, x + 1, y + 6, 1, 1, C.skin);
+      }
+
+      function frontHead(g, by) {
+        const y = by;
+
+        // Hair silhouette, ears, face.
+        px(g, 6, 8 + y, 12, 7, C.hair);
+        px(g, 5, 10 + y, 2, 3, C.skin);
+        px(g, 17, 10 + y, 2, 3, C.skin);
+        px(g, 8, 8 + y, 8, 7, C.skin);
+
+        // Fringe and sideburns.
+        px(g, 7, 8 + y, 2, 2, C.hair);
+        px(g, 15, 8 + y, 2, 2, C.hair);
+        px(g, 6, 8 + y, 2, 4, C.hair);
+        px(g, 16, 8 + y, 2, 4, C.hair);
+
+        // Cap.
+        px(g, 7, 2 + y, 10, 6, C.hatDark);
+        px(g, 8, 3 + y, 8, 4, C.hat);
+        px(g, 9, 3 + y, 4, 1, C.hatLight);
+        px(g, 6, 7 + y, 12, 1, C.hatDark);
+        px(g, 11, 4 + y, 2, 2, C.shirt);
+        px(g, 12, 4 + y, 1, 1, C.hat);
+
+        // Face.
+        px(g, 10, 10 + y, 1, 2, C.eye);
+        px(g, 14, 10 + y, 1, 2, C.eye);
+        px(g, 9, 12 + y, 1, 1, C.blush);
+        px(g, 15, 12 + y, 1, 1, C.blush);
+        px(g, 12, 13 + y, 1, 1, C.mouth);
+      }
+
+      function backHead(g, by) {
+        const y = by;
+
+        // Hair under the cap.
+        px(g, 6, 8 + y, 12, 7, C.hair);
+        px(g, 5, 10 + y, 2, 3, C.skin);
+        px(g, 17, 10 + y, 2, 3, C.skin);
+        px(g, 8, 8 + y, 8, 6, C.hair);
+        px(g, 9, 12 + y, 6, 2, C.hairLight);
+
+        // Back of cap.
+        px(g, 7, 2 + y, 10, 6, C.hatDark);
+        px(g, 8, 3 + y, 8, 4, C.hat);
+        px(g, 9, 3 + y, 4, 1, C.hatLight);
+        px(g, 8, 6 + y, 8, 2, C.hatDark);
+        px(g, 11, 6 + y, 2, 1, C.shirt);
+      }
+
+      function sideHead(g, by) {
+        const y = by;
+
+        // Hair and face profile.
+        px(g, 11, 8 + y, 7, 7, C.hair);
+        px(g, 12, 10 + y, 2, 3, C.skin);
+        px(g, 7, 8 + y, 6, 7, C.skin);
+        px(g, 6, 11 + y, 1, 2, C.skinShadow);
+        px(g, 11, 8 + y, 4, 2, C.hair);
+        px(g, 14, 8 + y, 3, 5, C.hair);
+
+        // Cap with a brim that points left.
+        px(g, 8, 2 + y, 10, 6, C.hatDark);
+        px(g, 9, 3 + y, 8, 4, C.hat);
+        px(g, 10, 3 + y, 4, 1, C.hatLight);
+        px(g, 5, 7 + y, 13, 1, C.hatDark);
+        px(g, 12, 4 + y, 2, 2, C.shirt);
+        px(g, 13, 4 + y, 1, 1, C.hat);
+
+        // Face.
+        px(g, 8, 10 + y, 1, 2, C.eye);
+        px(g, 7, 12 + y, 1, 1, C.blush);
+        px(g, 6, 13 + y, 2, 1, C.mouth);
+      }
+
+      function drawFront(g, f, idle) {
+        const walk = !idle;
+        const bob = walk ? [0, -1, 0, -1][f] : (f === 1 ? -1 : 0);
+        const leftLift = walk && f === 0 ? -1 : 0;
+        const rightLift = walk && f === 2 ? -1 : 0;
+        const armSwing = walk ? [1, 0, -1, 0][f] : 0;
+        const by = bob;
+
+        // Legs stay planted while the torso bobs.
+        frontLeg(g, 8, 23, leftLift);
+        frontLeg(g, 13, 23, rightLift);
+
+        // Arms.
+        frontArm(g, 5, 17 + armSwing + by);
+        frontArm(g, 16, 17 - armSwing + by);
+
+        // Torso.
+        px(g, 7, 15 + by, 10, 9, C.outline);
+        px(g, 8, 16 + by, 8, 8, C.jacket);
+        px(g, 8, 16 + by, 8, 1, C.jacketLight);
+        px(g, 8, 23 + by, 8, 1, C.jacketDark);
+        px(g, 11, 16 + by, 2, 7, C.shirt);
+        px(g, 10, 16 + by, 4, 1, C.shirt);
+        px(g, 12, 20 + by, 1, 1, C.bag);
+        px(g, 9, 21 + by, 2, 1, C.jacketDark);
+        px(g, 14, 21 + by, 2, 1, C.jacketDark);
+
+        // Neck and head.
+        px(g, 11, 14 + by, 3, 2, C.skinShadow);
+        frontHead(g, by);
+      }
+
+      function drawBack(g, f, idle) {
+        const walk = !idle;
+        const bob = walk ? [0, -1, 0, -1][f] : (f === 1 ? -1 : 0);
+        const leftLift = walk && f === 0 ? -1 : 0;
+        const rightLift = walk && f === 2 ? -1 : 0;
+        const armSwing = walk ? [1, 0, -1, 0][f] : 0;
+        const by = bob;
+
+        frontLeg(g, 8, 23, leftLift);
+        frontLeg(g, 13, 23, rightLift);
+
+        frontArm(g, 5, 17 + armSwing + by);
+        frontArm(g, 16, 17 - armSwing + by);
+
+        // Jacket back.
+        px(g, 7, 15 + by, 10, 9, C.outline);
+        px(g, 8, 16 + by, 8, 8, C.jacket);
+        px(g, 8, 16 + by, 8, 1, C.jacketLight);
+        px(g, 8, 23 + by, 8, 1, C.jacketDark);
+
+        // Backpack.
+        px(g, 7, 16 + by, 2, 3, C.strap);
+        px(g, 15, 16 + by, 2, 3, C.strap);
+        px(g, 8, 16 + by, 8, 7, C.bagDark);
+        px(g, 9, 16 + by, 6, 6, C.bag);
+        px(g, 9, 16 + by, 6, 1, C.bagLight);
+        px(g, 10, 20 + by, 4, 1, C.bagDark);
+        px(g, 11, 21 + by, 2, 1, C.bagLight);
+
+        // Neck and head.
+        px(g, 11, 14 + by, 3, 2, C.skinShadow);
+        backHead(g, by);
+      }
+
+      function drawSide(g, f, idle) {
+        const walk = !idle;
+        const bob = walk ? [0, -1, 0, -1][f] : (f === 1 ? -1 : 0);
+        const stride = walk ? [1, 0, -1, 0][f] : 0;
+        const armSwing = walk ? [0, 1, 0, -1][f] : 0;
+        const by = bob;
+
+        // Back leg, then front leg.
+        sideLeg(g, 12 + stride, 23);
+        sideLeg(g, 9 - stride, 23);
+
+        // Backpack peeks out behind the shoulder.
+        px(g, 14, 16 + by, 5, 7, C.bagDark);
+        px(g, 15, 17 + by, 3, 5, C.bag);
+        px(g, 15, 17 + by, 3, 1, C.bagLight);
+        px(g, 14, 16 + by, 1, 7, C.strap);
+
+        // Torso.
+        px(g, 8, 15 + by, 9, 9, C.outline);
+        px(g, 9, 16 + by, 7, 8, C.jacket);
+        px(g, 9, 16 + by, 7, 1, C.jacketLight);
+        px(g, 9, 23 + by, 7, 1, C.jacketDark);
+        px(g, 9, 16 + by, 2, 7, C.shirt);
+        px(g, 10, 20 + by, 1, 1, C.bag);
+
+        // Near arm.
+        px(g, 8, 17 + armSwing + by, 3, 7, C.outline);
+        px(g, 9, 18 + armSwing + by, 1, 5, C.jacket);
+        px(g, 9, 23 + armSwing + by, 1, 1, C.skin);
+
+        // Neck and head.
+        px(g, 10, 14 + by, 3, 2, C.skinShadow);
+        sideHead(g, by);
+      }
+
+      const sprites = {};
+
+      for (const dir of ['down', 'up', 'left', 'right']) {
+        sprites[dir] = {
+          idle: [0, 1].map((f) => makeSprite((g) => {
+            if (dir === 'down') drawFront(g, f, true);
+            else if (dir === 'up') drawBack(g, f, true);
+            else if (dir === 'left') drawSide(g, f, true);
+            else {
+              g.translate(24, 0);
+              g.scale(-1, 1);
+              drawSide(g, f, true);
+            }
+          })),
+          walk: [0, 1, 2, 3].map((f) => makeSprite((g) => {
+            if (dir === 'down') drawFront(g, f, false);
+            else if (dir === 'up') drawBack(g, f, false);
+            else if (dir === 'left') drawSide(g, f, false);
+            else {
+              g.translate(24, 0);
+              g.scale(-1, 1);
+              drawSide(g, f, false);
+            }
+          }))
+        };
+      }
+
+      // ---------------------------------------------------------------------
+      // World rendering
+      // ---------------------------------------------------------------------
+
+      function hash(x, y, seed) {
+        let n = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 1442695041);
+        n = Math.imul(n ^ (n >>> 13), 1274126177);
+        n ^= n >>> 16;
+        return (n >>> 0) / 4294967296;
+      }
+
+      function drawFlower(x, y, pink) {
+        // Stem.
+        px(ctx, x + 1, y + 3, 1, 2, ground.bladeDark);
+
+        // Four petals around a warm center.
+        const petal = pink ? ground.flowerPink : ground.flowerWhite;
+        px(ctx, x + 1, y, 1, 1, petal);
+        px(ctx, x, y + 1, 1, 1, petal);
+        px(ctx, x + 2, y + 1, 1, 1, petal);
+        px(ctx, x + 1, y + 2, 1, 1, petal);
+        px(ctx, x + 1, y + 1, 1, 1, ground.flowerYellow);
+      }
+
+      function drawGrassTuft(x, y) {
+        px(ctx, x, y + 2, 1, 3, ground.bladeDark);
+        px(ctx, x + 1, y + 1, 1, 4, ground.blade);
+        px(ctx, x + 2, y, 1, 5, ground.blade);
+        px(ctx, x + 3, y + 2, 1, 3, ground.bladeDark);
+        px(ctx, x + 2, y, 1, 1, ground.bladeLight);
+      }
+
+      function drawGround(camX, camY) {
+        ctx.fillStyle = ground.base;
+        ctx.fillRect(0, 0, view.w, view.h);
+
+        const firstX = Math.floor(camX / TILE) - 1;
+        const firstY = Math.floor(camY / TILE) - 1;
+        const lastX = Math.ceil((camX + view.w) / TILE) + 1;
+        const lastY = Math.ceil((camY + view.h) / TILE) + 1;
+
+        for (let ty = firstY; ty <= lastY; ty++) {
+          for (let tx = firstX; tx <= lastX; tx++) {
+            const x = tx * TILE - camX;
+            const y = ty * TILE - camY;
+            const tone = hash(tx, ty, 1);
+
+            // Very subtle patchwork to keep the huge field from feeling flat.
+            if (tone < 0.08) {
+              ctx.fillStyle = ground.light;
+              ctx.fillRect(x, y, TILE, TILE);
+            } else if (tone > 0.94) {
+              ctx.fillStyle = ground.dark;
+              ctx.fillRect(x, y, TILE, TILE);
+            }
+
+            // A couple of tiny grass blades per tile.
+            const detail = hash(tx, ty, 2);
+            if (detail < 0.64) {
+              const bx = x + 2 + Math.floor(hash(tx, ty, 3) * 11);
+              const by = y + 3 + Math.floor(hash(tx, ty, 4) * 10);
+              ctx.fillStyle = detail < 0.16 ? ground.bladeLight : ground.blade;
+              ctx.fillRect(bx, by, 1, 2);
+              ctx.fillRect(bx + 1, by + 1, 1, 1);
+              if (detail < 0.28) {
+                ctx.fillRect(bx - 1, by + 1, 1, 1);
+              }
+            }
+
+            if (hash(tx, ty, 5) > 0.84) {
+              const bx = x + 3 + Math.floor(hash(tx, ty, 9) * 10);
+              const by = y + 4 + Math.floor(hash(tx, ty, 10) * 9);
+              ctx.fillStyle = ground.bladeDark;
+              ctx.fillRect(bx, by, 1, 2);
+              ctx.fillRect(bx + 1, by + 1, 1, 1);
+            }
+
+            // Sparse meadow decorations.
+            const decor = hash(tx, ty, 6);
+            if (decor > 0.995) {
+              drawFlower(
+                x + 2 + Math.floor(hash(tx, ty, 11) * 9),
+                y + 2 + Math.floor(hash(tx, ty, 12) * 9),
+                hash(tx, ty, 13) > 0.48
+              );
+            } else if (decor > 0.982) {
+              drawGrassTuft(
+                x + 2 + Math.floor(hash(tx, ty, 14) * 8),
+                y + 2 + Math.floor(hash(tx, ty, 15) * 8)
+              );
+            } else if (decor > 0.976) {
+              const pxX = x + 3 + Math.floor(hash(tx, ty, 16) * 8);
+              const pxY = y + 4 + Math.floor(hash(tx, ty, 17) * 8);
+              px(ctx, pxX, pxY + 1, 3, 1, ground.pebbleDark);
+              px(ctx, pxX, pxY, 2, 1, ground.pebble);
+            }
+          }
+        }
+
+        // Visible, non-solid 35 × 35 block boundary outline at the bottom-left
+        // corner of the map. It is painted flat on the meadow, so the player
+        // can walk straight through it.
+        const edge = TILE;
+        const sx = -camX;
+        const sy = WORLD_H - BOUNDARY_SIZE - camY;
+        ctx.fillStyle = '#000000';
+
+        ctx.fillRect(sx, sy, BOUNDARY_SIZE, edge); // top
+        ctx.fillRect(sx, sy + BOUNDARY_SIZE - edge, BOUNDARY_SIZE, edge); // bottom
+        ctx.fillRect(sx, sy, edge, BOUNDARY_SIZE); // left
+        ctx.fillRect(sx + BOUNDARY_SIZE - edge, sy, edge, BOUNDARY_SIZE); // right
+      }
+
+      function drawPlayer(camX, camY) {
+        const screenX = Math.round(player.x - camX);
+        const screenY = Math.round(player.y - camY);
+
+        // Pixel shadow.
+        ctx.fillStyle = 'rgba(28, 80, 33, 0.23)';
+        ctx.fillRect(screenX - 7, screenY - 3, 14, 2);
+        ctx.fillRect(screenX - 5, screenY - 4, 10, 1);
+
+        const bank = sprites[player.dir] || sprites.down;
+        const frames = bank[player.state] || bank.idle;
+        const sprite = frames[player.frame] || frames[0];
+        ctx.drawImage(sprite, screenX - 12, screenY - 32);
+      }
+
+      // ---------------------------------------------------------------------
+      // Update
+      // ---------------------------------------------------------------------
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function update(dt) {
+        let dx = 0;
+        let dy = 0;
+
+        if (keys.has('ArrowLeft') || keys.has('KeyA')) dx -= 1;
+        if (keys.has('ArrowRight') || keys.has('KeyD')) dx += 1;
+        if (keys.has('ArrowUp') || keys.has('KeyW')) dy -= 1;
+        if (keys.has('ArrowDown') || keys.has('KeyS')) dy += 1;
+
+        if (dx !== 0 || dy !== 0) {
+          const length = Math.hypot(dx, dy);
+          dx /= length;
+          dy /= length;
+
+          player.x = clamp(player.x + dx * PLAYER_SPEED * dt, 16, WORLD_W - 16);
+          player.y = clamp(player.y + dy * PLAYER_SPEED * dt, 36, WORLD_H - 12);
+
+          let nextDir;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            nextDir = dx < 0 ? 'left' : 'right';
+          } else if (Math.abs(dy) > Math.abs(dx)) {
+            nextDir = dy < 0 ? 'up' : 'down';
+          } else if (player.dir === 'left' || player.dir === 'right') {
+            nextDir = dx < 0 ? 'left' : 'right';
+          } else {
+            nextDir = dy < 0 ? 'up' : 'down';
+          }
+
+          if (nextDir !== player.dir) {
+            player.dir = nextDir;
+            player.walkClock = 0;
+          }
+
+          player.state = 'walk';
+          player.moving = true;
+          player.walkClock += dt;
+          player.frame = Math.floor(player.walkClock * 8) % 4;
+        } else {
+          if (player.moving) {
+            player.idleClock = 0;
+          }
+
+          player.state = 'idle';
+          player.moving = false;
+          player.idleClock += dt;
+          player.frame = Math.floor(player.idleClock * 1.7) % 2;
+        }
+
+        const targetX = clamp(player.x - view.w / 2, 0, WORLD_W - view.w);
+        const targetY = clamp(player.y - view.h / 2, 0, WORLD_H - view.h);
+        const follow = cameraSnap ? 1 : 1 - Math.exp(-11 * dt);
+        camera.x += (targetX - camera.x) * follow;
+        camera.y += (targetY - camera.y) * follow;
+        cameraSnap = false;
+
+        const action = player.state === 'idle'
+          ? 'IDLE'
+          : 'WALK ' + walkLabels[player.dir];
+        if (stateEl.textContent !== action) stateEl.textContent = action;
+      }
+
+      function render() {
+        const camX = Math.round(camera.x);
+        const camY = Math.round(camera.y);
+        drawGround(camX, camY);
+        drawPlayer(camX, camY);
+      }
+
+      // ---------------------------------------------------------------------
+      // Loop, input, resize
+      // ---------------------------------------------------------------------
+
+      function showSpriteSheet() {
+        document.body.innerHTML = '';
+        document.body.style.overflow = 'auto';
+        document.body.style.background = '#203020';
+
+        const wrap = document.createElement('main');
+        wrap.style.cssText = [
+          'min-height:100%;',
+          'padding:28px 32px 40px;',
+          'color:#fff8df;',
+          'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;'
+        ].join('');
+
+        const title = document.createElement('h1');
+        title.textContent = 'PLAYER SPRITE SHEET';
+        title.style.cssText = 'margin:0 0 4px;font-size:18px;letter-spacing:.18em;';
+        wrap.appendChild(title);
+
+        const subtitle = document.createElement('p');
+        subtitle.textContent = '4 directions · 2 idle frames · 4 walk frames · 24×32 px each';
+        subtitle.style.cssText = 'margin:0 0 24px;color:#a9c9a0;font-size:11px;letter-spacing:.08em;';
+        wrap.appendChild(subtitle);
+
+        const table = document.createElement('div');
+        table.style.cssText = 'display:grid;grid-template-columns:76px repeat(6, 100px);gap:8px;align-items:end;';
+
+        const headers = ['', 'IDLE 1', 'IDLE 2', 'WALK 1', 'WALK 2', 'WALK 3', 'WALK 4'];
+        for (const label of headers) {
+          const cell = document.createElement('div');
+          cell.textContent = label;
+          cell.style.cssText = 'font-size:9px;letter-spacing:.12em;color:#c7ddbd;text-align:center;';
+          table.appendChild(cell);
+        }
+
+        for (const dir of ['down', 'up', 'left', 'right']) {
+          const label = document.createElement('div');
+          label.textContent = dir.toUpperCase();
+          label.style.cssText = 'padding-bottom:44px;font-size:10px;letter-spacing:.14em;color:#ffe57c;';
+          table.appendChild(label);
+
+          const frames = [...sprites[dir].idle, ...sprites[dir].walk];
+          for (const frame of frames) {
+            const cell = document.createElement('div');
+            cell.style.cssText = [
+              'width:100px;height:132px;padding:2px;',
+              'display:flex;align-items:center;justify-content:center;',
+              'background:#6ebd54;',
+              'box-shadow:0 0 0 2px #dff0d2, 3px 3px 0 rgba(0,0,0,.24);'
+            ].join('');
+
+            const copy = document.createElement('canvas');
+            copy.width = 24;
+            copy.height = 32;
+            copy.getContext('2d').drawImage(frame, 0, 0);
+            copy.style.cssText = 'flex:0 0 96px;width:96px;height:128px;image-rendering:pixelated;';
+            cell.appendChild(copy);
+            table.appendChild(cell);
+          }
+        }
+
+        wrap.appendChild(table);
+        document.body.appendChild(wrap);
+      }
+
+      const debugParams = new URLSearchParams(location.search);
+
+      if (debugParams.has('sheet')) {
+        showSpriteSheet();
+        return;
+      }
+
+      function resize() {
+        renderScale = window.innerWidth < 700 ? 2 : 3;
+        view.w = Math.max(300, Math.round(window.innerWidth / renderScale));
+        view.h = Math.max(180, Math.round(window.innerHeight / renderScale));
+        canvas.width = view.w;
+        canvas.height = view.h;
+        ctx.imageSmoothingEnabled = false;
+
+        // Snap immediately so the first painted frame already has the player
+        // in view instead of starting on an empty patch of grass.
+        camera.x = clamp(player.x - view.w / 2, 0, WORLD_W - view.w);
+        camera.y = clamp(player.y - view.h / 2, 0, WORLD_H - view.h);
+        cameraSnap = false;
+        render();
+      }
+
+      window.addEventListener('resize', resize);
+
+      // Some embedded browsers report an empty event.code, so fall back to
+      // event.key. This also keeps WASD working on non-QWERTY layouts.
+      const keyAliases = {
+        w: 'KeyW',
+        a: 'KeyA',
+        s: 'KeyS',
+        d: 'KeyD',
+        arrowup: 'ArrowUp',
+        arrowdown: 'ArrowDown',
+        arrowleft: 'ArrowLeft',
+        arrowright: 'ArrowRight'
+      };
+
+      function movementCode(event) {
+        if (movementKeys.has(event.code)) return event.code;
+        const key = String(event.key || '').toLowerCase();
+        return keyAliases[key] || null;
+      }
+
+      const focusPrompt = document.getElementById('focusPrompt');
+
+      function focusGame() {
+        try {
+          canvas.focus({ preventScroll: true });
+        } catch (error) {
+          canvas.focus();
+        }
+        focusPrompt.hidden = document.hasFocus();
+      }
+
+      function showFocusPromptIfNeeded() {
+        focusPrompt.hidden = document.hasFocus();
+      }
+
+      window.addEventListener('keydown', (event) => {
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
+        const code = movementCode(event);
+        if (code) {
+          event.preventDefault();
+          keys.add(code);
+        }
+      });
+
+      window.addEventListener('keyup', (event) => {
+        const code = movementCode(event);
+        if (code) {
+          event.preventDefault();
+          keys.delete(code);
+        }
+      });
+
+      window.addEventListener('blur', () => {
+        keys.clear();
+        focusPrompt.hidden = false;
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) keys.clear();
+      });
+
+      window.addEventListener('pointerdown', focusGame);
+      window.addEventListener('focus', focusGame);
+      focusGame();
+      setTimeout(showFocusPromptIfNeeded, 250);
+
+      let lastTime = performance.now();
+
+      function tick(now) {
+        // rAF timestamps can be slightly older than performance.now() at boot.
+        // Never allow a negative dt, or the animation frame index can go to -1.
+        const dt = Math.max(0, Math.min((now - lastTime) / 1000, 0.05));
+        lastTime = now;
+        update(dt);
+        render();
+        requestAnimationFrame(tick);
+      }
+
+      resize();
+      requestAnimationFrame(tick);
+    })();
+  </script>
+</body>
+</html>
