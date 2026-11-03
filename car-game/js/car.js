@@ -601,18 +601,6 @@ class Car {
         this.bodyMeshGroup.add(body);
     }
 
-        // 13. Artillery Wooden Wheels (12 gloss black spokes, silver outer rim, chrome hubcap!)
-        const wheelOffsets = [
-            { x: -0.84, y: 0.46, z: 1.42, isFront: true },
-            { x: 0.84, y: 0.46, z: 1.42, isFront: true },
-            { x: -0.84, y: 0.46, z: -1.22, isFront: false },
-            { x: 0.84, y: 0.46, z: -1.22, isFront: false }
-        ];
-
-        this.attachAuthenticArtilleryWheels(body, wheelOffsets, chromeMat);
-        this.bodyMeshGroup.add(body);
-    }
-
     attachAuthenticArtilleryWheels(parent, offsets, chromeMat) {
         const tireMat = new THREE.MeshStandardMaterial({
             color: 0x222426,
