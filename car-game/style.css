@@ -1,0 +1,381 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #fff;
+}
+
+#game-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* Glassmorphism Common */
+.glass-panel {
+    background: rgba(18, 22, 34, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Top Toolbar */
+#top-bar {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 18px;
+}
+
+.brand-title {
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #00ffcc;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-tool {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-tool:hover {
+    background: rgba(0, 255, 204, 0.25);
+    border-color: #00ffcc;
+    transform: translateY(-1px);
+}
+
+.btn-tool:active {
+    transform: translateY(1px);
+}
+
+select.btn-tool {
+    appearance: none;
+    padding-right: 24px;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
+}
+
+input[type="color"] {
+    -webkit-appearance: none;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    background: none;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+}
+
+/* Stunt Banner & Notifications */
+#stunt-container {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+
+#stunt-notif {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #ffdd59;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 221, 89, 0.6);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#drift-banner {
+    display: none;
+    margin-top: 8px;
+    font-size: 26px;
+    font-weight: 900;
+    font-style: italic;
+    color: #ff3838;
+    text-shadow: 0 0 15px #ff3838, 0 2px 4px #000;
+    letter-spacing: 2px;
+    animation: pulse 0.5s infinite alternate;
+}
+
+@keyframes pulse {
+    from { transform: scale(1.0); }
+    to { transform: scale(1.08); }
+}
+
+/* Bottom Left: Speedometer & Tachometer */
+#speedo-container {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    z-index: 10;
+    width: 210px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.speedo-dial {
+    position: relative;
+    width: 150px;
+    height: 85px;
+    overflow: hidden;
+}
+
+.speedo-arc {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 6px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #00ffcc;
+    border-left-color: #00ffcc;
+    transform: rotate(45deg);
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.speedo-needle {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 3px;
+    height: 65px;
+    background: linear-gradient(to top, #ff3838, #ff9f1a);
+    transform-origin: bottom center;
+    transform: rotate(-120deg);
+    transition: transform 0.05s linear;
+    border-radius: 2px;
+    box-shadow: 0 0 8px #ff3838;
+}
+
+.speedo-needle-center {
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #000;
+}
+
+.speedo-readout {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.speed-number {
+    font-size: 38px;
+    font-weight: 900;
+    font-family: "Courier New", Courier, monospace;
+    color: #fff;
+    letter-spacing: -1px;
+}
+
+.speed-unit {
+    font-size: 13px;
+    font-weight: 700;
+    color: #00ffcc;
+    text-transform: uppercase;
+}
+
+.speedo-sub {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.gear-badge {
+    background: #00ffcc;
+    color: #111;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 900;
+}
+
+.rpm-bar-container {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.rpm-bar-fill {
+    width: 20%;
+    height: 100%;
+    background: linear-gradient(to right, #00ffcc, #ffdd59 75%, #ff3838);
+    transition: width 0.05s linear;
+}
+
+/* Bottom Right: Minimap */
+#minimap-wrapper {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+#minimap-canvas {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    box-shadow: 0 0 18px rgba(0, 255, 204, 0.35);
+}
+
+.minimap-legend {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+}
+
+/* Keybindings Helper Panel */
+#controls-helper {
+    position: absolute;
+    top: 72px;
+    left: 24px;
+    z-index: 10;
+    padding: 12px 16px;
+    font-size: 12px;
+    max-width: 220px;
+    opacity: 0.85;
+    transition: opacity 0.2s;
+}
+
+#controls-helper:hover {
+    opacity: 1.0;
+}
+
+#controls-helper h4 {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #00ffcc;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.key-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    color: #ddd;
+}
+
+.key-cap {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* Touch controls (Hidden on desktop, shown on small/touch screens) */
+#touch-controls {
+    display: none;
+    position: absolute;
+    bottom: 30px;
+    left: 0;
+    width: 100%;
+    padding: 0 20px;
+    justify-content: space-between;
+    z-index: 15;
+    pointer-events: none;
+}
+
+.touch-cluster {
+    display: flex;
+    gap: 12px;
+    pointer-events: auto;
+}
+
+.touch-btn {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    color: #fff;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+}
+
+@media (max-width: 820px) {
+    #controls-helper {
+        display: none;
+    }
+    #touch-controls {
+        display: flex;
+    }
+}

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Open World 3D Driving Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Load Three.js from local file with CDN fallback -->
+    <script src="three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+        }
+    </script>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <!-- Top Navigation & Controls Bar -->
+    <header id="top-bar" class="glass-panel">
+        <div class="brand-title">
+            <span>🏁</span> OPEN ROAD 3D
+        </div>
+
+        <div class="toolbar-group">
+            <select id="vehicle-select" class="btn-tool" title="Select Vehicle">
+                <option value="vintage">1920s Model T (Vintage)</option>
+                <option value="muscle">Retro Muscle V8</option>
+                <option value="offroad">4x4 Trail Runner</option>
+                <option value="supercar">Aero Supercar</option>
+            </select>
+
+            <input type="color" id="paint-picker" value="#111111" title="Customize Paint Color">
+
+            <button id="btn-cam" class="btn-tool" title="Cycle Camera [C]">
+                📷 <span id="cam-label">CHASE</span>
+            </button>
+
+            <button id="btn-tod" class="btn-tool" title="Cycle Day / Sunset / Night [T]">
+                ☀️ TIME
+            </button>
+
+            <button id="btn-horn" class="btn-tool" title="Honk Horn [H]">
+                📢 HORN
+            </button>
+
+            <button id="btn-radio" class="btn-tool" title="Toggle Synthwave Radio [M]">
+                🎵 RADIO
+            </button>
+
+            <button id="btn-reset" class="btn-tool" title="Reset Car to Road [R]">
+                🔄 RESET
+            </button>
+
+            <button id="btn-audio" class="btn-tool" title="Mute/Unmute Audio">
+                🔊
+            </button>
+        </div>
+    </header>
+
+    <!-- Stunt & Drift Notification Center -->
+    <div id="stunt-container">
+        <div id="stunt-notif"></div>
+        <div id="drift-banner">DRIFT: 0 PTS</div>
+    </div>
+
+    <!-- Keyboard Control Cheat Sheet -->
+    <div id="controls-helper" class="glass-panel">
+        <h4>Controls</h4>
+        <div class="key-row"><span>Drive / Brake</span><span class="key-cap">W S / ↑ ↓</span></div>
+        <div class="key-row"><span>Steer</span><span class="key-cap">A D / ← →</span></div>
+        <div class="key-row"><span>Handbrake / Drift</span><span class="key-cap">Space</span></div>
+        <div class="key-row"><span>Nitro Turbo</span><span class="key-cap">Shift</span></div>
+        <div class="key-row"><span>Honk Horn</span><span class="key-cap">H</span></div>
+        <div class="key-row"><span>Camera View</span><span class="key-cap">C</span></div>
+        <div class="key-row"><span>Headlights</span><span class="key-cap">L</span></div>
+        <div class="key-row"><span>Day / Night</span><span class="key-cap">T</span></div>
+        <div class="key-row"><span>Synthwave Music</span><span class="key-cap">M</span></div>
+        <div class="key-row"><span>Reset Vehicle</span><span class="key-cap">R</span></div>
+    </div>
+
+    <!-- Bottom Left: Speedometer & Tachometer -->
+    <div id="speedo-container" class="glass-panel">
+        <div class="speedo-dial">
+            <div class="speedo-arc"></div>
+            <div id="speed-needle" class="speedo-needle"></div>
+            <div class="speedo-needle-center"></div>
+        </div>
+
+        <div class="speedo-readout">
+            <span id="speed-digital" class="speed-number">0</span>
+            <span class="speed-unit">km/h</span>
+        </div>
+
+        <div class="speedo-sub">
+            <div>GEAR: <span id="gear-val" class="gear-badge">1</span></div>
+            <div>SCORE: <span id="score-val" style="color: #ffdd59;">0</span></div>
+        </div>
+
+        <div class="rpm-bar-container">
+            <div id="rpm-bar" class="rpm-bar-fill"></div>
+        </div>
+    </div>
+
+    <!-- Bottom Right: Radar Minimap -->
+    <div id="minimap-wrapper">
+        <canvas id="minimap-canvas" width="160" height="160"></canvas>
+        <div class="minimap-legend">GPS RADAR</div>
+    </div>
+
+    <!-- Touch Screen Controls for Mobile/Tablets -->
+    <div id="touch-controls">
+        <div class="touch-cluster">
+            <button id="btn-touch-left" class="touch-btn">◀</button>
+            <button id="btn-touch-right" class="touch-btn">▶</button>
+        </div>
+        <div class="touch-cluster">
+            <button id="btn-touch-down" class="touch-btn">▼</button>
+            <button id="btn-touch-up" class="touch-btn">▲</button>
+            <button id="btn-touch-brake" class="touch-btn" style="background: rgba(255, 56, 56, 0.4);">🛑</button>
+            <button id="btn-touch-boost" class="touch-btn" style="background: rgba(0, 210, 255, 0.4);">⚡</button>
+        </div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script src="js/textures.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/terrain.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/car.js"></script>
+    <script src="js/minimap.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
