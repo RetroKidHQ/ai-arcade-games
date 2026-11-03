@@ -210,6 +210,7 @@ class Car {
     // Exact 1:1 photoreal replica of the Ford Model T Touring car from the 3 reference views (Front, Back, Side)
     buildModelTPhotoreal(paintMat, chromeMat, blackTrim, glassMat) {
         const tg = window.textureGenerator;
+        const skyTex = tg ? tg.createSkyTexture() : null;
         const body = new THREE.Group();
 
         // 1. Main 4-Door Touring Body Tub (Front, Back & Side profiles)

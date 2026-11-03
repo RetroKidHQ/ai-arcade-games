@@ -78,7 +78,6 @@ class Game {
             });
             this.skyDome = new THREE.Mesh(skyGeo, skyMat);
             this.scene.add(this.skyDome);
-            this.scene.environment = skyTex;
         }
 
         // Build procedural terrain & water
