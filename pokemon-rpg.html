@@ -262,11 +262,12 @@
       const BOUNDARY_SIZE = BOUNDARY_BLOCKS * TILE;
       const PLAYER_SPEED = 74;
 
-      // Exterior home: 7 × 4 blocks, centered above the boundary door.
+      // Exterior home: 7 × 4 blocks, inside the top-left of the boundary.
+      // It sits 10 blocks left of the centered main path.
       const HOME_W = 7 * TILE;
       const HOME_D = 4 * TILE;
-      const HOME_X = (BOUNDARY_SIZE - HOME_W) / 2;
-      const HOME_Y = WORLD_H - BOUNDARY_SIZE - HOME_D;
+      const HOME_X = (BOUNDARY_SIZE - HOME_W) / 2 - 10 * TILE;
+      const HOME_Y = WORLD_H - BOUNDARY_SIZE + TILE + 20;
       const HOME_DOOR_W = 2 * TILE;
       const HOME_DOOR_X = HOME_X + (HOME_W - HOME_DOOR_W) / 2;
       const HOME_DOOR_Y = HOME_Y + HOME_D;
@@ -400,7 +401,7 @@
       function exitHome() {
         scene = 'meadow';
         player.x = HOME_X + HOME_W / 2;
-        player.y = HOME_DOOR_Y + 28;
+        player.y = HOME_DOOR_Y + 20;
         player.dir = 'down';
         player.state = 'idle';
         player.frame = 0;
@@ -743,6 +744,36 @@
         px(ctx, x + 2, y, 1, 1, ground.bladeLight);
       }
 
+      function drawStonePathRect(x, y, w, h) {
+        ctx.fillStyle = ground.pathEdge;
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = ground.pathBase;
+        ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+
+        const stoneH = 8;
+        const stoneW = 10;
+        const stoneGap = 2;
+        const innerW = w - 4;
+        const innerH = h - 4;
+        for (let row = 0, rowIndex = 0; row < innerH; row += stoneH, rowIndex++) {
+          const shift = rowIndex % 2 === 0 ? 0 : 5;
+          let colIndex = 0;
+          for (let sx = -shift; sx < innerW; sx += stoneW + stoneGap, colIndex++) {
+            const left = Math.max(0, sx);
+            const right = Math.min(innerW, sx + stoneW);
+            if (right <= left) continue;
+            const tone = hash(rowIndex, colIndex, 21);
+            ctx.fillStyle = ground.pathStones[Math.floor(tone * ground.pathStones.length)];
+            ctx.fillRect(
+              x + 2 + left,
+              y + 2 + row,
+              right - left,
+              Math.min(stoneH - 1, innerH - row)
+            );
+          }
+        }
+      }
+
       function drawGround(camX, camY) {
         ctx.fillStyle = ground.base;
         ctx.fillRect(0, 0, view.w, view.h);
@@ -817,31 +848,15 @@
         const pathY = Math.round(WORLD_H - BOUNDARY_SIZE - camY);
         const pathH = BOUNDARY_SIZE;
 
-        ctx.fillStyle = ground.pathEdge;
-        ctx.fillRect(pathX, pathY, pathWidth, pathH);
-        ctx.fillStyle = ground.pathBase;
-        ctx.fillRect(pathX + 2, pathY, pathWidth - 4, pathH);
-
-        const stoneH = 8;
-        const stoneW = 10;
-        const stoneGap = 2;
-        for (let row = 0, rowIndex = 0; row < pathH; row += stoneH, rowIndex++) {
-          const shift = rowIndex % 2 === 0 ? 0 : 5;
-          let colIndex = 0;
-          for (let x = -shift; x < pathWidth; x += stoneW + stoneGap, colIndex++) {
-            const left = Math.max(2, x);
-            const right = Math.min(pathWidth - 2, x + stoneW);
-            if (right <= left) continue;
-            const tone = hash(rowIndex, colIndex, 21);
-            ctx.fillStyle = ground.pathStones[Math.floor(tone * ground.pathStones.length)];
-            ctx.fillRect(
-              pathX + left,
-              pathY + row + 1,
-              right - left,
-              Math.min(stoneH - 2, pathH - row - 2)
-            );
-          }
-        }
+        // A 10-block stone spur leads from the main path to the cabin door.
+        const doorCenterX = HOME_DOOR_X + HOME_DOOR_W / 2;
+        const spurStartX = doorCenterX - pathWidth / 2;
+        const spurEndX = BOUNDARY_SIZE / 2 + pathWidth / 2;
+        const spurX = Math.round(spurStartX - camX);
+        const spurY = Math.round(HOME_DOOR_Y - camY);
+        const spurW = Math.round(spurEndX - spurStartX);
+        drawStonePathRect(spurX, spurY, spurW, pathWidth);
+        drawStonePathRect(pathX, pathY, pathWidth, pathH);
 
         // Visible, non-solid 35 × 35 block boundary outline at the bottom-left
         // corner of the map. It is painted flat on the meadow, so the player
