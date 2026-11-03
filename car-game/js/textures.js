@@ -314,7 +314,7 @@ class TextureGenerator {
         return texture;
     }
 
-    // 7b. Ultra-Reflective Automotive Windshield Glass Texture
+    // 7b. Balanced Automotive Windshield Glass Texture
     createWindshieldGlassTexture(size = 512) {
         if (this.cache['windshieldGlass']) return this.cache['windshieldGlass'];
         const canvas = document.createElement('canvas');
@@ -322,34 +322,34 @@ class TextureGenerator {
         canvas.height = size;
         const ctx = canvas.getContext('2d');
 
-        // Sky reflection gradient (bright sky white/blue at top to subtle tint at bottom)
+        // Soft sky reflection gradient (subtle crystal tint, clear view through)
         const bgGrad = ctx.createLinearGradient(0, 0, 0, size);
-        bgGrad.addColorStop(0.0, 'rgba(235, 248, 255, 0.65)');
-        bgGrad.addColorStop(0.3, 'rgba(195, 225, 255, 0.35)');
-        bgGrad.addColorStop(0.7, 'rgba(165, 205, 245, 0.25)');
-        bgGrad.addColorStop(1.0, 'rgba(210, 235, 255, 0.5)');
+        bgGrad.addColorStop(0.0, 'rgba(230, 245, 255, 0.32)');
+        bgGrad.addColorStop(0.3, 'rgba(190, 222, 250, 0.16)');
+        bgGrad.addColorStop(0.7, 'rgba(160, 205, 245, 0.12)');
+        bgGrad.addColorStop(1.0, 'rgba(205, 230, 255, 0.24)');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, size, size);
 
-        // Brilliant diagonal specular glare streaks (simulating sunlight glinting off glass)
+        // Elegant diagonal specular sunlight glints
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.lineWidth = 42;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.42)';
+        ctx.lineWidth = 22;
         ctx.beginPath();
-        ctx.moveTo(size * 0.12, 0);
-        ctx.lineTo(size * 0.72, size);
+        ctx.moveTo(size * 0.15, 0);
+        ctx.lineTo(size * 0.75, size);
         ctx.stroke();
 
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-        ctx.lineWidth = 18;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.lineWidth = 10;
         ctx.beginPath();
-        ctx.moveTo(size * 0.32, 0);
-        ctx.lineTo(size * 0.92, size);
+        ctx.moveTo(size * 0.35, 0);
+        ctx.lineTo(size * 0.95, size);
         ctx.stroke();
 
         // Subtle thin glass chamfer bevel highlight
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.lineWidth = 2;
         ctx.strokeRect(2, 2, size - 4, size - 4);
         ctx.restore();
 
