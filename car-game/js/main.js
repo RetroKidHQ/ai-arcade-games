@@ -442,21 +442,22 @@ class Game {
         const speed = Math.abs(car.speed);
 
         if (this.cameraMode === 'chase') {
-            // Dynamic Chase camera smoothly following the vehicle heading & slope
+            // Dynamic Chase camera smoothly following the vehicle orientation & slope
             const followDist = 8.5 + (speed / 140.0) * 3.5;
             const followHeight = 3.2 + (speed / 140.0) * 0.8;
 
-            const angle = car.heading;
-            const desiredX = targetPos.x - Math.sin(angle) * followDist;
-            const desiredZ = targetPos.z - Math.cos(angle) * followDist;
-            const pitchYOffset = Math.sin(car.terrainPitch) * followDist * 0.35;
-            const desiredY = targetPos.y + followHeight - pitchYOffset;
+            const carBack = new THREE.Vector3(0, 0, -1).applyQuaternion(car.root.quaternion);
+            const carUpVec = new THREE.Vector3(0, 1, 0).applyQuaternion(car.root.quaternion);
+
+            const desiredX = targetPos.x + carBack.x * followDist;
+            const desiredY = targetPos.y + carBack.y * followDist + carUpVec.y * followHeight;
+            const desiredZ = targetPos.z + carBack.z * followDist;
 
             this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, desiredX, 7 * delta);
             this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, desiredY, 8 * delta);
             this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, desiredZ, 7 * delta);
 
-            const lookTarget = targetPos.clone().add(new THREE.Vector3(0, 1.2, 0));
+            const lookTarget = targetPos.clone().add(carUpVec.clone().multiplyScalar(1.2));
             this.camera.lookAt(lookTarget);
 
             // Dynamic speed FOV
@@ -466,19 +467,19 @@ class Game {
 
         } else if (this.cameraMode === 'hood') {
             // Hood / Driver First-Person View
-            const fwdX = Math.sin(car.heading);
-            const fwdZ = Math.cos(car.heading);
+            const carFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.root.quaternion);
+            const carUpVec = new THREE.Vector3(0, 1, 0).applyQuaternion(car.root.quaternion);
 
             this.camera.position.set(
-                targetPos.x + fwdX * 0.3,
-                targetPos.y + 1.25,
-                targetPos.z + fwdZ * 0.3
+                targetPos.x + carFwd.x * 0.3 + carUpVec.x * 1.25,
+                targetPos.y + carFwd.y * 0.3 + carUpVec.y * 1.25,
+                targetPos.z + carFwd.z * 0.3 + carUpVec.z * 1.25
             );
 
             const lookAtPoint = new THREE.Vector3(
-                targetPos.x + fwdX * 25,
-                targetPos.y + 1.25 + Math.sin(car.terrainPitch) * 25,
-                targetPos.z + fwdZ * 25
+                targetPos.x + carFwd.x * 25 + carUpVec.x * 1.1,
+                targetPos.y + carFwd.y * 25 + carUpVec.y * 1.1,
+                targetPos.z + carFwd.z * 25 + carUpVec.z * 1.1
             );
             this.camera.lookAt(lookAtPoint);
 

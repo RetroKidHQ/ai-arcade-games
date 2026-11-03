@@ -83,7 +83,7 @@ class Car {
         this.suspensionPitch = 0;
         this.suspensionRoll = 0;
         this.root.position.copy(this.position);
-        this.root.rotation.set(0, this.heading, 0);
+        this.root.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.heading);
     }
 
     setCarType(type, colorHex) {
@@ -808,79 +808,49 @@ class Car {
             hub.rotation.y = this.steerAngle;
         }
 
-        // 2. 4-Wheel Terrain & Slope Sampling
-        const fwdX = Math.sin(this.heading);
-        const fwdZ = Math.cos(this.heading);
-        const rightX = Math.cos(this.heading);
-        const rightZ = -Math.sin(this.heading);
+        // Steer heading
+        let slipRatio = 0;
+        if (this.isGrounded) {
+            let turnRate = (this.speed / 50.0) * this.steerAngle * 1.8;
 
-        const frontDist = 1.35;
-        const rearDist = 1.25;
-        const sideDist = 0.82;
+            if (this.handbrake) {
+                turnRate *= 1.8;
+                slipRatio = Math.min(1.0, Math.abs(this.speed) / 40);
 
-        const flY = this.getSampledGround(this.position.x + fwdX * frontDist - rightX * sideDist, this.position.z + fwdZ * frontDist - rightZ * sideDist);
-        const frY = this.getSampledGround(this.position.x + fwdX * frontDist + rightX * sideDist, this.position.z + fwdZ * frontDist + rightZ * sideDist);
-        const rlY = this.getSampledGround(this.position.x - fwdX * rearDist - rightX * sideDist, this.position.z - fwdZ * rearDist - rightZ * sideDist);
-        const rrY = this.getSampledGround(this.position.x - fwdX * rearDist + rightX * sideDist, this.position.z - fwdZ * rearDist + rightZ * sideDist);
-
-        const frontAxleY = (flY + frY) / 2.0;
-        const rearAxleY = (rlY + rrY) / 2.0;
-        const leftSideY = (flY + rlY) / 2.0;
-        const rightSideY = (frY + rrY) / 2.0;
-
-        const groundY = (frontAxleY + rearAxleY) / 2.0;
-
-        // Slope pitch and roll angles
-        const wheelBase = frontDist + rearDist;
-        const trackWidth = sideDist * 2.0;
-        const targetTerrainPitch = Math.atan2(frontAxleY - rearAxleY, wheelBase);
-        const targetTerrainRoll = Math.atan2(rightSideY - leftSideY, trackWidth);
-
-        const surfaceType = this.terrain.getSurfaceType(this.position.x, this.position.z);
-        const surfaceFriction = surfaceType === 'road' ? 1.0 : (surfaceType === 'road_shoulder' ? 0.8 : 0.65);
-
-        // 3. Grounded vs Airborne State & Gravity
-        const targetY = groundY + this.wheelGroundOffset;
-
-        if (this.position.y <= targetY + 0.12) {
-            if (!this.isGrounded) {
-                if (this.verticalVelocity < -8) {
-                    window.soundEngine.playCrash(Math.min(1.0, -this.verticalVelocity / 20));
-                    this.suspensionPitch = -0.12;
+                if (Math.abs(this.speed) > 30) {
+                    this.driftScore += Math.round(Math.abs(this.speed) * delta * 10);
+                    if (window.onDrift) window.onDrift(this.driftScore);
                 }
-                if (this.airTime > 0.5) {
-                    const airScore = Math.round(this.airTime * 250);
-                    this.totalStuntScore += airScore;
-                    if (window.onStunt) window.onStunt(`Big Air Jump! +${airScore} pts`);
-                }
-                this.airTime = 0;
-            }
-            this.isGrounded = true;
-            this.verticalVelocity = 0;
-
-            // Firm ground contact: never sink into hills or float!
-            if (this.position.y < targetY) {
-                this.position.y = targetY;
             } else {
-                this.position.y = THREE.MathUtils.lerp(this.position.y, targetY, 25 * delta);
+                if (this.driftScore > 0) {
+                    this.totalStuntScore += this.driftScore;
+                    if (window.onStunt) window.onStunt(`Drift Complete! +${this.driftScore} pts`);
+                    this.driftScore = 0;
+                }
             }
 
-            // Smoothly conform to terrain slope
-            this.terrainPitch = THREE.MathUtils.lerp(this.terrainPitch, targetTerrainPitch, 20 * delta);
-            this.terrainRoll = THREE.MathUtils.lerp(this.terrainRoll, targetTerrainRoll, 20 * delta);
-        } else {
-            this.isGrounded = false;
-            this.airTime += delta;
-            this.verticalVelocity -= 26.0 * delta; // Firm gravity
-            this.position.y += this.verticalVelocity * delta;
-
-            this.terrainPitch = THREE.MathUtils.lerp(this.terrainPitch, 0, 4 * delta);
-            this.terrainRoll = THREE.MathUtils.lerp(this.terrainRoll, 0, 4 * delta);
+            this.heading += turnRate * delta;
         }
 
+        // 2. Compute Terrain Normal & Slanted Basis Vector Framework
+        const headingDir = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading)).normalize();
+        const terrainNormal = this.terrain.getNormal(this.position.x, this.position.z);
+
+        // Project forward direction onto the slanted terrain tangent plane
+        const carForward = headingDir.clone().sub(terrainNormal.clone().multiplyScalar(headingDir.dot(terrainNormal))).normalize();
+        const carRight = new THREE.Vector3().crossVectors(terrainNormal, carForward).normalize();
+        const carUp = new THREE.Vector3().crossVectors(carForward, carRight).normalize();
+
+        // 3. Slope Gravity & Engine Dynamics
+        const surfaceType = this.terrain.getSurfaceType(this.position.x, this.position.z);
+        const surfaceFriction = surfaceType === 'road' ? 1.0 : (surfaceType === 'road_shoulder' ? 0.8 : 0.65);
         const boostPower = this.isBoosting ? 1.85 : 1.0;
 
         if (this.isGrounded) {
+            // Authentic slope gravity: uphill pulls backward, downhill accelerates
+            const slopeGravity = carForward.y * 22.0;
+            this.speed -= slopeGravity * delta * 3.6;
+
             if (throttle) {
                 if (this.speed < -2) {
                     this.speed += this.brakeForce * delta;
@@ -907,29 +877,17 @@ class Car {
         const maxForwardSpeed = this.topSpeed * (this.isBoosting ? 1.35 : 1.0);
         this.speed = Math.max(-40, Math.min(maxForwardSpeed, this.speed));
 
-        let slipRatio = 0;
-        if (this.isGrounded) {
-            let turnRate = (this.speed / 50.0) * this.steerAngle * 1.8;
+        // 4. Move Car along the Slanted Terrain Tangent Plane
+        const moveSpeedMS = (this.speed / 3.6) * delta;
+        this.position.x += carForward.x * moveSpeedMS;
+        this.position.z += carForward.z * moveSpeedMS;
 
-            if (this.handbrake) {
-                turnRate *= 1.8;
-                slipRatio = Math.min(1.0, Math.abs(this.speed) / 40);
+        // Keep inside world boundaries
+        const boundary = this.terrain.halfSize - 30;
+        this.position.x = Math.max(-boundary, Math.min(boundary, this.position.x));
+        this.position.z = Math.max(-boundary, Math.min(boundary, this.position.z));
 
-                if (Math.abs(this.speed) > 30) {
-                    this.driftScore += Math.round(Math.abs(this.speed) * delta * 10);
-                    if (window.onDrift) window.onDrift(this.driftScore);
-                }
-            } else {
-                if (this.driftScore > 0) {
-                    this.totalStuntScore += this.driftScore;
-                    if (window.onStunt) window.onStunt(`Drift Complete! +${this.driftScore} pts`);
-                    this.driftScore = 0;
-                }
-            }
-
-            this.heading += turnRate * delta;
-        }
-
+        // Obstacle Collision Check
         const hit = this.world.checkCollision(this.position.x, this.position.z, 1.6);
         if (hit) {
             this.position.x += hit.nx * hit.overlap;
@@ -940,27 +898,78 @@ class Car {
             this.speed *= -0.3;
         }
 
-        const forwardX = Math.sin(this.heading);
-        const forwardZ = Math.cos(this.heading);
+        // 5. Sample 4 Wheels at Current Position for Ground Clamping
+        const frontDist = 1.35;
+        const rearDist = 1.25;
+        const sideDist = 0.82;
 
-        const moveSpeedMS = (this.speed / 3.6) * delta;
-        this.position.x += forwardX * moveSpeedMS;
-        this.position.z += forwardZ * moveSpeedMS;
+        const flX = this.position.x + carForward.x * frontDist - carRight.x * sideDist;
+        const flZ = this.position.z + carForward.z * frontDist - carRight.z * sideDist;
+        const frX = this.position.x + carForward.x * frontDist + carRight.x * sideDist;
+        const frZ = this.position.z + carForward.z * frontDist + carRight.z * sideDist;
+        const rlX = this.position.x - carForward.x * rearDist - carRight.x * sideDist;
+        const rlZ = this.position.z - carForward.z * rearDist - carRight.z * sideDist;
+        const rrX = this.position.x - carForward.x * rearDist + carRight.x * sideDist;
+        const rrZ = this.position.z - carForward.z * rearDist + carRight.z * sideDist;
 
-        const boundary = this.terrain.halfSize - 30;
-        this.position.x = Math.max(-boundary, Math.min(boundary, this.position.x));
-        this.position.z = Math.max(-boundary, Math.min(boundary, this.position.z));
+        const flY = this.getSampledGround(flX, flZ);
+        const frY = this.getSampledGround(frX, frZ);
+        const rlY = this.getSampledGround(rlX, rlZ);
+        const rrY = this.getSampledGround(rrX, rrZ);
 
+        const groundY = (flY + frY + rlY + rrY) / 4.0;
+        const targetY = groundY + this.wheelGroundOffset;
+
+        // 6. Ground Clamping & Normal Gravity
+        if (this.position.y <= targetY + 0.25) {
+            if (!this.isGrounded) {
+                if (this.verticalVelocity < -8) {
+                    window.soundEngine.playCrash(Math.min(1.0, -this.verticalVelocity / 20));
+                    this.suspensionPitch = -0.12;
+                }
+                if (this.airTime > 0.5) {
+                    const airScore = Math.round(this.airTime * 250);
+                    this.totalStuntScore += airScore;
+                    if (window.onStunt) window.onStunt(`Big Air Jump! +${airScore} pts`);
+                }
+                this.airTime = 0;
+            }
+            this.isGrounded = true;
+            this.verticalVelocity = 0;
+            this.position.y = targetY;
+        } else {
+            this.isGrounded = false;
+            this.airTime += delta;
+            this.verticalVelocity -= 26.0 * delta;
+            this.position.y += this.verticalVelocity * delta;
+            if (this.position.y < targetY) {
+                this.position.y = targetY;
+                this.isGrounded = true;
+                this.verticalVelocity = 0;
+            }
+        }
+
+        // 7. Slant Car on Hill using Matrix Basis & Quaternion SLERP
+        const basisMat = new THREE.Matrix4();
+        if (this.isGrounded) {
+            basisMat.makeBasis(carRight, carUp, carForward);
+            const targetQuat = new THREE.Quaternion().setFromRotationMatrix(basisMat);
+            this.root.quaternion.slerp(targetQuat, 25 * delta);
+        } else {
+            const flatUp = new THREE.Vector3(0, 1, 0);
+            const flatRight = new THREE.Vector3().crossVectors(flatUp, headingDir).normalize();
+            basisMat.makeBasis(flatRight, flatUp, headingDir);
+            const targetQuat = new THREE.Quaternion().setFromRotationMatrix(basisMat);
+            this.root.quaternion.slerp(targetQuat, 5 * delta);
+        }
+
+        this.root.position.copy(this.position);
+
+        // 8. Suspension Pitch & Roll Tilt
         const targetPitch = (throttle ? -0.05 : 0) + (brake ? 0.07 : 0);
         const targetRoll = -this.steerAngle * (this.speed / 80.0) * 0.12;
         this.suspensionPitch = THREE.MathUtils.lerp(this.suspensionPitch, targetPitch, 10 * delta);
         this.suspensionRoll = THREE.MathUtils.lerp(this.suspensionRoll, targetRoll, 10 * delta);
-
-        this.root.position.copy(this.position);
-        this.root.rotation.order = 'YXZ';
-        this.root.rotation.y = this.heading;
-        this.root.rotation.x = this.terrainPitch;
-        this.root.rotation.z = this.terrainRoll;
         this.bodyMeshGroup.rotation.x = this.suspensionPitch;
         this.bodyMeshGroup.rotation.z = this.suspensionRoll;
 
@@ -976,12 +985,12 @@ class Car {
 
         if (this.isGrounded) {
             if ((this.handbrake && Math.abs(this.speed) > 15) || (throttle && Math.abs(this.speed) < 10)) {
-                this.spawnSmoke(this.position.x - forwardX * 1.2, this.position.y, this.position.z - forwardZ * 1.2);
+                this.spawnSmoke(this.position.x - carForward.x * 1.2, this.position.y, this.position.z - carForward.z * 1.2);
                 this.spawnSkidmark(this.position.x, groundY, this.position.z, this.heading);
             }
 
             if (this.isBoosting && throttle) {
-                this.spawnSmoke(this.position.x - forwardX * 1.8, this.position.y + 0.3, this.position.z - forwardZ * 1.8, true);
+                this.spawnSmoke(this.position.x - carForward.x * 1.8, this.position.y + 0.3, this.position.z - carForward.z * 1.8, true);
             }
         }
 
