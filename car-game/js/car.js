@@ -137,6 +137,7 @@ class Car {
 
         if (type === 'vintage') {
             this.wheelGroundOffset = 0.11;
+            this.taillightPositions = [];
             this.buildModelTPhotoreal(this.mainPaintMaterial, chromeMat, blackTrim, glassMat);
             this.acceleration = 19.0;
             this.topSpeed = 125;
@@ -182,12 +183,12 @@ class Car {
         }
     }
 
-    // Exact 1:1 photoreal replica of the Ford Model T Touring car in the user's photo
+    // Exact 1:1 photoreal replica of the Ford Model T Touring car from the 3 reference views (Front, Back, Side)
     buildModelTPhotoreal(paintMat, chromeMat, blackTrim, glassMat) {
         const tg = window.textureGenerator;
         const body = new THREE.Group();
 
-        // 1. Main 4-Door Touring Body Tub
+        // 1. Main 4-Door Touring Body Tub (Front, Back & Side profiles)
         const tubGeo = new THREE.BoxGeometry(1.45, 0.72, 2.3);
         const tub = new THREE.Mesh(tubGeo, paintMat);
         tub.position.set(0, 0.76, -0.32);
@@ -195,7 +196,7 @@ class Car {
         tub.receiveShadow = true;
         body.add(tub);
 
-        // Curving rear cowl
+        // Curving rear cowl tub (Image 2 & 3 rear profile)
         const rearCowlGeo = new THREE.CylinderGeometry(0.72, 0.72, 1.45, 16, 1, false, 0, Math.PI);
         rearCowlGeo.rotateZ(Math.PI / 2);
         rearCowlGeo.rotateY(Math.PI / 2);
@@ -203,14 +204,23 @@ class Car {
         rearCowl.position.set(0, 0.76, -1.45);
         body.add(rearCowl);
 
-        // 2. High Hood with Side Louvers
+        // 4 Exterior Door Handles (from Side View Image 3!)
+        for (const s of [-1, 1]) {
+            for (const z of [0.05, -0.65]) {
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.1), chromeMat);
+                handle.position.set(s * 0.74, 0.96, z);
+                body.add(handle);
+            }
+        }
+
+        // 2. High Hood with Stamped Cooling Louvers (Side View Image 3)
         const hoodGeo = new THREE.BoxGeometry(1.04, 0.66, 1.35);
         const hood = new THREE.Mesh(hoodGeo, paintMat);
         hood.position.set(0, 0.82, 1.25);
         hood.castShadow = true;
         body.add(hood);
 
-        // Louver grooves on side of hood
+        // Stamped Louver grooves on side of hood (6 louvers per side, Image 3)
         const louverMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.8 });
         for (let l = 0; l < 6; l++) {
             const louverL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.28, 0.03), louverMat);
@@ -222,7 +232,13 @@ class Car {
             body.add(louverR);
         }
 
-        // 3. Tall Radiator Shell with Scripted Ford Emblem (from photo!)
+        // Center hood hinge seam rod
+        const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.38), chromeMat);
+        hinge.rotation.x = Math.PI / 2;
+        hinge.position.set(0, 1.16, 1.25);
+        body.add(hinge);
+
+        // 3. Tall Radiator Shell with Scripted Ford Emblem (Front View Image 1)
         const radShellGeo = new THREE.BoxGeometry(0.96, 0.78, 0.18);
         const radShell = new THREE.Mesh(radShellGeo, blackTrim);
         radShell.position.set(0, 0.84, 1.95);
@@ -239,20 +255,18 @@ class Car {
         grille.position.set(0, 0.84, 2.05);
         body.add(grille);
 
-        // 4. Chrome Winged Motometer / Radiator Cap (from photo!)
+        // 4. Chrome Winged Motometer / Radiator Cap (Front & Side Views)
         const neckGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.14, 12);
         const neck = new THREE.Mesh(neckGeo, chromeMat);
         neck.position.set(0, 1.28, 1.95);
         body.add(neck);
 
-        // Motometer circular thermometer gauge
         const gaugeGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.03, 16);
         gaugeGeo.rotateX(Math.PI / 2);
         const gauge = new THREE.Mesh(gaugeGeo, chromeMat);
         gauge.position.set(0, 1.38, 1.95);
         body.add(gauge);
 
-        // Motometer chrome wings
         const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.02), chromeMat);
         wingL.position.set(-0.14, 1.38, 1.95);
         wingL.rotation.z = 0.3;
@@ -262,31 +276,50 @@ class Car {
         body.add(wingL);
         body.add(wingR);
 
-        // 5. Hand Crank Handle below Radiator (from photo!)
+        // 5. Hand Crank Handle & Front Transverse Leaf Spring (Front View Image 1)
         const crankShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25), chromeMat);
         crankShaft.rotation.x = Math.PI / 2;
-        crankShaft.position.set(0.02, 0.36, 2.05);
+        crankShaft.position.set(0.02, 0.34, 2.05);
         body.add(crankShaft);
 
         const crankArm = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.16, 0.025), chromeMat);
-        crankArm.position.set(0.02, 0.28, 2.16);
+        crankArm.position.set(0.02, 0.26, 2.16);
         body.add(crankArm);
 
         const crankHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.14), blackTrim);
         crankHandle.rotation.x = Math.PI / 2;
-        crankHandle.position.set(0.02, 0.21, 2.22);
+        crankHandle.position.set(0.02, 0.19, 2.22);
         body.add(crankHandle);
 
-        // 6. Yellow NSW License Plate: "BM · 18 AP" (exact match from photo!)
-        const plateGeo = new THREE.PlaneGeometry(0.52, 0.26);
-        const plateMat = new THREE.MeshBasicMaterial({
-            map: tg ? tg.createLicensePlateTexture() : null
-        });
-        const plateMesh = new THREE.Mesh(plateGeo, plateMat);
-        plateMesh.position.set(0.0, 0.38, 2.08);
-        body.add(plateMesh);
+        // Transverse front leaf spring (Image 1 arch beneath radiator)
+        const springMat = new THREE.MeshStandardMaterial({ color: 0x1f2124, roughness: 0.6, metalness: 0.7 });
+        const frontSpring = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.08), springMat);
+        frontSpring.position.set(0, 0.36, 1.72);
+        body.add(frontSpring);
 
-        // 7. Large Antique Bucket Headlights with Chrome Trim & Fluted Lenses (from photo!)
+        const frontAxleIBeam = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.05, 0.05), springMat);
+        frontAxleIBeam.position.set(0, 0.3, 1.58);
+        body.add(frontAxleIBeam);
+
+        // Front wishbone V-struts
+        for (const s of [-1, 1]) {
+            const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.75), springMat);
+            strut.position.set(s * 0.42, 0.38, 1.25);
+            strut.rotation.x = 0.4;
+            strut.rotation.z = -s * 0.35;
+            body.add(strut);
+        }
+
+        // 6. Front Display Plate ("HYMAN LTD." from Image 1!)
+        const plateGeo = new THREE.PlaneGeometry(0.48, 0.24);
+        const hymanPlateMat = new THREE.MeshBasicMaterial({
+            map: tg ? tg.createHymanPlateTexture() : null
+        });
+        const frontPlate = new THREE.Mesh(plateGeo, hymanPlateMat);
+        frontPlate.position.set(0.0, 0.32, 2.08);
+        body.add(frontPlate);
+
+        // 7. Large Antique Bucket Headlights with Chrome Rim & Arched Bracket (Image 1)
         const lampCanGeo = new THREE.CylinderGeometry(0.19, 0.23, 0.24, 20);
         lampCanGeo.rotateX(Math.PI / 2);
 
@@ -297,6 +330,12 @@ class Car {
             transparent: true,
             opacity: 0.7
         });
+
+        // Tubular crossbar linking headlights (Image 1)
+        const crossbar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.35), blackTrim);
+        crossbar.rotation.z = Math.PI / 2;
+        crossbar.position.set(0, 0.72, 1.84);
+        body.add(crossbar);
 
         for (const side of [-1, 1]) {
             const lampGroup = new THREE.Group();
@@ -327,97 +366,115 @@ class Car {
             { x: 0.65, y: 0.78, z: 1.95 }
         ];
 
-        // 8. Side Cowl Lantern / Pillar Lamp (driver side in photo!)
+        // 8. Side Cowl Lantern / Pillar Lamp (Image 3)
         const cowlGeo = new THREE.CylinderGeometry(0.07, 0.09, 0.18, 12);
         const cowl = new THREE.Mesh(cowlGeo, blackTrim);
         cowl.position.set(-0.76, 1.15, 0.52);
         body.add(cowl);
 
-        // 9. Upright Split Glass Windshield with Tubular Frame & Driver Mirror
+        // 9. Upright Split Glass Windshield tilted back ~10 deg (Side View Image 3)
+        const wsGroup = new THREE.Group();
+        wsGroup.position.set(0, 1.15, 0.54);
+        wsGroup.rotation.x = -0.16; // Authentic backwards rake
+
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.3 });
         const wsFrameGeo = new THREE.BoxGeometry(1.42, 0.78, 0.05);
         const wsFrame = new THREE.Mesh(wsFrameGeo, frameMat);
-        wsFrame.position.set(0, 1.48, 0.54);
-        body.add(wsFrame);
+        wsFrame.position.set(0, 0.36, 0);
+        wsGroup.add(wsFrame);
 
         const upperGlass = new THREE.Mesh(new THREE.PlaneGeometry(1.32, 0.34), glassMat);
-        upperGlass.position.set(0, 1.64, 0.57);
-        body.add(upperGlass);
+        upperGlass.position.set(0, 0.52, 0.03);
+        wsGroup.add(upperGlass);
 
         const lowerGlass = new THREE.Mesh(new THREE.PlaneGeometry(1.32, 0.34), glassMat);
-        lowerGlass.position.set(0, 1.28, 0.57);
-        body.add(lowerGlass);
+        lowerGlass.position.set(0, 0.18, 0.03);
+        wsGroup.add(lowerGlass);
 
+        // Driver round rearview mirror mounted on right strut (Images 1 & 3)
         const mirrorArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.22), chromeMat);
         mirrorArm.rotation.z = Math.PI / 2;
-        mirrorArm.position.set(0.8, 1.48, 0.56);
-        body.add(mirrorArm);
+        mirrorArm.position.set(0.8, 0.42, 0.02);
+        wsGroup.add(mirrorArm);
 
         const mirrorGlass = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), chromeMat);
-        mirrorGlass.position.set(0.91, 1.48, 0.54);
+        mirrorGlass.position.set(0.91, 0.42, 0);
         mirrorGlass.rotation.y = Math.PI;
-        body.add(mirrorGlass);
+        wsGroup.add(mirrorGlass);
 
-        // 10. High Folding Canvas Touring Canopy with Side Windows (from photo!)
+        body.add(wsGroup);
+
+        // 10. High Folding Canvas Touring Canopy with Oval Rear Window (Image 2 & 3!)
         const fabricMat = new THREE.MeshStandardMaterial({
             map: tg ? tg.createFabricTexture() : null,
             roughness: 0.95,
             metalness: 0.05
         });
 
-        const canopyTop = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.12, 1.95), fabricMat);
-        canopyTop.position.set(0, 1.86, -0.5);
+        // Main roof canopy
+        const canopyTop = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.12, 2.05), fabricMat);
+        canopyTop.position.set(0, 1.86, -0.45);
         canopyTop.castShadow = true;
         body.add(canopyTop);
 
-        const rearFabric = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.75, 0.1), fabricMat);
+        // Rear curved canvas curtain with the HORIZONTAL OVAL WINDOW from Image 2!
+        const rearCurtainMat = new THREE.MeshStandardMaterial({
+            map: tg ? tg.createRearCanopyTexture() : null,
+            roughness: 0.9,
+            metalness: 0.08
+        });
+        const rearFabric = new THREE.Mesh(new THREE.PlaneGeometry(1.46, 0.78), rearCurtainMat);
         rearFabric.position.set(0, 1.46, -1.45);
+        rearFabric.rotation.y = Math.PI;
+        rearFabric.castShadow = true;
         body.add(rearFabric);
 
+        // Side rear canvas quarter panels
         for (const s of [-1, 1]) {
-            const sideCurtain = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.72, 0.8), fabricMat);
-            sideCurtain.position.set(s * 0.71, 1.48, -1.05);
+            const sideCurtain = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.72, 0.85), fabricMat);
+            sideCurtain.position.set(s * 0.71, 1.48, -1.02);
             body.add(sideCurtain);
-
-            const win = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.18), glassMat);
-            win.rotation.y = s * (Math.PI / 2);
-            win.position.set(s * 0.76, 1.52, -1.05);
-            body.add(win);
         }
 
-        for (const z of [0.45, -0.3, -1.1]) {
-            const bowL = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.78), blackTrim);
-            bowL.position.set(-0.73, 1.48, z);
-            body.add(bowL);
+        // Metal folding canopy irons / scissor struts (Image 3!)
+        for (const s of [-1, 1]) {
+            const strut1 = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.88), blackTrim);
+            strut1.position.set(s * 0.73, 1.48, -0.95);
+            strut1.rotation.x = -0.45;
+            body.add(strut1);
 
-            const bowR = bowL.clone();
-            bowR.position.x = 0.73;
-            body.add(bowR);
+            const strut2 = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.78), blackTrim);
+            strut2.position.set(s * 0.73, 1.52, -0.2);
+            strut2.rotation.x = 0.2;
+            body.add(strut2);
         }
 
-        // 11. Right-Hand Drive Cockpit & Pleated Leather Seats (from photo!)
+        // 11. Right-Hand Drive Cockpit & Pleated Leather Seats (Image 3)
         const leatherMat = new THREE.MeshStandardMaterial({
             map: tg ? tg.createLeatherTexture() : null,
             roughness: 0.6,
             metalness: 0.1
         });
 
+        // High-back front bench seat
         const frontSeat = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.35, 0.55), leatherMat);
         frontSeat.position.set(0, 0.82, -0.05);
         body.add(frontSeat);
 
-        const frontBackrest = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.45, 0.15), leatherMat);
-        frontBackrest.position.set(0, 1.15, -0.3);
+        const frontBackrest = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.52, 0.15), leatherMat);
+        frontBackrest.position.set(0, 1.18, -0.3);
         body.add(frontBackrest);
 
+        // High-back rear passenger bench seat
         const rearSeat = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.35, 0.55), leatherMat);
         rearSeat.position.set(0, 0.82, -1.05);
         body.add(rearSeat);
 
-        const rearBackrest = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.48, 0.15), leatherMat);
-        rearBackrest.position.set(0, 1.2, -1.35);
+        const rearBackrest = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.55, 0.15), leatherMat);
+        rearBackrest.position.set(0, 1.24, -1.35);
         body.add(rearBackrest);
 
+        // Steering column & wheel (Right-Hand Drive from Image 1!)
         const steerColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.72), blackTrim);
         steerColumn.rotation.x = -Math.PI / 4.5;
         steerColumn.position.set(0.38, 1.05, 0.28);
@@ -436,7 +493,7 @@ class Car {
             body.add(spk);
         }
 
-        // 12. Sweeping Curved Fenders & Diamond Tread Running Boards
+        // 12. Sweeping Curved Fenders & Running Boards with DUAL ALUMINUM STEP PLATES (Image 3!)
         const fenderMat = new THREE.MeshStandardMaterial({
             color: 0x0c0c0e,
             roughness: 0.18,
@@ -445,30 +502,104 @@ class Car {
         });
 
         const stepMat = new THREE.MeshStandardMaterial({
-            map: tg ? tg.createTreadPlateTexture() : null,
-            roughness: 0.8
+            map: tg ? tg.createRunningBoardTexture() : null,
+            roughness: 0.7,
+            metalness: 0.3
         });
 
         for (const s of [-1, 1]) {
+            // Front sweeping curved fender arch
             const fenderFront = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 1.4), fenderMat);
             fenderFront.position.set(s * 0.82, 0.72, 1.45);
             fenderFront.rotation.x = 0.18;
             body.add(fenderFront);
 
+            // Front curved flare lip
             const flare = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.08, 0.6), fenderMat);
             flare.position.set(s * 0.82, 0.58, 2.12);
             flare.rotation.x = 0.55;
             body.add(flare);
 
+            // Running board step with dual polished step plates (Side View Image 3!)
             const runBoard = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 1.55), stepMat);
             runBoard.position.set(s * 0.84, 0.34, -0.05);
             body.add(runBoard);
 
+            // Rear curved fender arch with mud flap lip
             const fenderRear = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 1.3), fenderMat);
             fenderRear.position.set(s * 0.82, 0.7, -1.25);
             fenderRear.rotation.x = -0.15;
             body.add(fenderRear);
         }
+
+        // 13. Rear Mounted Full-Size Spare Tire & Rear License Bracket (Rear View Image 2!)
+        const spareGroup = new THREE.Group();
+        spareGroup.position.set(0, 0.66, -1.72);
+
+        // Steel Y-bracket carrier
+        const bracketL = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.55), springMat);
+        bracketL.position.set(-0.2, 0.1, 0.1);
+        bracketL.rotation.z = -0.4;
+        spareGroup.add(bracketL);
+
+        const bracketR = bracketL.clone();
+        bracketR.position.x = 0.2;
+        bracketR.rotation.z = 0.4;
+        spareGroup.add(bracketR);
+
+        // Spare wheel (rubber tire + silver steel demountable rim)
+        const tireMat = new THREE.MeshStandardMaterial({ color: 0x222426, roughness: 0.85 });
+        const steelRimMat = new THREE.MeshStandardMaterial({ color: 0xc4c9d0, roughness: 0.25, metalness: 0.85 });
+        const spareTire = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.11, 16, 32), tireMat);
+        spareTire.castShadow = true;
+        spareGroup.add(spareTire);
+
+        const spareRim = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.22, 28, 1, true), steelRimMat);
+        spareRim.rotation.x = Math.PI / 2;
+        spareGroup.add(spareRim);
+
+        // Rear Display Plate ("HYMAN LTD." from Image 2!)
+        const rearPlate = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.21), hymanPlateMat);
+        rearPlate.position.set(0, 0, 0.05);
+        spareGroup.add(rearPlate);
+
+        // Single Round Red Vintage Taillight on Left Bracket (Image 2!)
+        const tailLampGroup = new THREE.Group();
+        tailLampGroup.position.set(-0.38, 0.05, 0.08);
+
+        const tailBracket = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.22), blackTrim);
+        tailBracket.rotation.z = Math.PI / 2;
+        tailLampGroup.add(tailBracket);
+
+        const tailHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.1, 16), blackTrim);
+        tailHousing.rotation.x = Math.PI / 2;
+        tailLampGroup.add(tailHousing);
+
+        const tailLensMat = new THREE.MeshStandardMaterial({
+            color: 0xb31414,
+            emissive: 0x880000,
+            emissiveIntensity: 0.6
+        });
+        const tailLens = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), tailLensMat);
+        tailLens.position.z = -0.06;
+        tailLens.rotation.y = Math.PI;
+        tailLampGroup.add(tailLens);
+        spareGroup.add(tailLampGroup);
+        this.brakeLights.push(tailLensMat);
+
+        body.add(spareGroup);
+
+        // 14. Artillery Wooden Wheels (12 gloss black spokes, silver outer rim, chrome hubcap!)
+        const wheelOffsets = [
+            { x: -0.84, y: 0.46, z: 1.42, isFront: true },
+            { x: 0.84, y: 0.46, z: 1.42, isFront: true },
+            { x: -0.84, y: 0.46, z: -1.22, isFront: false },
+            { x: 0.84, y: 0.46, z: -1.22, isFront: false }
+        ];
+
+        this.attachAuthenticArtilleryWheels(body, wheelOffsets, chromeMat);
+        this.bodyMeshGroup.add(body);
+    }
 
         // 13. Artillery Wooden Wheels (12 gloss black spokes, silver outer rim, chrome hubcap!)
         const wheelOffsets = [

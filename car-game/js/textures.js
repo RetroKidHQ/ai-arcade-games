@@ -373,7 +373,184 @@ class TextureGenerator {
         return texture;
     }
 
-    // 10. Diamond Plate Running Board Texture
+    // 10. Diamond Plate & Dual Aluminum Step Plates (Matching Side View Image 3)
+    createRunningBoardTexture(width = 512, height = 128) {
+        if (this.cache['runningBoard']) return this.cache['runningBoard'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Black ribbed running board base
+        ctx.fillStyle = '#141416';
+        ctx.fillRect(0, 0, width, height);
+
+        // Horizontal rubber traction ribs
+        ctx.strokeStyle = '#222225';
+        ctx.lineWidth = 2;
+        for (let y = 6; y < height; y += 8) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+        }
+
+        // Two polished cast-aluminum step plates (beneath front and rear doors, from Image 3!)
+        const plateCenters = [130, 380];
+        const pW = 120;
+        const pH = 84;
+
+        for (const cx of plateCenters) {
+            const px = cx - pW / 2;
+            const py = (height - pH) / 2;
+
+            // Aluminum plate drop shadow
+            ctx.fillStyle = '#08080a';
+            ctx.fillRect(px - 2, py - 2, pW + 4, pH + 4);
+
+            // Brushed aluminum finish
+            const grad = ctx.createLinearGradient(px, py, px, py + pH);
+            grad.addColorStop(0.0, '#e2e6eb');
+            grad.addColorStop(0.5, '#b8bec7');
+            grad.addColorStop(1.0, '#d5dae2');
+            ctx.fillStyle = grad;
+            ctx.fillRect(px, py, pW, pH);
+
+            // Beveled chrome border
+            ctx.strokeStyle = '#f8f9fb';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(px + 1, py + 1, pW - 2, pH - 2);
+
+            // Inner traction grooves
+            ctx.strokeStyle = '#60646c';
+            ctx.lineWidth = 2.5;
+            for (let y = py + 12; y < py + pH - 10; y += 10) {
+                ctx.beginPath();
+                ctx.moveTo(px + 12, y);
+                ctx.lineTo(px + pW - 12, y);
+                ctx.stroke();
+            }
+
+            // Central Ford script badge on step plate
+            ctx.fillStyle = '#22252a';
+            ctx.font = 'italic bold 16px "Brush Script MT", cursive, serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Ford', cx, py + pH / 2 + 5);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['runningBoard'] = texture;
+        return texture;
+    }
+
+    // 10b. Rear Canvas Curtain with Horizontal Oval Isinglass Window (from Rear View Image 2!)
+    createRearCanopyTexture(size = 512) {
+        if (this.cache['rearCanopy']) return this.cache['rearCanopy'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Black weathered canvas top
+        ctx.fillStyle = '#18181a';
+        ctx.fillRect(0, 0, size, size);
+
+        // Subtle canvas weave
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+        for (let y = 0; y < size; y += 4) {
+            for (let x = (y % 8 === 0 ? 0 : 2); x < size; x += 4) {
+                ctx.fillRect(x, y, 2, 2);
+            }
+        }
+
+        // Distinctive horizontal oval window (Image 2!)
+        const ox = size / 2;
+        const oy = size * 0.38;
+        const rx = 145; // horizontal radius
+        const ry = 72;  // vertical radius
+
+        // Outer chrome/nickel bezel ring
+        ctx.beginPath();
+        ctx.ellipse(ox, oy, rx + 10, ry + 10, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#0a0a0c'; // shadow
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.ellipse(ox, oy, rx + 6, ry + 6, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#dbe0e6'; // nickel bezel
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.ellipse(ox, oy, rx + 2, ry + 2, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#1c1c1f'; // rubber gasket
+        ctx.fill();
+
+        // Isinglass transparent window glass with sky reflection
+        ctx.beginPath();
+        ctx.ellipse(ox, oy, rx, ry, 0, 0, Math.PI * 2);
+        const glassGrad = ctx.createLinearGradient(ox - rx, oy - ry, ox + rx, oy + ry);
+        glassGrad.addColorStop(0.0, 'rgba(215, 238, 255, 0.65)');
+        glassGrad.addColorStop(0.4, 'rgba(160, 200, 235, 0.45)');
+        glassGrad.addColorStop(0.7, 'rgba(80, 110, 140, 0.35)');
+        glassGrad.addColorStop(1.0, 'rgba(200, 230, 255, 0.6)');
+        ctx.fillStyle = glassGrad;
+        ctx.fill();
+
+        // White diagonal reflection glare line
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(ox, oy, rx - 4, ry - 4, 0, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(ox - rx * 0.4, oy - ry);
+        ctx.lineTo(ox - rx * 0.1, oy + ry);
+        ctx.stroke();
+        ctx.restore();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['rearCanopy'] = texture;
+        return texture;
+    }
+
+    // 10c. Classic Exhibition Display Plate ("HYMAN LTD." from Images 1 & 2)
+    createHymanPlateTexture() {
+        if (this.cache['hymanPlate']) return this.cache['hymanPlate'];
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        // Black plate background
+        ctx.fillStyle = '#111113';
+        ctx.fillRect(0, 0, 512, 256);
+
+        // Silver border
+        ctx.strokeStyle = '#c8cdd4';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(10, 10, 492, 236);
+
+        // White/silver typography
+        ctx.fillStyle = '#e8ecf2';
+        ctx.font = 'bold 84px "Times New Roman", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.letterSpacing = '3px';
+        ctx.fillText('HYMAN', 256, 125);
+
+        ctx.font = 'bold 36px "Times New Roman", Georgia, serif';
+        ctx.fillText('LTD.', 256, 175);
+
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = '#9aa0a8';
+        ctx.fillText('CLASSIC CARS', 256, 215);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['hymanPlate'] = texture;
+        return texture;
+    }
+
+    // 10d. Diamond Plate Running Board Texture
     createTreadPlateTexture(size = 256) {
         if (this.cache['treadPlate']) return this.cache['treadPlate'];
         const canvas = document.createElement('canvas');
