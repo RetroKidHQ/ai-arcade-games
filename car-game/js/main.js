@@ -442,17 +442,18 @@ class Game {
         const speed = Math.abs(car.speed);
 
         if (this.cameraMode === 'chase') {
-            // Dynamic Chase camera smoothly following the vehicle heading
+            // Dynamic Chase camera smoothly following the vehicle heading & slope
             const followDist = 8.5 + (speed / 140.0) * 3.5;
             const followHeight = 3.2 + (speed / 140.0) * 0.8;
 
             const angle = car.heading;
             const desiredX = targetPos.x - Math.sin(angle) * followDist;
             const desiredZ = targetPos.z - Math.cos(angle) * followDist;
-            const desiredY = targetPos.y + followHeight;
+            const pitchYOffset = Math.sin(car.terrainPitch) * followDist * 0.35;
+            const desiredY = targetPos.y + followHeight - pitchYOffset;
 
             this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, desiredX, 7 * delta);
-            this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, desiredY, 6 * delta);
+            this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, desiredY, 8 * delta);
             this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, desiredZ, 7 * delta);
 
             const lookTarget = targetPos.clone().add(new THREE.Vector3(0, 1.2, 0));
@@ -476,7 +477,7 @@ class Game {
 
             const lookAtPoint = new THREE.Vector3(
                 targetPos.x + fwdX * 25,
-                targetPos.y + 1.1,
+                targetPos.y + 1.25 + Math.sin(car.terrainPitch) * 25,
                 targetPos.z + fwdZ * 25
             );
             this.camera.lookAt(lookAtPoint);

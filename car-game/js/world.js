@@ -209,12 +209,12 @@ class WorldManager {
             const hayGeo = new THREE.CylinderGeometry(1.4, 1.4, 2.2, 12);
             hayGeo.rotateZ(Math.PI / 2);
             const hay = new THREE.Mesh(hayGeo, new THREE.MeshStandardMaterial({ color: 0xd4a037, roughness: 0.95 }));
-            hay.position.set(hx, hy + 1.1, hz);
+            hay.position.set(hx, hy + 1.4, hz);
             hay.rotation.y = Math.random() * Math.PI;
             hay.castShadow = true;
             this.scene.add(hay);
 
-            this.destructibles.push({ mesh: hay, x: hx, y: hy + 1.1, z: hz, vx: 0, vz: 0, radius: 1.5 });
+            this.destructibles.push({ mesh: hay, x: hx, y: hy + 1.4, z: hz, vx: 0, vz: 0, radius: 1.5 });
         }
     }
 
@@ -340,10 +340,10 @@ class WorldManager {
     createEucalyptusTreeModel(trunkMat, leafMat, scale = 1.0) {
         const tree = new THREE.Group();
 
-        // Main trunk (slender & tall, authentic to the photo)
-        const trunkGeo = new THREE.CylinderGeometry(0.38 * scale, 0.65 * scale, 14 * scale, 10);
+        // Main trunk (anchors 2m deep into ground so it never floats on slopes)
+        const trunkGeo = new THREE.CylinderGeometry(0.38 * scale, 0.68 * scale, 17 * scale, 10);
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        trunk.position.y = 7 * scale;
+        trunk.position.y = 6.5 * scale;
         trunk.castShadow = true;
         tree.add(trunk);
 
@@ -382,11 +382,12 @@ class WorldManager {
     createBushyTreeModel(trunkMat, leafMat, scale = 1.0) {
         const tree = new THREE.Group();
 
+        // Anchors into hillside
         const trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.35 * scale, 0.55 * scale, 6 * scale, 8),
+            new THREE.CylinderGeometry(0.35 * scale, 0.6 * scale, 8 * scale, 8),
             trunkMat
         );
-        trunk.position.y = 3 * scale;
+        trunk.position.y = 2.5 * scale;
         trunk.castShadow = true;
         tree.add(trunk);
 
@@ -581,7 +582,7 @@ class WorldManager {
                 item.z += item.vz;
                 item.vx *= 0.9;
                 item.vz *= 0.9;
-                item.y = this.terrain.getHeight(item.x, item.z) + 1.1;
+                item.y = this.terrain.getHeight(item.x, item.z) + 1.4;
                 item.mesh.position.set(item.x, item.y, item.z);
                 item.mesh.rotation.x += item.vz * 0.2;
                 item.mesh.rotation.z -= item.vx * 0.2;
