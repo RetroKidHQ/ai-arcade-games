@@ -55,7 +55,7 @@ class Game {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
+        this.renderer.toneMappingExposure = 1.22;
 
         this.container.appendChild(this.renderer.domElement);
 
@@ -78,6 +78,7 @@ class Game {
             });
             this.skyDome = new THREE.Mesh(skyGeo, skyMat);
             this.scene.add(this.skyDome);
+            this.scene.environment = skyTex;
         }
 
         // Build procedural terrain & water

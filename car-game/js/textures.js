@@ -314,6 +314,50 @@ class TextureGenerator {
         return texture;
     }
 
+    // 7b. Ultra-Reflective Automotive Windshield Glass Texture
+    createWindshieldGlassTexture(size = 512) {
+        if (this.cache['windshieldGlass']) return this.cache['windshieldGlass'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Sky reflection gradient (bright sky white/blue at top to subtle tint at bottom)
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, size);
+        bgGrad.addColorStop(0.0, 'rgba(235, 248, 255, 0.65)');
+        bgGrad.addColorStop(0.3, 'rgba(195, 225, 255, 0.35)');
+        bgGrad.addColorStop(0.7, 'rgba(165, 205, 245, 0.25)');
+        bgGrad.addColorStop(1.0, 'rgba(210, 235, 255, 0.5)');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, size, size);
+
+        // Brilliant diagonal specular glare streaks (simulating sunlight glinting off glass)
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 42;
+        ctx.beginPath();
+        ctx.moveTo(size * 0.12, 0);
+        ctx.lineTo(size * 0.72, size);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.lineWidth = 18;
+        ctx.beginPath();
+        ctx.moveTo(size * 0.32, 0);
+        ctx.lineTo(size * 0.92, size);
+        ctx.stroke();
+
+        // Subtle thin glass chamfer bevel highlight
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(2, 2, size - 4, size - 4);
+        ctx.restore();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['windshieldGlass'] = texture;
+        return texture;
+    }
+
     // 8. Matte Folding Canvas Roof Fabric Texture
     createFabricTexture(size = 512) {
         if (this.cache['fabric']) return this.cache['fabric'];

@@ -109,30 +109,54 @@ class Car {
         this.brakeLights = [];
         this.exhaustPipes = [];
 
-        // Realistic Gloss Black Lacquer Paint Material with Environment Reflections
-        this.mainPaintMaterial = new THREE.MeshStandardMaterial({
+        // Ultra-Reflective Materials with Environment Mapping
+        const skyTex = window.textureGenerator ? window.textureGenerator.createSkyTexture() : null;
+
+        // Ultra-Deep Gloss Clearcoat Black Lacquer
+        this.mainPaintMaterial = new THREE.MeshPhysicalMaterial({
             color: this.paintColor,
-            roughness: 0.12,
-            metalness: 0.25,
-            envMap: window.textureGenerator ? window.textureGenerator.createSkyTexture() : null,
-            envMapIntensity: 1.2
+            roughness: 0.04,
+            metalness: 0.15,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.02,
+            reflectivity: 0.9,
+            envMap: skyTex,
+            envMapIntensity: 2.2
         });
 
+        // Mirror-Polished Chrome & Metal (Radiator, Cap, Headlight Rims, Mirror, Handles)
         const chromeMat = new THREE.MeshStandardMaterial({
-            color: 0xf5f7fa,
-            roughness: 0.08,
-            metalness: 0.96,
-            envMap: window.textureGenerator ? window.textureGenerator.createSkyTexture() : null,
-            envMapIntensity: 1.5
+            color: 0xffffff,
+            roughness: 0.0,
+            metalness: 1.0,
+            envMap: skyTex,
+            envMapIntensity: 4.8
         });
 
-        const blackTrim = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.5 });
-        const glassMat = new THREE.MeshStandardMaterial({
-            color: 0xebf4ff,
-            roughness: 0.05,
+        const blackTrim = new THREE.MeshStandardMaterial({
+            color: 0x111113,
+            roughness: 0.15,
             metalness: 0.9,
+            envMap: skyTex,
+            envMapIntensity: 2.2
+        });
+
+        // Ultra-Reflective Crystal Glass Windshield with Specular Sunlight Glints
+        const glassMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            map: window.textureGenerator ? window.textureGenerator.createWindshieldGlassTexture() : null,
             transparent: true,
-            opacity: 0.45
+            opacity: 0.65,
+            roughness: 0.0,
+            metalness: 0.05,
+            reflectivity: 1.0,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.0,
+            transmission: 0.42,
+            ior: 1.52,
+            envMap: skyTex,
+            envMapIntensity: 5.8,
+            side: THREE.DoubleSide
         });
 
         if (type === 'vintage') {
@@ -377,7 +401,13 @@ class Car {
         wsGroup.position.set(0, 1.15, 0.54);
         wsGroup.rotation.x = -0.16; // Authentic backwards rake
 
-        const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.3 });
+        const frameMat = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            metalness: 0.95,
+            roughness: 0.1,
+            envMap: skyTex,
+            envMapIntensity: 3.2
+        });
         const wsFrameGeo = new THREE.BoxGeometry(1.42, 0.78, 0.05);
         const wsFrame = new THREE.Mesh(wsFrameGeo, frameMat);
         wsFrame.position.set(0, 0.36, 0);
@@ -428,6 +458,19 @@ class Car {
         rearFabric.rotation.y = Math.PI;
         rearFabric.castShadow = true;
         body.add(rearFabric);
+
+        // Shiny reflective glass pane in the rear oval window with chrome bezel (Image 2!)
+        const rearGlassGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.01, 24);
+        rearGlassGeo.scale(1.4, 1.0, 0.7);
+        rearGlassGeo.rotateX(Math.PI / 2);
+        const rearGlass = new THREE.Mesh(rearGlassGeo, glassMat);
+        rearGlass.position.set(0, 1.48, -1.455);
+        body.add(rearGlass);
+
+        const rearBezel = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.018, 12, 32), chromeMat);
+        rearBezel.scale.set(1.4, 0.7, 1.0);
+        rearBezel.position.set(0, 1.48, -1.456);
+        body.add(rearBezel);
 
         // Side rear canvas quarter panels
         for (const s of [-1, 1]) {
@@ -503,8 +546,10 @@ class Car {
 
         const stepMat = new THREE.MeshStandardMaterial({
             map: tg ? tg.createRunningBoardTexture() : null,
-            roughness: 0.7,
-            metalness: 0.3
+            roughness: 0.12,
+            metalness: 0.9,
+            envMap: skyTex,
+            envMapIntensity: 3.2
         });
 
         for (const s of [-1, 1]) {
@@ -549,7 +594,13 @@ class Car {
 
         // Spare wheel (rubber tire + silver steel demountable rim)
         const tireMat = new THREE.MeshStandardMaterial({ color: 0x222426, roughness: 0.85 });
-        const steelRimMat = new THREE.MeshStandardMaterial({ color: 0xc4c9d0, roughness: 0.25, metalness: 0.85 });
+        const steelRimMat = new THREE.MeshStandardMaterial({
+            color: 0xf4f7fa,
+            roughness: 0.01,
+            metalness: 1.0,
+            envMap: skyTex,
+            envMapIntensity: 4.2
+        });
         const spareTire = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.11, 16, 32), tireMat);
         spareTire.castShadow = true;
         spareGroup.add(spareTire);
@@ -602,6 +653,7 @@ class Car {
     }
 
     attachAuthenticArtilleryWheels(parent, offsets, chromeMat) {
+        const skyTex = window.textureGenerator ? window.textureGenerator.createSkyTexture() : null;
         const tireMat = new THREE.MeshStandardMaterial({
             color: 0x222426,
             roughness: 0.85,
@@ -609,9 +661,11 @@ class Car {
         });
 
         const steelRimMat = new THREE.MeshStandardMaterial({
-            color: 0xc4c9d0,
-            roughness: 0.25,
-            metalness: 0.85
+            color: 0xf4f7fa,
+            roughness: 0.01,
+            metalness: 1.0,
+            envMap: skyTex,
+            envMapIntensity: 4.2
         });
 
         const spokeMat = new THREE.MeshStandardMaterial({
