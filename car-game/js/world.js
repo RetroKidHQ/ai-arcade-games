@@ -574,7 +574,7 @@ class WorldManager {
         this.scene.add(tuftMesh);
     }
 
-    // 6. Street Lamps & Galvanized Highway Guardrails
+    // 6. Street Lamps
     buildRoadProps() {
         const lampPositions = [
             { x: -50, z: -400 }, { x: -50, z: -250 }, { x: -50, z: -100 },
@@ -603,49 +603,6 @@ class WorldManager {
             this.streetLights.push(light);
 
             this.colliders.push({ type: 'cylinder', x: lp.x + 8, z: lp.z, radius: 0.5 });
-        }
-
-        // Galvanized corrugated steel highway guardrails along mountain curves
-        const railMat = new THREE.MeshStandardMaterial({
-            color: 0xc8ced6,
-            metalness: 0.9,
-            roughness: 0.25
-        });
-
-        const postMat = new THREE.MeshStandardMaterial({ color: 0x3d4147, metalness: 0.6, roughness: 0.5 });
-
-        // Add guardrail on the mountain pass road
-        const mtnRoad = this.terrain.roads[1];
-        if (mtnRoad) {
-            for (let i = 0; i < mtnRoad.length - 1; i++) {
-                const p1 = mtnRoad[i];
-                const p2 = mtnRoad[i + 1];
-                const dx = p2.x - p1.x;
-                const dz = p2.z - p1.z;
-                const len = Math.hypot(dx, dz);
-                const angle = Math.atan2(dx, dz);
-
-                const steps = Math.ceil(len / 10);
-                for (let s = 0; s < steps; s++) {
-                    const t = s / steps;
-                    const gx = p1.x + dx * t - Math.cos(angle) * 5.2;
-                    const gz = p1.z + dz * t + Math.sin(angle) * 5.2;
-                    const gy = this.terrain.getHeight(gx, gz);
-
-                    // Vertical I-beam post
-                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.1, 0.12), postMat);
-                    post.position.set(gx, gy + 0.55, gz);
-                    this.scene.add(post);
-
-                    // Horizontal W-beam rail
-                    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 10.2), railMat);
-                    beam.position.set(gx, gy + 0.72, gz);
-                    beam.rotation.y = angle;
-                    this.scene.add(beam);
-
-                    this.colliders.push({ type: 'cylinder', x: gx, z: gz, radius: 0.4 });
-                }
-            }
         }
     }
 
