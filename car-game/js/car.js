@@ -209,6 +209,30 @@ class Car {
             this.bodyMeshGroup.add(brakeMesh);
             this.brakeLights.push(brakeMat);
         }
+
+        // 4 Wheel Ground Contact Ambient Occlusion Shadow Decals (grounds car to road/terrain)
+        const shadowTex = window.textureGenerator ? window.textureGenerator.createWheelShadowTexture(256) : null;
+        if (shadowTex) {
+            const shadowMat = new THREE.MeshBasicMaterial({
+                map: shadowTex,
+                transparent: true,
+                opacity: 0.65,
+                depthWrite: false
+            });
+            const shadowGeo = new THREE.PlaneGeometry(1.15, 1.15);
+            shadowGeo.rotateX(-Math.PI / 2);
+
+            const shadowOffsets = this.wheelShadowPositions || [
+                { x: -0.9, z: 1.4 }, { x: 0.9, z: 1.4 },
+                { x: -0.9, z: -1.35 }, { x: 0.9, z: -1.35 }
+            ];
+
+            for (const sp of shadowOffsets) {
+                const decal = new THREE.Mesh(shadowGeo, shadowMat);
+                decal.position.set(sp.x, 0.03, sp.z);
+                this.bodyMeshGroup.add(decal);
+            }
+        }
     }
 
     // Exact 1:1 photoreal replica of the Ford Model T Touring car from the 3 reference views (Front, Back, Side)
@@ -656,6 +680,12 @@ class Car {
             { x: 0.84, y: 0.46, z: -1.22, isFront: false }
         ];
 
+        this.wheelShadowPositions = [
+            { x: -0.84, z: 1.42 },
+            { x: 0.84, z: 1.42 },
+            { x: -0.84, z: -1.22 },
+            { x: 0.84, z: -1.22 }
+        ];
         this.attachAuthenticArtilleryWheels(body, wheelOffsets, chromeMat);
         this.bodyMeshGroup.add(body);
     }
@@ -1139,6 +1169,12 @@ class Car {
             { x: 1.02, y: 0.37, z: -1.38, isFront: false, radius: 0.37, width: 0.35 }
         ];
 
+        this.wheelShadowPositions = [
+            { x: -0.96, z: 1.38 },
+            { x: 0.96, z: 1.38 },
+            { x: -1.02, z: -1.38 },
+            { x: 1.02, z: -1.38 }
+        ];
         this.attachPorscheWheels(body, wheelOffsets, skyTex);
         this.bodyMeshGroup.add(body);
     }

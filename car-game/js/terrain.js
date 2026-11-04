@@ -6,7 +6,7 @@ class TerrainManager {
     constructor() {
         this.worldSize = 1400;
         this.halfSize = this.worldSize / 2;
-        this.segments = 140;
+        this.segments = 180;
         this.waterHeight = -2.0;
 
         // Road network spline waypoints
@@ -162,11 +162,11 @@ class TerrainManager {
         const colors = [];
 
         // Colors carefully balanced to blend with the realistic grass texture
-        const cGrassBase = new THREE.Color(0xffffff); // Multiplies full grass texture colors
-        const cGravelRoad = new THREE.Color(0x72767d); // Grey gravel matching photo
-        const cRoadCenter = new THREE.Color(0x35373a); // Darker packed wheel tracks
-        const cSand = new THREE.Color(0xd4be8d);
-        const cRock = new THREE.Color(0x6e6e66);
+        const cGrassLush = new THREE.Color(0xffffff);  // Full procedural grass colors
+        const cGrassWarm = new THREE.Color(0xf2eedb);  // Sunlight meadow warmth
+        const cGravelRoad = new THREE.Color(0x6b6e76); // Dark crushed stone road
+        const cSand = new THREE.Color(0xd2b785);       // Coastal sand
+        const cCliffRock = new THREE.Color(0x484642);   // Stratified dark cliff rock
 
         for (let i = 0; i < pos.count; i++) {
             const vx = pos.getX(i);
@@ -174,27 +174,36 @@ class TerrainManager {
             const vy = this.getHeight(vx, vz);
             pos.setY(i, vy);
 
+            // Compute local slope angle from height gradients
+            const norm = this.getNormal(vx, vz);
+            const slope = 1.0 - norm.y; // 0 = flat, 1 = vertical cliff
+
             const roadInfo = this.getDistanceToRoad(vx, vz);
             const dist = roadInfo.distance;
 
             let col = new THREE.Color();
-            if (dist < 1.0) {
-                // Center road track
-                col.copy(cRoadCenter);
-            } else if (dist <= this.roadWidth) {
-                // Crushed stone gravel roadway
+            if (dist <= this.roadWidth) {
+                // Asphalt & gravel roadway
                 col.copy(cGravelRoad);
-            } else if (dist <= this.roadWidth + 3.0) {
-                // Shoulder blend
-                const t = (dist - this.roadWidth) / 3.0;
-                col.copy(cGravelRoad).lerp(cGrassBase, t);
-            } else if (vy < this.waterHeight + 2.0) {
+            } else if (dist <= this.roadWidth + 3.5) {
+                // Gravel shoulder blend into grass
+                const t = (dist - this.roadWidth) / 3.5;
+                col.copy(cGravelRoad).lerp(cGrassLush, t);
+            } else if (vy < this.waterHeight + 2.5) {
+                // Shoreline beach sand
                 col.copy(cSand);
-            } else if (vy > 25.0) {
-                const t = Math.min(1.0, (vy - 25.0) / 20.0);
-                col.copy(cGrassBase).lerp(cRock, t);
+            } else if (slope > 0.35) {
+                // Steep mountain slopes & cliffs
+                const t = Math.min(1.0, (slope - 0.35) / 0.35);
+                col.copy(cGrassLush).lerp(cCliffRock, t);
+            } else if (vy > 30.0) {
+                // High mountain peak rock
+                const t = Math.min(1.0, (vy - 30.0) / 25.0);
+                col.copy(cGrassLush).lerp(cCliffRock, t);
             } else {
-                col.copy(cGrassBase);
+                // Rolling meadow with subtle organic warmth
+                const noise = Math.sin(vx * 0.05) * Math.cos(vz * 0.05);
+                col.copy(cGrassLush).lerp(cGrassWarm, Math.max(0, noise * 0.25));
             }
 
             colors.push(col.r, col.g, col.b);
@@ -205,11 +214,16 @@ class TerrainManager {
 
         // Realistic grass texture generated procedurally
         const grassTex = window.textureGenerator ? window.textureGenerator.createGrassTexture(1024) : null;
+        if (grassTex) {
+            grassTex.wrapS = THREE.RepeatWrapping;
+            grassTex.wrapT = THREE.RepeatWrapping;
+            grassTex.repeat.set(24, 24);
+        }
 
         const mat = new THREE.MeshStandardMaterial({
             map: grassTex,
             vertexColors: true,
-            roughness: 0.92,
+            roughness: 0.88,
             metalness: 0.04,
             flatShading: false
         });
@@ -220,19 +234,97 @@ class TerrainManager {
     }
 
     createWaterMesh() {
-        const waterGeo = new THREE.PlaneGeometry(this.worldSize, this.worldSize);
+        const waterGeo = new THREE.PlaneGeometry(this.worldSize, this.worldSize, 64, 64);
         waterGeo.rotateX(-Math.PI / 2);
-        const waterMat = new THREE.MeshStandardMaterial({
-            color: 0x1d668f,
-            roughness: 0.1,
-            metalness: 0.8,
+
+        const tg = window.textureGenerator;
+        this.waterNormalMap = tg ? tg.createWaterNormalMap(512) : null;
+        const skyTex = tg ? tg.createSkyTexture() : null;
+
+        // Photorealistic Ocean Material with Animated Normal Waves, Depth Tint & Sky Fresnel
+        this.waterMat = new THREE.MeshStandardMaterial({
+            color: 0x12587a,
+            roughness: 0.08,
+            metalness: 0.82,
+            normalMap: this.waterNormalMap,
+            normalScale: new THREE.Vector2(0.85, 0.85),
+            envMap: skyTex,
             transparent: true,
-            opacity: 0.85
+            opacity: 0.86
         });
-        const water = new THREE.Mesh(waterGeo, waterMat);
-        water.position.y = this.waterHeight;
-        water.receiveShadow = true;
-        return water;
+
+        this.waterMesh = new THREE.Mesh(waterGeo, this.waterMat);
+        this.waterMesh.position.y = this.waterHeight;
+        this.waterMesh.receiveShadow = true;
+        return this.waterMesh;
+    }
+
+    // High-Resolution 3D Asphalt Highway Ribbons with Yellow Center Lines
+    createRoadRibbonMesh() {
+        const tg = window.textureGenerator;
+        const asphaltTex = tg ? tg.createAsphaltRoadTexture(512, 512) : null;
+
+        const roadMat = new THREE.MeshStandardMaterial({
+            map: asphaltTex,
+            roughness: 0.75,
+            metalness: 0.15,
+            polygonOffset: true,
+            polygonOffsetFactor: -1.0,
+            polygonOffsetUnits: -1.0
+        });
+
+        const group = new THREE.Group();
+
+        for (const road of this.roads) {
+            const numSegments = road.length - 1;
+            for (let i = 0; i < numSegments; i++) {
+                const p1 = road[i];
+                const p2 = road[i + 1];
+
+                const dx = p2.x - p1.x;
+                const dz = p2.z - p1.z;
+                const len = Math.hypot(dx, dz);
+                if (len < 0.1) continue;
+
+                const angle = Math.atan2(dx, dz);
+                const steps = Math.max(4, Math.ceil(len / 18));
+                const segLen = len / steps;
+
+                for (let s = 0; s < steps; s++) {
+                    const t1 = s / steps;
+                    const t2 = (s + 1) / steps;
+
+                    const sx = p1.x + dx * ((t1 + t2) * 0.5);
+                    const sz = p1.z + dz * ((t1 + t2) * 0.5);
+                    const sy = this.getHeight(sx, sz) + 0.06; // Rests snugly on top of terrain
+
+                    const segGeo = new THREE.PlaneGeometry(this.roadWidth * 0.95, segLen + 0.2);
+                    segGeo.rotateX(-Math.PI / 2);
+                    segGeo.rotateY(angle);
+
+                    // Check slope pitch between p1 and p2
+                    const y1 = this.getHeight(p1.x + dx * t1, p1.z + dz * t1);
+                    const y2 = this.getHeight(p1.x + dx * t2, p1.z + dz * t2);
+                    const pitch = Math.atan2(y2 - y1, segLen);
+                    segGeo.rotateZ(pitch);
+
+                    const roadSeg = new THREE.Mesh(segGeo, roadMat);
+                    roadSeg.position.set(sx, sy, sz);
+                    roadSeg.receiveShadow = true;
+                    group.add(roadSeg);
+                }
+            }
+        }
+
+        return group;
+    }
+
+    update(dt) {
+        // Animate realistic ocean wave ripples across water surface
+        if (this.waterNormalMap) {
+            this.waterNormalMap.offset.x = (this.waterNormalMap.offset.x + dt * 0.02) % 1.0;
+            this.waterNormalMap.offset.y = (this.waterNormalMap.offset.y + dt * 0.035) % 1.0;
+        }
     }
 }
 

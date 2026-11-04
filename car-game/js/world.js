@@ -22,47 +22,119 @@ class WorldManager {
         this.buildRoadProps();
     }
 
-    // 1. Downtown City Zone
+    // 1. Downtown City Zone - Modular PBR High-Rises & Retail Storefronts
     buildCity() {
         const cityX = -120;
         const cityZ = -120;
-        const buildingColors = [0x424651, 0x58606d, 0x6e7888, 0x3a3f4a, 0x2d313b, 0x4a5b6c];
+        const tg = window.textureGenerator;
+        const facadeTex = tg ? tg.createBuildingFacadeTexture(512, 512) : null;
+        const storeTex = tg ? tg.createStorefrontTexture(512, 256) : null;
+
+        // PBR Facade Material with Reflective Window Glass & Concrete Piers
+        const facadeMat = new THREE.MeshStandardMaterial({
+            map: facadeTex,
+            roughness: 0.35,
+            metalness: 0.65
+        });
+
+        // Street-level retail boutique storefront material
+        const storeMat = new THREE.MeshStandardMaterial({
+            map: storeTex,
+            roughness: 0.4,
+            metalness: 0.3
+        });
+
+        const concreteMat = new THREE.MeshStandardMaterial({
+            color: 0x2e3036,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+
+        const roofMetalMat = new THREE.MeshStandardMaterial({
+            color: 0x484d54,
+            roughness: 0.5,
+            metalness: 0.8
+        });
+
         const gridRows = 4;
         const gridCols = 4;
-        const blockSize = 32;
+        const blockSize = 36;
 
         for (let r = 0; r < gridRows; r++) {
             for (let c = 0; c < gridCols; c++) {
-                if (r === 1 && c === 1) continue;
+                if (r === 1 && c === 1) continue; // City square / open plaza
 
                 const bx = cityX + (c - gridCols / 2) * blockSize;
                 const bz = cityZ + (r - gridRows / 2) * blockSize;
                 const by = this.terrain.getHeight(bx, bz);
 
-                const width = 16 + Math.random() * 8;
-                const depth = 16 + Math.random() * 8;
-                const height = 24 + Math.random() * 45;
+                const width = 18 + Math.random() * 6;
+                const depth = 18 + Math.random() * 6;
+                const totalHeight = 32 + Math.random() * 55;
 
-                const bGeo = new THREE.BoxGeometry(width, height, depth);
-                const col = buildingColors[Math.floor(Math.random() * buildingColors.length)];
-                const bMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.7, metalness: 0.2 });
+                const buildingGroup = new THREE.Group();
+                buildingGroup.position.set(bx, by, bz);
 
-                const building = new THREE.Mesh(bGeo, bMat);
-                building.position.set(bx, by + height / 2, bz);
-                building.castShadow = true;
-                building.receiveShadow = true;
-                this.scene.add(building);
+                // Tier 1: Street-Level Storefront Podium (6m tall)
+                const podH = 6.5;
+                const pod = new THREE.Mesh(new THREE.BoxGeometry(width, podH, depth), storeMat);
+                pod.position.y = podH * 0.5;
+                pod.castShadow = true;
+                pod.receiveShadow = true;
+                buildingGroup.add(pod);
 
-                const winGeo = new THREE.PlaneGeometry(width * 0.85, height * 0.75);
-                const winMat = new THREE.MeshBasicMaterial({ color: 0xffe899, transparent: true, opacity: 0.35 });
-                const win1 = new THREE.Mesh(winGeo, winMat);
-                win1.position.set(0, 0, depth / 2 + 0.1);
-                building.add(win1);
+                // Concrete sidewalk plinth around base
+                const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 2.5, 0.3, depth + 2.5), concreteMat);
+                curb.position.y = 0.15;
+                curb.receiveShadow = true;
+                buildingGroup.add(curb);
 
-                const win2 = win1.clone();
-                win2.rotation.y = Math.PI;
-                win2.position.set(0, 0, -depth / 2 - 0.1);
-                building.add(win2);
+                // Tier 2: Main Multi-Story Office / Residential Tower
+                const towerH = totalHeight - podH;
+                const towerW = width * 0.92;
+                const towerD = depth * 0.92;
+                const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerD), facadeMat);
+                tower.position.y = podH + towerH * 0.5;
+                tower.castShadow = true;
+                tower.receiveShadow = true;
+                buildingGroup.add(tower);
+
+                // Tier 3: Rooftop Mechanical Penthouse & HVAC Units
+                const roofY = podH + towerH;
+
+                // Parapet roof border
+                const parapet = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.2, 1.0, towerD + 0.2), concreteMat);
+                parapet.position.y = roofY + 0.5;
+                buildingGroup.add(parapet);
+
+                // Elevator penthouse bulkhead
+                const pentW = towerW * 0.38;
+                const pentD = towerD * 0.38;
+                const pentH = 4.2;
+                const penthouse = new THREE.Mesh(new THREE.BoxGeometry(pentW, pentH, pentD), concreteMat);
+                penthouse.position.set(0, roofY + pentH * 0.5, 0);
+                penthouse.castShadow = true;
+                buildingGroup.add(penthouse);
+
+                // Cylindrical HVAC cooling chiller
+                const hvac = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 2.2, 12), roofMetalMat);
+                hvac.position.set(towerW * 0.25, roofY + 1.1, -towerD * 0.25);
+                hvac.castShadow = true;
+                buildingGroup.add(hvac);
+
+                // Communications radio antenna mast
+                if (totalHeight > 55) {
+                    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, 14, 8), roofMetalMat);
+                    mast.position.set(-towerW * 0.2, roofY + 7, towerD * 0.2);
+                    buildingGroup.add(mast);
+
+                    // Red aviation obstacle warning light
+                    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff1e1e }));
+                    beacon.position.set(-towerW * 0.2, roofY + 14, towerD * 0.2);
+                    buildingGroup.add(beacon);
+                }
+
+                this.scene.add(buildingGroup);
 
                 this.colliders.push({
                     type: 'box',
@@ -71,7 +143,7 @@ class WorldManager {
                     minZ: bz - depth / 2,
                     maxZ: bz + depth / 2,
                     y: by,
-                    height: height
+                    height: totalHeight
                 });
             }
         }
@@ -427,49 +499,82 @@ class WorldManager {
         return group;
     }
 
-    // 3D Roadside Grass Tufts
+    // 3D Roadside Grass Tufts with GPU-Instancing & Vertex Shader Wind Animation
     buildRoadsideGrassTufts(leafMat) {
-        const tuftGeo = new THREE.PlaneGeometry(1.6, 1.2);
+        const tg = window.textureGenerator;
+        const grassBladeTex = tg ? tg.createGrassBladeTexture(256, 512) : null;
+
+        // Cross-quad 3D grass cluster geometry (2 intersecting vertical planes for 360-degree volume)
+        const plane1 = new THREE.PlaneGeometry(1.6, 1.4);
+        plane1.translate(0, 0.7, 0);
+
         const tuftMat = new THREE.MeshStandardMaterial({
-            color: 0x5a943e,
-            roughness: 0.9,
+            map: grassBladeTex,
+            transparent: true,
+            alphaTest: 0.25,
+            roughness: 0.82,
+            metalness: 0.05,
             side: THREE.DoubleSide
         });
 
-        const tuftMesh = new THREE.InstancedMesh(tuftGeo, tuftMat, 400);
+        this.grassUniforms = { uWindTime: { value: 0 } };
+        tuftMat.onBeforeCompile = (shader) => {
+            shader.uniforms.uWindTime = this.grassUniforms.uWindTime;
+            shader.vertexShader = `
+                uniform float uWindTime;
+            ` + shader.vertexShader;
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `
+                #include <begin_vertex>
+                float sway = sin(uWindTime * 2.8 + position.x * 0.35 + position.z * 0.35) * (position.y * 0.14);
+                transformed.x += sway;
+                transformed.z += cos(uWindTime * 2.1 + position.x * 0.25) * (position.y * 0.08);
+                `
+            );
+        };
+
+        const maxTufts = 2000;
+        const tuftMesh = new THREE.InstancedMesh(plane1, tuftMat, maxTufts);
         const dummy = new THREE.Object3D();
 
         let count = 0;
         for (const road of this.terrain.roads) {
-            for (let i = 0; i < road.length - 1 && count < 400; i++) {
+            for (let i = 0; i < road.length - 1 && count < maxTufts; i++) {
                 const p1 = road[i];
                 const p2 = road[i + 1];
 
-                for (let step = 0; step < 8 && count < 400; step++) {
-                    const t = step / 8;
+                for (let step = 0; step < 22 && count < maxTufts; step++) {
+                    const t = step / 22;
                     const rx = p1.x + t * (p2.x - p1.x);
                     const rz = p1.z + t * (p2.z - p1.z);
 
-                    // Place along road shoulder (+- 10m from center)
+                    // Place clusters along road shoulder and outer meadows
                     for (const side of [-1, 1]) {
-                        if (count >= 400) break;
-                        const gx = rx + side * (9.5 + Math.random() * 3.5);
-                        const gz = rz + (Math.random() - 0.5) * 4;
+                        if (count >= maxTufts) break;
+                        const distOffset = side * (5.5 + Math.random() * 8.0);
+                        const gx = rx + distOffset;
+                        const gz = rz + (Math.random() - 0.5) * 6;
                         const gy = this.terrain.getHeight(gx, gz);
 
-                        dummy.position.set(gx, gy + 0.6, gz);
+                        if (gy < this.terrain.waterHeight + 1.0) continue;
+
+                        dummy.position.set(gx, gy, gz);
                         dummy.rotation.y = Math.random() * Math.PI;
-                        dummy.scale.set(1.0 + Math.random() * 0.5, 1.0 + Math.random() * 0.5, 1.0);
+                        const s = 0.85 + Math.random() * 0.6;
+                        dummy.scale.set(s, s * (0.8 + Math.random() * 0.4), s);
                         dummy.updateMatrix();
                         tuftMesh.setMatrixAt(count++, dummy.matrix);
                     }
                 }
             }
         }
+        tuftMesh.instanceMatrix.needsUpdate = true;
+        tuftMesh.receiveShadow = true;
         this.scene.add(tuftMesh);
     }
 
-    // 6. Street Lamps
+    // 6. Street Lamps & Galvanized Highway Guardrails
     buildRoadProps() {
         const lampPositions = [
             { x: -50, z: -400 }, { x: -50, z: -250 }, { x: -50, z: -100 },
@@ -479,20 +584,84 @@ class WorldManager {
 
         for (const lp of lampPositions) {
             const ly = this.terrain.getHeight(lp.x + 8, lp.z);
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 9), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 9), new THREE.MeshStandardMaterial({ color: 0x2d3036, metalness: 0.8, roughness: 0.3 }));
             pole.position.set(lp.x + 8, ly + 4.5, lp.z);
             this.scene.add(pole);
 
-            const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfff4d0 }));
-            bulb.position.set(lp.x + 8, ly + 9, lp.z);
+            // Arm extension
+            const arm = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.12, 0.12), new THREE.MeshStandardMaterial({ color: 0x2d3036 }));
+            arm.position.set(lp.x + 6.8, ly + 8.8, lp.z);
+            this.scene.add(arm);
+
+            const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfff4d0 }));
+            bulb.position.set(lp.x + 5.6, ly + 8.6, lp.z);
             this.scene.add(bulb);
 
-            const light = new THREE.PointLight(0xffeedd, 1.8, 35, 1.5);
-            light.position.set(lp.x + 8, ly + 8.8, lp.z);
+            const light = new THREE.PointLight(0xffeedd, 1.8, 45, 1.5);
+            light.position.set(lp.x + 5.6, ly + 8.4, lp.z);
             this.scene.add(light);
             this.streetLights.push(light);
 
             this.colliders.push({ type: 'cylinder', x: lp.x + 8, z: lp.z, radius: 0.5 });
+        }
+
+        // Galvanized corrugated steel highway guardrails along mountain curves
+        const railMat = new THREE.MeshStandardMaterial({
+            color: 0xc8ced6,
+            metalness: 0.9,
+            roughness: 0.25
+        });
+
+        const postMat = new THREE.MeshStandardMaterial({ color: 0x3d4147, metalness: 0.6, roughness: 0.5 });
+
+        // Add guardrail on the mountain pass road
+        const mtnRoad = this.terrain.roads[1];
+        if (mtnRoad) {
+            for (let i = 0; i < mtnRoad.length - 1; i++) {
+                const p1 = mtnRoad[i];
+                const p2 = mtnRoad[i + 1];
+                const dx = p2.x - p1.x;
+                const dz = p2.z - p1.z;
+                const len = Math.hypot(dx, dz);
+                const angle = Math.atan2(dx, dz);
+
+                const steps = Math.ceil(len / 10);
+                for (let s = 0; s < steps; s++) {
+                    const t = s / steps;
+                    const gx = p1.x + dx * t - Math.cos(angle) * 5.2;
+                    const gz = p1.z + dz * t + Math.sin(angle) * 5.2;
+                    const gy = this.terrain.getHeight(gx, gz);
+
+                    // Vertical I-beam post
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.1, 0.12), postMat);
+                    post.position.set(gx, gy + 0.55, gz);
+                    this.scene.add(post);
+
+                    // Horizontal W-beam rail
+                    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 10.2), railMat);
+                    beam.position.set(gx, gy + 0.72, gz);
+                    beam.rotation.y = angle;
+                    this.scene.add(beam);
+
+                    this.colliders.push({ type: 'cylinder', x: gx, z: gz, radius: 0.4 });
+                }
+            }
+        }
+    }
+
+    update(dt) {
+        // Increment wind time for procedural grass vertex shader sway
+        if (this.grassUniforms && this.grassUniforms.uWindTime) {
+            this.grassUniforms.uWindTime.value += dt;
+        }
+
+        // Rotate animated props (windmill blades, lighthouse beacon)
+        for (const prop of this.animatedProps) {
+            if (prop.type === 'windmill' && prop.mesh) {
+                prop.mesh.rotation.z += prop.speed;
+            } else if (prop.type === 'lighthouse' && prop.mesh) {
+                prop.mesh.rotation.y += prop.speed;
+            }
         }
     }
 

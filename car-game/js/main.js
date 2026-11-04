@@ -87,6 +87,10 @@ class Game {
         const waterMesh = window.terrainManager.createWaterMesh();
         this.scene.add(waterMesh);
 
+        // Build 3D Asphalt Highway Ribbons with Lane Lines
+        const roadRibbon = window.terrainManager.createRoadRibbonMesh();
+        this.scene.add(roadRibbon);
+
         // Build props, buildings, ramps, and vegetation
         this.world = new window.WorldManager(this.scene, window.terrainManager);
         this.world.buildAll();
@@ -97,13 +101,15 @@ class Game {
         this.hemiLight.position.set(0, 200, 0);
         this.scene.add(this.hemiLight);
 
-        this.dirLight = new THREE.DirectionalLight(0xfff6e5, 1.3);
+        this.dirLight = new THREE.DirectionalLight(0xfff6e5, 1.35);
         this.dirLight.position.set(250, 400, 200);
         this.dirLight.castShadow = true;
         this.dirLight.shadow.mapSize.width = 2048;
         this.dirLight.shadow.mapSize.height = 2048;
         this.dirLight.shadow.camera.near = 50;
         this.dirLight.shadow.camera.far = 1000;
+        this.dirLight.shadow.bias = -0.00015;
+        this.dirLight.shadow.normalBias = 0.02;
         const d = 160;
         this.dirLight.shadow.camera.left = -d;
         this.dirLight.shadow.camera.right = d;
@@ -565,7 +571,12 @@ class Game {
         // Update Car Physics
         this.car.update(delta, this.input);
 
-        // Update Open World Props
+        // Update Terrain & Ocean Waves
+        if (window.terrainManager && window.terrainManager.update) {
+            window.terrainManager.update(delta);
+        }
+
+        // Update Open World Props & Wind Foliage
         this.world.update(delta, this.car.position, Math.abs(this.car.speed));
 
         // Update Camera

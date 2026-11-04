@@ -921,6 +921,309 @@ class TextureGenerator {
         return texture;
     }
 
+    // 10j. High-Definition Asphalt Road Texture with Stone Aggregate & Markings
+    createAsphaltRoadTexture(width = 512, height = 512) {
+        if (this.cache['asphaltRoad']) return this.cache['asphaltRoad'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Dark weathered bitumen base
+        ctx.fillStyle = '#222326';
+        ctx.fillRect(0, 0, width, height);
+
+        // Micro-aggregate mineral noise (fine gravel crushed stones)
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const noise = (Math.random() - 0.5) * 45;
+            data[i] = Math.min(255, Math.max(0, data[i] + noise));
+            data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));
+            data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise * 1.1));
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        // Center tire burnish grooves (darker worn rubber paths)
+        const burnishGrad = ctx.createLinearGradient(0, 0, width, 0);
+        burnishGrad.addColorStop(0.0, 'rgba(20, 20, 22, 0.4)');
+        burnishGrad.addColorStop(0.2, 'rgba(10, 10, 12, 0.7)'); // Left wheel track
+        burnishGrad.addColorStop(0.5, 'rgba(35, 36, 40, 0.1)'); // Center crown
+        burnishGrad.addColorStop(0.8, 'rgba(10, 10, 12, 0.7)'); // Right wheel track
+        burnishGrad.addColorStop(1.0, 'rgba(20, 20, 22, 0.4)');
+        ctx.fillStyle = burnishGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Yellow center dashed line
+        ctx.strokeStyle = '#e6b800';
+        ctx.lineWidth = 14;
+        ctx.setLineDash([48, 36]);
+        ctx.beginPath();
+        ctx.moveTo(width * 0.5, 0);
+        ctx.lineTo(width * 0.5, height);
+        ctx.stroke();
+
+        // White solid outer shoulder lines
+        ctx.strokeStyle = '#e0e4e8';
+        ctx.lineWidth = 10;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(width * 0.08, 0);
+        ctx.lineTo(width * 0.08, height);
+        ctx.moveTo(width * 0.92, 0);
+        ctx.lineTo(width * 0.92, height);
+        ctx.stroke();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['asphaltRoad'] = texture;
+        return texture;
+    }
+
+    // 10k. Procedural Wave Normal Map for Animated Ocean Ripples
+    createWaterNormalMap(size = 512) {
+        if (this.cache['waterNormal']) return this.cache['waterNormal'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const imgData = ctx.createImageData(size, size);
+        const data = imgData.data;
+
+        // Generate high-frequency Trochoidal/Gerstner wave normals
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const u = (x / size) * Math.PI * 8;
+                const v = (y / size) * Math.PI * 8;
+
+                const dx = Math.sin(u * 1.5 + v * 0.8) * 0.4 + Math.sin(u * 3.2 - v * 2.1) * 0.25;
+                const dy = Math.cos(v * 1.4 - u * 0.7) * 0.4 + Math.cos(v * 3.1 + u * 2.2) * 0.25;
+
+                // Tangent-space normal vector (Nx, Ny, Nz) mapped to RGB (0-255)
+                const nx = Math.max(-1, Math.min(1, dx));
+                const ny = Math.max(-1, Math.min(1, dy));
+                const nz = Math.sqrt(Math.max(0.01, 1 - nx * nx - ny * ny));
+
+                const idx = (y * size + x) * 4;
+                data[idx] = Math.floor((nx * 0.5 + 0.5) * 255);     // R -> X
+                data[idx + 1] = Math.floor((ny * 0.5 + 0.5) * 255); // G -> Y
+                data[idx + 2] = Math.floor((nz * 0.5 + 0.5) * 255); // B -> Z
+                data[idx + 3] = 255;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(16, 16);
+        this.cache['waterNormal'] = texture;
+        return texture;
+    }
+
+    // 10l. Modern Architectural High-Rise Facade with Windows & Mullions
+    createBuildingFacadeTexture(width = 512, height = 512) {
+        if (this.cache['buildingFacade']) return this.cache['buildingFacade'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Dark granite/concrete structural piers
+        ctx.fillStyle = '#2b2d33';
+        ctx.fillRect(0, 0, width, height);
+
+        // Window grid: 8 floors x 8 bays
+        const floors = 8;
+        const bays = 8;
+        const bayW = width / bays;
+        const floorH = height / floors;
+
+        for (let f = 0; f < floors; f++) {
+            const y = f * floorH;
+            for (let b = 0; b < bays; b++) {
+                const x = b * bayW;
+
+                // Glass window pane with sky reflection tint
+                const winGrad = ctx.createLinearGradient(x, y, x + bayW, y + floorH);
+                winGrad.addColorStop(0.0, '#36495a');
+                winGrad.addColorStop(0.5, '#1e2933');
+                winGrad.addColorStop(1.0, '#131b22');
+                ctx.fillStyle = winGrad;
+                ctx.fillRect(x + 5, y + 6, bayW - 10, floorH - 12);
+
+                // Subtle interior office lighting glints (randomized for realism)
+                if ((f * 3 + b * 7) % 5 === 0) {
+                    ctx.fillStyle = 'rgba(255, 235, 170, 0.45)';
+                    ctx.fillRect(x + 8, y + floorH * 0.4, bayW - 16, 8);
+                }
+
+                // Window mullions (metallic frames)
+                ctx.strokeStyle = '#484d56';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x + 5, y + 6, bayW - 10, floorH - 12);
+                ctx.beginPath();
+                ctx.moveTo(x + bayW * 0.5, y + 6);
+                ctx.lineTo(x + bayW * 0.5, y + floorH - 6);
+                ctx.stroke();
+            }
+
+            // Concrete spandrel band between floors
+            ctx.fillStyle = '#3a3d45';
+            ctx.fillRect(0, y + floorH - 4, width, 4);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['buildingFacade'] = texture;
+        return texture;
+    }
+
+    // 10m. Street-Level Retail Storefront Texture
+    createStorefrontTexture(width = 512, height = 256) {
+        if (this.cache['storefront']) return this.cache['storefront'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Dark polished stone base
+        ctx.fillStyle = '#1c1d21';
+        ctx.fillRect(0, 0, width, height);
+
+        // Large display windows
+        const displays = 3;
+        const dw = width / displays;
+        for (let i = 0; i < displays; i++) {
+            const x = i * dw;
+
+            // Warm interior illuminated boutique display
+            const winGrad = ctx.createLinearGradient(x, 20, x, height - 20);
+            winGrad.addColorStop(0.0, '#2d2e33');
+            winGrad.addColorStop(0.4, '#fff0c7');
+            winGrad.addColorStop(1.0, '#383020');
+            ctx.fillStyle = winGrad;
+            ctx.fillRect(x + 12, 24, dw - 24, height - 48);
+
+            // Frame & canopy awning
+            ctx.strokeStyle = '#0e0f12';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(x + 12, 24, dw - 24, height - 48);
+
+            // Awning header
+            ctx.fillStyle = '#18191c';
+            ctx.fillRect(x + 8, 8, dw - 16, 20);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['storefront'] = texture;
+        return texture;
+    }
+
+    // 10n. Stratified Cliff Rock Texture with Sedimentary Fractures
+    createCliffRockTexture(size = 512) {
+        if (this.cache['cliffRock']) return this.cache['cliffRock'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Grey-brown weathered rock base
+        ctx.fillStyle = '#4e4c47';
+        ctx.fillRect(0, 0, size, size);
+
+        // Directional horizontal sedimentary stratification layers
+        for (let y = 0; y < size; y += 8 + Math.random() * 14) {
+            const shade = 55 + Math.floor(Math.random() * 40);
+            ctx.fillStyle = `rgb(${shade + 10}, ${shade}, ${shade - 5})`;
+            ctx.fillRect(0, y, size, 6 + Math.random() * 8);
+
+            // Deep fracture shadow lines
+            ctx.strokeStyle = '#23221f';
+            ctx.lineWidth = 1.5 + Math.random() * 2.5;
+            ctx.beginPath();
+            ctx.moveTo(0, y + (Math.random() - 0.5) * 6);
+            for (let x = 40; x <= size; x += 40) {
+                ctx.lineTo(x, y + (Math.random() - 0.5) * 8);
+            }
+            ctx.stroke();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['cliffRock'] = texture;
+        return texture;
+    }
+
+    // 10o. Ambient Occlusion Wheel Ground Contact Shadow Decal
+    createWheelShadowTexture(size = 256) {
+        if (this.cache['wheelShadow']) return this.cache['wheelShadow'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const radGrad = ctx.createRadialGradient(size * 0.5, size * 0.5, 10, size * 0.5, size * 0.5, size * 0.48);
+        radGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0.75)');
+        radGrad.addColorStop(0.35, 'rgba(0, 0, 0, 0.55)');
+        radGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.2)');
+        radGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+        ctx.fillStyle = radGrad;
+        ctx.fillRect(0, 0, size, size);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['wheelShadow'] = texture;
+        return texture;
+    }
+
+    // 10p. 3D Individual Grass Blade Texture for GPU-Instanced Tufts
+    createGrassBladeTexture(width = 256, height = 512) {
+        if (this.cache['grassBlade']) return this.cache['grassBlade'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Transparent background
+        ctx.clearRect(0, 0, width, height);
+
+        // Multiple natural curving grass blades in a cluster
+        const bladeColors = ['#28541e', '#3c792d', '#4f9b3b', '#62b54a', '#85cc6a', '#335e26'];
+        const count = 14;
+
+        for (let i = 0; i < count; i++) {
+            const rootX = width * 0.5 + (Math.random() - 0.5) * 60;
+            const rootY = height;
+            const tipX = rootX + (Math.random() - 0.5) * 160;
+            const tipY = height * (0.05 + Math.random() * 0.35);
+            const ctrlX = (rootX + tipX) * 0.5 + (Math.random() - 0.5) * 80;
+            const ctrlY = (rootY + tipY) * 0.5;
+
+            const bladeGrad = ctx.createLinearGradient(rootX, rootY, tipX, tipY);
+            bladeGrad.addColorStop(0.0, '#1c3d14'); // Dark moist root
+            bladeGrad.addColorStop(0.4, bladeColors[i % bladeColors.length]);
+            bladeGrad.addColorStop(1.0, '#a4d977'); // Translucent sunlit tip
+
+            ctx.strokeStyle = bladeGrad;
+            ctx.lineWidth = 14 + Math.random() * 8;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(rootX, rootY);
+            ctx.quadraticCurveTo(ctrlX, ctrlY, tipX, tipY);
+            ctx.stroke();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['grassBlade'] = texture;
+        return texture;
+    }
+
     // 11. Photorealistic Sky Dome Texture with realistic clouds
     createSkyTexture(width = 2048, height = 1024) {
         if (this.cache['sky']) return this.cache['sky'];
