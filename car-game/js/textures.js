@@ -7,7 +7,7 @@ class TextureGenerator {
         this.cache = {};
     }
 
-    // 1. Realistic Grass Texture with normal/bump detail
+    // 1. Realistic Grass Texture matching the photographic turf reference
     createGrassTexture(size = 1024) {
         if (this.cache['grass']) return this.cache['grass'];
         const canvas = document.createElement('canvas');
@@ -15,37 +15,40 @@ class TextureGenerator {
         canvas.height = size;
         const ctx = canvas.getContext('2d');
 
-        // Base green undertone with subtle soil brown spots
-        ctx.fillStyle = '#2d5a27';
+        // Warm organic turf undertone from reference photo (#7b9639, #8fa744)
+        ctx.fillStyle = '#7a9638';
         ctx.fillRect(0, 0, size, size);
 
-        // Noise base
+        // Noise and thatch underlayer
         const imgData = ctx.getImageData(0, 0, size, size);
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
             const noise = (Math.random() - 0.5) * 35;
-            data[i] = Math.min(255, Math.max(0, data[i] + noise * 0.7));     // R
-            data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));   // G
-            data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise * 0.4)); // B
+            data[i] = Math.min(255, Math.max(0, 130 + noise * 0.9));     // R: warm olive
+            data[i + 1] = Math.min(255, Math.max(0, 160 + noise));       // G: lush green
+            data[i + 2] = Math.min(255, Math.max(0, 65 + noise * 0.5));  // B: golden grass
         }
         ctx.putImageData(imgData, 0, 0);
 
-        // Draw thousands of individual realistic grass blades
-        const bladeColors = ['#3b7d32', '#4c9940', '#255020', '#56a846', '#6dbd59', '#385e2b', '#7fa84d'];
-        const bladeCount = 18000;
+        // Individual grass blades matching user photo's exact colors
+        const bladeColors = [
+            '#94b049', '#92a742', '#8fa744', '#8ea647', '#7b9639',
+            '#9fbd52', '#a8c95e', '#6f8b2d', '#5e7a25', '#b2d665'
+        ];
+        const bladeCount = 28000;
         for (let i = 0; i < bladeCount; i++) {
             const x = Math.random() * size;
             const y = Math.random() * size;
-            const len = 6 + Math.random() * 14;
-            const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+            const len = 5 + Math.random() * 12;
+            const angle = Math.random() * Math.PI * 2; // All-direction turf weave
             const col = bladeColors[Math.floor(Math.random() * bladeColors.length)];
 
             ctx.strokeStyle = col;
-            ctx.lineWidth = 1.0 + Math.random() * 1.4;
+            ctx.lineWidth = 1.0 + Math.random() * 1.5;
             ctx.beginPath();
             ctx.moveTo(x, y);
-            const cx = x + Math.cos(angle) * (len * 0.6) + (Math.random() - 0.5) * 4;
-            const cy = y + Math.sin(angle) * (len * 0.6);
+            const cx = x + Math.cos(angle) * (len * 0.5) + (Math.random() - 0.5) * 3;
+            const cy = y + Math.sin(angle) * (len * 0.5) + (Math.random() - 0.5) * 3;
             const ex = x + Math.cos(angle) * len;
             const ey = y + Math.sin(angle) * len;
             ctx.quadraticCurveTo(cx, cy, ex, ey);
@@ -55,8 +58,47 @@ class TextureGenerator {
         const texture = new THREE.CanvasTexture(canvas);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(50, 50);
         this.cache['grass'] = texture;
+
+        // Overlay the high-resolution photographic texture from the user's reference
+        if (typeof Image !== 'undefined') {
+            const photo = new Image();
+            photo.onload = () => {
+                ctx.drawImage(photo, 0, 0, size, size);
+                texture.needsUpdate = true;
+            };
+            photo.src = 'textures/grass_seamless.jpg';
+        }
+
+        return texture;
+    }
+
+    // High-resolution Normal Map matching the photographic turf reference
+    createGrassNormalMap(size = 1024) {
+        if (this.cache['grassNormal']) return this.cache['grassNormal'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Flat normal base (128, 128, 255)
+        ctx.fillStyle = 'rgb(128, 128, 255)';
+        ctx.fillRect(0, 0, size, size);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['grassNormal'] = texture;
+
+        if (typeof Image !== 'undefined') {
+            const photo = new Image();
+            photo.onload = () => {
+                ctx.drawImage(photo, 0, 0, size, size);
+                texture.needsUpdate = true;
+            };
+            photo.src = 'textures/grass_normal.jpg';
+        }
+
         return texture;
     }
 
@@ -1193,9 +1235,9 @@ class TextureGenerator {
         // Transparent background
         ctx.clearRect(0, 0, width, height);
 
-        // Multiple natural curving grass blades in a cluster
-        const bladeColors = ['#28541e', '#3c792d', '#4f9b3b', '#62b54a', '#85cc6a', '#335e26'];
-        const count = 14;
+        // Multiple natural curving grass blades in a cluster matching reference photo
+        const bladeColors = ['#5e7a25', '#6f8b2d', '#7b9639', '#8fa744', '#94b049', '#9fbd52', '#a8c95e'];
+        const count = 16;
 
         for (let i = 0; i < count; i++) {
             const rootX = width * 0.5 + (Math.random() - 0.5) * 60;
@@ -1206,9 +1248,10 @@ class TextureGenerator {
             const ctrlY = (rootY + tipY) * 0.5;
 
             const bladeGrad = ctx.createLinearGradient(rootX, rootY, tipX, tipY);
-            bladeGrad.addColorStop(0.0, '#1c3d14'); // Dark moist root
+            bladeGrad.addColorStop(0.0, '#3a4a1c'); // Warm moist thatch root
             bladeGrad.addColorStop(0.4, bladeColors[i % bladeColors.length]);
-            bladeGrad.addColorStop(1.0, '#a4d977'); // Translucent sunlit tip
+            bladeGrad.addColorStop(1.0, '#b8dc6c'); // Vibrant sunlit lime tip
+
 
             ctx.strokeStyle = bladeGrad;
             ctx.lineWidth = 14 + Math.random() * 8;

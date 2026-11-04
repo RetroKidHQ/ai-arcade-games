@@ -212,19 +212,28 @@ class TerrainManager {
         geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geo.computeVertexNormals();
 
-        // Realistic grass texture generated procedurally
-        const grassTex = window.textureGenerator ? window.textureGenerator.createGrassTexture(1024) : null;
+        // Realistic grass texture and normal map matching the reference photo
+        const tg = window.textureGenerator;
+        const grassTex = tg ? tg.createGrassTexture(1024) : null;
+        const grassNormal = tg ? tg.createGrassNormalMap(1024) : null;
         if (grassTex) {
             grassTex.wrapS = THREE.RepeatWrapping;
             grassTex.wrapT = THREE.RepeatWrapping;
-            grassTex.repeat.set(24, 24);
+            grassTex.repeat.set(120, 120);
+        }
+        if (grassNormal) {
+            grassNormal.wrapS = THREE.RepeatWrapping;
+            grassNormal.wrapT = THREE.RepeatWrapping;
+            grassNormal.repeat.set(120, 120);
         }
 
         const mat = new THREE.MeshStandardMaterial({
             map: grassTex,
+            normalMap: grassNormal,
+            normalScale: new THREE.Vector2(0.65, 0.65),
             vertexColors: true,
             roughness: 0.88,
-            metalness: 0.04,
+            metalness: 0.02,
             flatShading: false
         });
 
