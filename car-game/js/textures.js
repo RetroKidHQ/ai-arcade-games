@@ -963,6 +963,436 @@ class TextureGenerator {
         return texture;
     }
 
+    // 10j. Toyota 4Runner Aggressive Front Grille & Chrome Emblem (Photo 0)
+    createToyotaGrilleTexture(width = 512, height = 256) {
+        if (this.cache['toyotaGrille']) return this.cache['toyotaGrille'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Deep satin black background
+        ctx.fillStyle = '#0e1013';
+        ctx.fillRect(0, 0, width, height);
+
+        // Horizontal Billet Grille Slats (Photo 0)
+        const slatCount = 18;
+        const slatSpacing = height / slatCount;
+        for (let i = 0; i < slatCount; i++) {
+            const y = i * slatSpacing;
+            // Slat top highlight
+            ctx.fillStyle = '#2a2d33';
+            ctx.fillRect(8, y, width - 16, 3);
+            // Slat face
+            ctx.fillStyle = '#16181c';
+            ctx.fillRect(8, y + 3, width - 16, slatSpacing - 6);
+            // Slat drop shadow
+            ctx.fillStyle = '#060709';
+            ctx.fillRect(8, y + slatSpacing - 3, width - 16, 3);
+        }
+
+        // Center Thick Crossbar (Photo 0)
+        const barH = 54;
+        const barY = height * 0.32 - barH * 0.5;
+        const barGrad = ctx.createLinearGradient(0, barY, 0, barY + barH);
+        barGrad.addColorStop(0.0, '#363a40');
+        barGrad.addColorStop(0.2, '#212429');
+        barGrad.addColorStop(0.8, '#141619');
+        barGrad.addColorStop(1.0, '#0a0b0d');
+        ctx.fillStyle = barGrad;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(16, barY, width - 32, barH, 8) : ctx.rect(16, barY, width - 32, barH);
+        ctx.fill();
+        ctx.strokeStyle = '#484e57';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Chrome Toyota 3-Oval Emblem in Center (Photo 0)
+        const drawToyotaLogo = (cx, cy, rx, ry) => {
+            ctx.save();
+            // Outer oval
+            ctx.strokeStyle = '#f0f3f6';
+            ctx.lineWidth = 7;
+            ctx.shadowColor = '#000000';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner vertical oval
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#d8dde4';
+            ctx.lineWidth = 5.5;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, rx * 0.42, ry * 0.90, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner horizontal oval intersecting top
+            ctx.beginPath();
+            ctx.ellipse(cx, cy - ry * 0.18, rx * 0.72, ry * 0.44, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Chrome specular glint
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.ellipse(cx - rx * 0.25, cy - ry * 0.25, rx * 0.35, ry * 0.25, -Math.PI / 6, 0, Math.PI * 0.6);
+            ctx.stroke();
+            ctx.restore();
+        };
+
+        drawToyotaLogo(width * 0.5, height * 0.32, 48, 32);
+
+        // Lower Right Accent Badge ("T-REX" / Trail badge from Photo 0)
+        ctx.fillStyle = '#c0c5cc';
+        ctx.fillRect(width * 0.74, height * 0.68, 54, 16);
+        ctx.fillStyle = '#111316';
+        ctx.fillRect(width * 0.74 + 2, height * 0.68 + 2, 50, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('4RUNNER', width * 0.74 + 27, height * 0.68 + 11);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['toyotaGrille'] = texture;
+        return texture;
+    }
+
+    // 10k. Toyota 4Runner Rear Tailgate Chrome Garnish Bar with Embossed "4RUNNER" (Photo 2)
+    create4RunnerRearGarnishTexture(width = 512, height = 128) {
+        if (this.cache['4runnerGarnish']) return this.cache['4runnerGarnish'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Dark magnetic gray outer bevel border
+        ctx.fillStyle = '#2a2e33';
+        ctx.fillRect(0, 0, width, height);
+
+        // Polished Chrome Horizontal Plate
+        const plateGrad = ctx.createLinearGradient(0, 8, 0, height - 16);
+        plateGrad.addColorStop(0.0, '#ffffff');
+        plateGrad.addColorStop(0.18, '#d8dce2');
+        plateGrad.addColorStop(0.5, '#9fa6b2');
+        plateGrad.addColorStop(0.82, '#c4c9d2');
+        plateGrad.addColorStop(1.0, '#565b64');
+        ctx.fillStyle = plateGrad;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(14, 12, width - 28, height - 24, 6) : ctx.rect(14, 12, width - 28, height - 24);
+        ctx.fill();
+        ctx.strokeStyle = '#444850';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Embossed bold stamped letters: "4 R U N N E R" (Photo 2)
+        const text = '4 R U N N E R';
+        ctx.font = '900 48px -apple-system, BlinkMacSystemFont, "Impact", "Arial Black", sans-serif';
+        ctx.textAlign = 'center';
+
+        // Letter drop shadow for deep stamped effect
+        ctx.fillStyle = '#1c1f24';
+        ctx.fillText(text, width * 0.5 + 2, height * 0.5 + 17);
+
+        // Letter top highlight
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(text, width * 0.5 - 1, height * 0.5 + 13);
+
+        // Letter metallic face
+        const textGrad = ctx.createLinearGradient(0, 20, 0, height - 20);
+        textGrad.addColorStop(0.0, '#e8ecf2');
+        textGrad.addColorStop(0.4, '#b0b6c2');
+        textGrad.addColorStop(0.7, '#727884');
+        textGrad.addColorStop(1.0, '#363a42');
+        ctx.fillStyle = textGrad;
+        ctx.fillText(text, width * 0.5, height * 0.5 + 15);
+
+        // Reverse camera / keyhole notch in garnish
+        ctx.fillStyle = '#181a1d';
+        ctx.beginPath();
+        ctx.arc(width * 0.84, height * 0.5, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#8a919d';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['4runnerGarnish'] = texture;
+        return texture;
+    }
+
+    // 10l. Toyota 4Runner Projector Headlight Lens & Amber Flanker (Photo 0)
+    create4RunnerHeadlightTexture(width = 512, height = 256) {
+        if (this.cache['4runnerHeadlight']) return this.cache['4runnerHeadlight'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Dark chrome internal housing
+        const bgGrad = ctx.createRadialGradient(width * 0.4, height * 0.5, 30, width * 0.4, height * 0.5, width * 0.6);
+        bgGrad.addColorStop(0.0, '#2e333a');
+        bgGrad.addColorStop(0.6, '#181b20');
+        bgGrad.addColorStop(1.0, '#0c0d10');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Faceted Chrome Reflector Cavity
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.lineWidth = 1.5;
+        for (let r = 20; r < 140; r += 16) {
+            ctx.beginPath();
+            ctx.arc(width * 0.38, height * 0.5, r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Circular Chrome Projector Bezel
+        const projX = width * 0.38;
+        const projY = height * 0.5;
+        const ringGrad = ctx.createLinearGradient(projX - 55, projY - 55, projX + 55, projY + 55);
+        ringGrad.addColorStop(0.0, '#ffffff');
+        ringGrad.addColorStop(0.5, '#7f8794');
+        ringGrad.addColorStop(1.0, '#20242b');
+        ctx.strokeStyle = ringGrad;
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(projX, projY, 52, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Projector Glass Eyeball Lens
+        const lensGrad = ctx.createRadialGradient(projX - 12, projY - 12, 6, projX, projY, 44);
+        lensGrad.addColorStop(0.0, '#ffffff');
+        lensGrad.addColorStop(0.35, '#dbeafe');
+        lensGrad.addColorStop(0.75, '#60a5fa');
+        lensGrad.addColorStop(1.0, '#1e3a8a');
+        ctx.fillStyle = lensGrad;
+        ctx.beginPath();
+        ctx.arc(projX, projY, 44, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner High Beam Reflector (Left side)
+        ctx.fillStyle = '#282d36';
+        ctx.beginPath();
+        ctx.arc(width * 0.72, height * 0.5, 38, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#c4cdd8';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Outer Amber Turn Indicator Flanker (Right edge - Photo 0)
+        const amberGrad = ctx.createLinearGradient(width * 0.86, 0, width, height);
+        amberGrad.addColorStop(0.0, '#ff9900');
+        amberGrad.addColorStop(0.5, '#e65c00');
+        amberGrad.addColorStop(1.0, '#b33600');
+        ctx.fillStyle = amberGrad;
+        ctx.beginPath();
+        ctx.moveTo(width * 0.88, 14);
+        ctx.lineTo(width - 8, 14);
+        ctx.lineTo(width - 8, height - 14);
+        ctx.lineTo(width * 0.84, height - 14);
+        ctx.closePath();
+        ctx.fill();
+
+        // Amber Faceted Prisms
+        ctx.strokeStyle = 'rgba(255, 230, 150, 0.4)';
+        ctx.lineWidth = 2;
+        for (let py = 20; py < height - 16; py += 14) {
+            ctx.beginPath();
+            ctx.moveTo(width * 0.86, py);
+            ctx.lineTo(width - 10, py);
+            ctx.stroke();
+        }
+
+        // Top Horizontal LED DRL Eyebrow (Photo 0)
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#93c5fd';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(width * 0.14, 22, width * 0.68, 8);
+        ctx.shadowBlur = 0;
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['4runnerHeadlight'] = texture;
+        return texture;
+    }
+
+    // 10m. Toyota 4Runner Vertical Taillight Cluster (Photo 2)
+    create4RunnerTaillightTexture(width = 256, height = 512) {
+        if (this.cache['4runnerTaillight']) return this.cache['4runnerTaillight'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Black outer housing frame
+        ctx.fillStyle = '#0f1114';
+        ctx.fillRect(0, 0, width, height);
+
+        // TOP HALF: Clear Crystalline Reverse & Turn Signal Lens (Photo 2)
+        const topH = height * 0.46;
+        const clearGrad = ctx.createLinearGradient(0, 12, 0, topH);
+        clearGrad.addColorStop(0.0, '#424854');
+        clearGrad.addColorStop(0.3, '#2a2f38');
+        clearGrad.addColorStop(0.7, '#181b22');
+        clearGrad.addColorStop(1.0, '#0f1116');
+        ctx.fillStyle = clearGrad;
+        ctx.fillRect(12, 12, width - 24, topH - 12);
+
+        // Clear Honeycomb / Reflector Pods
+        ctx.strokeStyle = 'rgba(220, 230, 245, 0.45)';
+        ctx.lineWidth = 2;
+        for (let ty = 28; ty < topH - 16; ty += 26) {
+            for (let tx = 28; tx < width - 28; tx += 28) {
+                ctx.beginPath();
+                ctx.arc(tx, ty, 9, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        // BOTTOM HALF: Deep Ruby Red Faceted LED Brake Light (Photo 2)
+        const botY = topH + 8;
+        const botH = height - botY - 12;
+        const redGrad = ctx.createLinearGradient(0, botY, 0, height - 12);
+        redGrad.addColorStop(0.0, '#bd1111');
+        redGrad.addColorStop(0.35, '#870a0a');
+        redGrad.addColorStop(0.7, '#520404');
+        redGrad.addColorStop(1.0, '#2e0202');
+        ctx.fillStyle = redGrad;
+        ctx.fillRect(12, botY, width - 24, botH);
+
+        // Glowing LED matrix squares in the red zone
+        for (let ry = botY + 22; ry < height - 32; ry += 32) {
+            for (let rx = 28; rx < width - 28; rx += 34) {
+                ctx.fillStyle = '#ff2e2e';
+                ctx.fillRect(rx, ry, 22, 18);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(rx + 6, ry + 4, 10, 10);
+            }
+        }
+
+        // Outer Red Perimeter C-Guide border
+        ctx.strokeStyle = '#ff3333';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(16, botY + 4, width - 32, botH - 8);
+
+        // Outer Protective Polycarbonate Border
+        ctx.strokeStyle = '#2b3038';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(6, 6, width - 12, height - 12);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['4runnerTaillight'] = texture;
+        return texture;
+    }
+
+    // 10n. Toyota 4Runner 6-Spoke Silver Alloy Off-Road Wheel Rim (Photo 1)
+    create4RunnerWheelTexture(size = 512) {
+        if (this.cache['4runnerWheel']) return this.cache['4runnerWheel'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const cx = size * 0.5;
+        const cy = size * 0.5;
+        const rOuter = size * 0.48;
+
+        // Dark gunmetal wheel well barrel
+        ctx.fillStyle = '#14171a';
+        ctx.beginPath();
+        ctx.arc(cx, cy, rOuter, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Silver Machined Outer Rim Lip
+        const lipGrad = ctx.createLinearGradient(0, 0, size, size);
+        lipGrad.addColorStop(0.0, '#ffffff');
+        lipGrad.addColorStop(0.4, '#c8ced8');
+        lipGrad.addColorStop(0.7, '#8f96a4');
+        lipGrad.addColorStop(1.0, '#ffffff');
+        ctx.strokeStyle = lipGrad;
+        ctx.lineWidth = 22;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rOuter - 11, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 6 Muscular Chunky Silver Spokes (Photo 1)
+        for (let i = 0; i < 6; i++) {
+            const angle = (i * Math.PI) / 3;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+
+            // Spoke shadow bevel
+            ctx.fillStyle = '#4c525c';
+            ctx.beginPath();
+            ctx.moveTo(-34, 40);
+            ctx.lineTo(-44, rOuter - 24);
+            ctx.lineTo(44, rOuter - 24);
+            ctx.lineTo(34, 40);
+            ctx.closePath();
+            ctx.fill();
+
+            // Spoke silver brushed face
+            const spokeGrad = ctx.createLinearGradient(-30, 0, 30, rOuter);
+            spokeGrad.addColorStop(0.0, '#f2f5f9');
+            spokeGrad.addColorStop(0.5, '#c8cfda');
+            spokeGrad.addColorStop(1.0, '#a4abb8');
+            ctx.fillStyle = spokeGrad;
+            ctx.beginPath();
+            ctx.moveTo(-28, 44);
+            ctx.lineTo(-38, rOuter - 28);
+            ctx.lineTo(38, rOuter - 28);
+            ctx.lineTo(28, 44);
+            ctx.closePath();
+            ctx.fill();
+
+            // Spoke center groove flute
+            ctx.fillStyle = '#2d3138';
+            ctx.fillRect(-6, 56, 12, rOuter * 0.62);
+
+            ctx.restore();
+        }
+
+        // Center Hub
+        ctx.fillStyle = '#a6adb8';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 62, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#5a616d';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        // 6 Chrome Lug Nuts
+        for (let j = 0; j < 6; j++) {
+            const la = (j * Math.PI) / 3 + Math.PI / 6;
+            const lx = cx + Math.cos(la) * 44;
+            const ly = cy + Math.sin(la) * 44;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(lx, ly, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#33373e';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // Center Toyota 3-Oval Logo Cap
+        ctx.strokeStyle = '#282b30';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 22, 15, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 9, 14, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 3, 16, 7, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['4runnerWheel'] = texture;
+        return texture;
+    }
+
     // 10j. High-Definition Asphalt Road Texture with Stone Aggregate & Markings
     // 10j. Photorealistic 2-Lane Asphalt Highway Texture (Double-Wide with Dual-Lane Markings)
     createAsphaltRoadTexture(width = 512, height = 512) {

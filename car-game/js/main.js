@@ -307,6 +307,9 @@ class Game {
                 } else if (type === 'vintage') {
                     if (colorPicker) colorPicker.value = '#0a0a0c';
                     this.car.setCarType(type, 0x0a0a0c);
+                } else if (type === 'offroad') {
+                    if (colorPicker) colorPicker.value = '#3d4147';
+                    this.car.setCarType(type, 0x3d4147);
                 } else {
                     this.car.setCarType(type);
                 }
