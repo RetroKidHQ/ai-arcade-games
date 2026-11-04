@@ -73,6 +73,8 @@ class TerrainManager {
         let minDistance = 99999;
         let nearestP1 = null;
         let nearestP2 = null;
+        let nearestProjX = x;
+        let nearestProjZ = z;
 
         for (const road of this.roads) {
             for (let i = 0; i < road.length - 1; i++) {
@@ -94,26 +96,33 @@ class TerrainManager {
                     minDistance = dist;
                     nearestP1 = p1;
                     nearestP2 = p2;
+                    nearestProjX = projX;
+                    nearestProjZ = projZ;
                 }
             }
         }
-        return { distance: minDistance, p1: nearestP1, p2: nearestP2 };
+        return {
+            distance: minDistance,
+            p1: nearestP1,
+            p2: nearestP2,
+            projX: nearestProjX,
+            projZ: nearestProjZ
+        };
     }
 
-    getHeight(x, z) {
+    getNaturalHeight(x, z) {
         const distFromCenter = Math.hypot(x + 120, z + 120);
-        let centerFlatFactor = Math.min(1.0, Math.max(0, (distFromCenter - 90) / 100));
+        const centerFlatFactor = Math.min(1.0, Math.max(0, (distFromCenter - 90) / 100));
 
-        const distFromStunt = Math.hypot(x - 300, z - 300);
-        let stuntFlatFactor = Math.min(1.0, Math.max(0, (distFromStunt - 90) / 70));
+        let baseHeight = (this.perlin(x, z) - 10) * centerFlatFactor;
 
-        let baseHeight = (this.perlin(x, z) - 10) * centerFlatFactor * stuntFlatFactor;
-
+        // Mountain region
         if (x > 150 && z < -100) {
             const mtnWeight = Math.min(1.0, (x - 150) / 300) * Math.min(1.0, (-100 - z) / 250);
             baseHeight += Math.sin(x * 0.01) * 35.0 * mtnWeight + 25.0 * mtnWeight;
         }
 
+        // Ocean depression
         if (x < -200 && z > 150) {
             const oceanDist = Math.hypot(x - (-600), z - 600);
             if (oceanDist < 500) {
@@ -121,23 +130,45 @@ class TerrainManager {
             }
         }
 
+        return baseHeight;
+    }
+
+    getHeight(x, z) {
+        const naturalY = this.getNaturalHeight(x, z);
         const roadInfo = this.getDistanceToRoad(x, z);
-        if (roadInfo.distance < this.roadWidth * 2.5) {
-            // Keep causeway/roadbed elevated above water so road never goes underwater
-            const minRoadBed = this.waterHeight + 1.6;
-            if (baseHeight < minRoadBed) {
-                const causewayBlend = Math.max(0, 1.0 - roadInfo.distance / (this.roadWidth * 2.5));
-                baseHeight = baseHeight * (1.0 - causewayBlend) + minRoadBed * causewayBlend;
+
+        // Wide, gentle road corridor transition (no steep narrow cliffs entering the road)
+        const corridorWidth = 32.0; // 32-meter smooth transition zone
+        if (roadInfo.distance < corridorWidth) {
+            let roadCenterY = this.getNaturalHeight(roadInfo.projX, roadInfo.projZ);
+
+            // Keep road and causeway safely elevated above water
+            const minRoadHeight = this.waterHeight + 1.8;
+            if (roadCenterY < minRoadHeight) {
+                roadCenterY = minRoadHeight;
             }
 
-            // Smooth terrain roadbed beneath the road
-            if (roadInfo.distance < this.roadWidth * 1.8) {
-                const blend = Math.max(0, (roadInfo.distance - this.roadWidth * 0.5) / (this.roadWidth * 1.3));
-                baseHeight = baseHeight * (0.15 + 0.85 * blend);
+            const halfW = this.roadWidth * 0.5;
+            if (roadInfo.distance <= halfW) {
+                // Flat, smooth roadbed across the roadway width
+                return roadCenterY;
             }
+
+            // Smooth S-curve (smoothstep) easing from roadbed into natural mountainside
+            const t = (roadInfo.distance - halfW) / (corridorWidth - halfW);
+            const blend = t * t * (3.0 - 2.0 * t);
+            let blendedHeight = roadCenterY * (1.0 - blend) + naturalY * blend;
+
+            // Ensure transition near water doesn't drop underwater
+            if (blendedHeight < this.waterHeight + 1.0) {
+                const waterT = Math.max(0, 1.0 - roadInfo.distance / corridorWidth);
+                blendedHeight = Math.max(blendedHeight, (this.waterHeight + 1.0) * waterT + naturalY * (1.0 - waterT));
+            }
+
+            return blendedHeight;
         }
 
-        return baseHeight;
+        return naturalY;
     }
 
     getSurfaceType(x, z) {

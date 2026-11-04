@@ -15,7 +15,6 @@ class WorldManager {
 
     buildAll() {
         this.buildCity();
-        this.buildStuntPark();
         this.buildFarmland();
         this.buildLighthouse();
         this.buildRealisticBushland();
@@ -149,50 +148,13 @@ class WorldManager {
         }
     }
 
-    // 2. Stunt Park
+    // Stunt Park & Ramps removed as requested to keep the road completely clear
     buildStuntPark() {
-        const stuntX = 300;
-        const stuntZ = 300;
-        const baseY = this.terrain.getHeight(stuntX, stuntZ);
-
-        const courtGeo = new THREE.CylinderGeometry(85, 85, 1, 32);
-        const courtMat = new THREE.MeshStandardMaterial({ color: 0x1d1e22, roughness: 0.8 });
-        const court = new THREE.Mesh(courtGeo, courtMat);
-        court.position.set(stuntX, baseY - 0.4, stuntZ);
-        this.scene.add(court);
-
-        this.createRamp(stuntX - 35, baseY, stuntZ, 14, 28, 8.5, 0);
-        this.createRamp(stuntX + 35, baseY, stuntZ, 16, 32, 12.0, Math.PI);
-
-        const ringGeo = new THREE.TorusGeometry(7, 0.8, 16, 32);
-        const ringMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00b894, emissiveIntensity: 0.6 });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.position.set(stuntX - 35, baseY + 18, stuntZ + 35);
-        this.scene.add(ring);
-
-        this.createSpeedTrap(stuntX, baseY, stuntZ + 55);
+        // No-op
     }
 
-    createRamp(x, y, z, width, length, height, rotationY) {
-        const rampShape = new THREE.Shape();
-        rampShape.moveTo(0, 0);
-        rampShape.lineTo(length, height);
-        rampShape.lineTo(length, 0);
-        rampShape.closePath();
-
-        const extrudeSettings = { depth: width, bevelEnabled: false };
-        const geo = new THREE.ExtrudeGeometry(rampShape, extrudeSettings);
-        geo.center();
-
-        const mat = new THREE.MeshStandardMaterial({ color: 0xd35400, roughness: 0.5, metalness: 0.2 });
-        const rampMesh = new THREE.Mesh(geo, mat);
-        rampMesh.position.set(x, y + height / 2, z);
-        rampMesh.rotation.y = rotationY;
-        rampMesh.castShadow = true;
-        rampMesh.receiveShadow = true;
-        this.scene.add(rampMesh);
-
-        this.ramps.push({ x, z, width, length, height, rotation: rotationY, mesh: rampMesh });
+    createRamp() {
+        // No-op
     }
 
     createSpeedTrap(x, y, z) {
