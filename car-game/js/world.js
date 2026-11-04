@@ -27,7 +27,18 @@ class WorldManager {
         const cityZ = -120;
         const tg = window.textureGenerator;
         const facadeTex = tg ? tg.createBuildingFacadeTexture(512, 512) : null;
+        if (facadeTex) {
+            facadeTex.wrapS = THREE.RepeatWrapping;
+            facadeTex.wrapT = THREE.RepeatWrapping;
+            facadeTex.repeat.set(2, 4); // Repeating stories and window bays for huge towers
+        }
+
         const storeTex = tg ? tg.createStorefrontTexture(512, 256) : null;
+        if (storeTex) {
+            storeTex.wrapS = THREE.RepeatWrapping;
+            storeTex.wrapT = THREE.RepeatWrapping;
+            storeTex.repeat.set(2, 1);
+        }
 
         // PBR Facade Material with Reflective Window Glass & Concrete Piers
         const facadeMat = new THREE.MeshStandardMaterial({
@@ -57,25 +68,26 @@ class WorldManager {
 
         const gridRows = 4;
         const gridCols = 4;
-        const blockSize = 36;
+        const blockSize = 108; // 3 times more far apart (was 36, now 108m spacing)
 
         for (let r = 0; r < gridRows; r++) {
             for (let c = 0; c < gridCols; c++) {
-                if (r === 1 && c === 1) continue; // City square / open plaza
+                if (r === 1 && c === 1) continue; // City square / open central plaza
 
                 const bx = cityX + (c - gridCols / 2) * blockSize;
                 const bz = cityZ + (r - gridRows / 2) * blockSize;
                 const by = this.terrain.getHeight(bx, bz);
 
-                const width = 18 + Math.random() * 6;
-                const depth = 18 + Math.random() * 6;
-                const totalHeight = 32 + Math.random() * 55;
+                // Twice as big (36m to 50m wide/deep) and twice as tall (68m to 180m tall)
+                const width = 36 + Math.random() * 14;
+                const depth = 36 + Math.random() * 14;
+                const totalHeight = 68 + Math.random() * 112;
 
                 const buildingGroup = new THREE.Group();
                 buildingGroup.position.set(bx, by, bz);
 
-                // Tier 1: Street-Level Storefront Podium (6m tall)
-                const podH = 6.5;
+                // Tier 1: Street-Level Storefront Podium (12m tall, twice as big)
+                const podH = 12.0;
                 const pod = new THREE.Mesh(new THREE.BoxGeometry(width, podH, depth), storeMat);
                 pod.position.y = podH * 0.5;
                 pod.castShadow = true;
@@ -83,12 +95,12 @@ class WorldManager {
                 buildingGroup.add(pod);
 
                 // Concrete sidewalk plinth around base
-                const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 2.5, 0.3, depth + 2.5), concreteMat);
-                curb.position.y = 0.15;
+                const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 4.0, 0.4, depth + 4.0), concreteMat);
+                curb.position.y = 0.2;
                 curb.receiveShadow = true;
                 buildingGroup.add(curb);
 
-                // Tier 2: Main Multi-Story Office / Residential Tower
+                // Tier 2: Main Multi-Story Office / Residential Tower (Twice as tall and big)
                 const towerH = totalHeight - podH;
                 const towerW = width * 0.92;
                 const towerD = depth * 0.92;
@@ -102,34 +114,35 @@ class WorldManager {
                 const roofY = podH + towerH;
 
                 // Parapet roof border
-                const parapet = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.2, 1.0, towerD + 0.2), concreteMat);
-                parapet.position.y = roofY + 0.5;
+                const parapet = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.4, 1.4, towerD + 0.4), concreteMat);
+                parapet.position.y = roofY + 0.7;
                 buildingGroup.add(parapet);
 
-                // Elevator penthouse bulkhead
+                // Elevator penthouse bulkhead (twice as big)
                 const pentW = towerW * 0.38;
                 const pentD = towerD * 0.38;
-                const pentH = 4.2;
+                const pentH = 7.5;
                 const penthouse = new THREE.Mesh(new THREE.BoxGeometry(pentW, pentH, pentD), concreteMat);
                 penthouse.position.set(0, roofY + pentH * 0.5, 0);
                 penthouse.castShadow = true;
                 buildingGroup.add(penthouse);
 
-                // Cylindrical HVAC cooling chiller
-                const hvac = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 2.2, 12), roofMetalMat);
-                hvac.position.set(towerW * 0.25, roofY + 1.1, -towerD * 0.25);
+                // Cylindrical HVAC cooling chiller (twice as big)
+                const hvac = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 3.8, 14), roofMetalMat);
+                hvac.position.set(towerW * 0.25, roofY + 1.9, -towerD * 0.25);
                 hvac.castShadow = true;
                 buildingGroup.add(hvac);
 
-                // Communications radio antenna mast
-                if (totalHeight > 55) {
-                    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, 14, 8), roofMetalMat);
-                    mast.position.set(-towerW * 0.2, roofY + 7, towerD * 0.2);
+                // Communications radio antenna mast on tall towers
+                if (totalHeight > 95) {
+                    const mastH = 24;
+                    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.35, mastH, 8), roofMetalMat);
+                    mast.position.set(-towerW * 0.2, roofY + mastH * 0.5, towerD * 0.2);
                     buildingGroup.add(mast);
 
                     // Red aviation obstacle warning light
-                    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff1e1e }));
-                    beacon.position.set(-towerW * 0.2, roofY + 14, towerD * 0.2);
+                    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff1e1e }));
+                    beacon.position.set(-towerW * 0.2, roofY + mastH, towerD * 0.2);
                     buildingGroup.add(beacon);
                 }
 

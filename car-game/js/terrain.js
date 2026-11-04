@@ -112,7 +112,7 @@ class TerrainManager {
 
     getNaturalHeight(x, z) {
         const distFromCenter = Math.hypot(x + 120, z + 120);
-        const centerFlatFactor = Math.min(1.0, Math.max(0, (distFromCenter - 90) / 100));
+        const centerFlatFactor = Math.min(1.0, Math.max(0, (distFromCenter - 220) / 100));
 
         let baseHeight = (this.perlin(x, z) - 10) * centerFlatFactor;
 
