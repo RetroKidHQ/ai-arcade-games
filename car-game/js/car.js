@@ -848,6 +848,52 @@ class Car {
         this.bodyMeshGroup.add(body);
     }
 
+    // Helper to generate compound-curved lofted polygonal automotive body panels
+    createLoftedGeometry(slices, mirrorX = false) {
+        const geo = new THREE.BufferGeometry();
+        const numSlices = slices.length;
+        if (numSlices < 2) return geo;
+        const ptsPerSlice = slices[0].length;
+        const positions = [];
+        const indices = [];
+
+        for (let i = 0; i < numSlices; i++) {
+            const slice = slices[i];
+            for (let j = 0; j < ptsPerSlice; j++) {
+                const pt = slice[j];
+                const px = mirrorX ? -pt[0] : pt[0];
+                const py = pt[1];
+                const pz = pt[2];
+                positions.push(px, py, pz);
+            }
+        }
+
+        for (let i = 0; i < numSlices - 1; i++) {
+            const rowA = i * ptsPerSlice;
+            const rowB = (i + 1) * ptsPerSlice;
+            for (let j = 0; j < ptsPerSlice - 1; j++) {
+                const a = rowA + j;
+                const b = rowA + j + 1;
+                const c = rowB + j;
+                const d = rowB + j + 1;
+
+                if (mirrorX) {
+                    indices.push(a, d, c);
+                    indices.push(a, b, d);
+                } else {
+                    indices.push(a, c, d);
+                    indices.push(a, d, b);
+                }
+            }
+        }
+
+        const IndexAttr = positions.length / 3 > 65535 ? THREE.Uint32BufferAttribute : THREE.Uint16BufferAttribute;
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setIndex(new IndexAttr(indices, 1));
+        geo.computeVertexNormals();
+        return geo;
+    }
+
     // Exact 1:1 replica of the Porsche 911 Carrera S from the 3 reference views (Front, Rear, Side)
     buildPorsche911(paintMat, chromeMat, blackTrim, glassMat) {
         const tg = window.textureGenerator;
@@ -875,13 +921,22 @@ class Car {
         rockerR.position.x = 0.94;
         body.add(rockerR);
 
-        // 2. Sloping Front Hood / Frunk with Contour Creases (Front View Photo 0 & 2)
-        const hoodGeo = new THREE.BoxGeometry(1.42, 0.16, 1.35);
+        // 2. Sloping Front Hood / Frunk with Dynamic Creases (Front View Photo 0 & 2)
+        // Center recessed frunk lid
+        const hoodGeo = new THREE.BoxGeometry(1.10, 0.12, 1.48);
         const hood = new THREE.Mesh(hoodGeo, paintMat);
-        hood.position.set(0, 0.58, 1.25);
-        hood.rotation.x = 0.14; // Forward rake
+        hood.position.set(0, 0.54, 1.25);
+        hood.rotation.x = 0.14; // Forward aerodynamic rake
         hood.castShadow = true;
         body.add(hood);
+
+        // Subtle hood dual styling creases
+        for (const s of [-0.34, 0.34]) {
+            const crease = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 1.3), paintMat);
+            crease.position.set(s, 0.61, 1.25);
+            crease.rotation.x = 0.14;
+            body.add(crease);
+        }
 
         // Gold Porsche Crest Emblem on Front Hood Tip (Photo 0!)
         const badgeMat = new THREE.MeshStandardMaterial({
@@ -900,9 +955,30 @@ class Car {
         smileVent.position.set(0, 0.51, 1.98);
         body.add(smileVent);
 
-        // 3. Iconic Raised Front Fender Torpedoes & 4-Point LED Headlights (Photo 0 & 2!)
-        const podGeo = new THREE.CylinderGeometry(0.24, 0.28, 1.35, 18);
-        podGeo.rotateX(Math.PI / 2);
+        // 3. Iconic Sculpted Front Fender Blisters & 4-Point LED Headlights (Photo 0 & 2!)
+        // Organic lofted compound-curved front fenders replacing raw cylinder primitives
+        const frontFenderSlices = [
+            // z = 0.45: cowl / A-pillar transition
+            [[0.56, 0.73, 0.45], [0.73, 0.77, 0.45], [0.84, 0.72, 0.45], [0.91, 0.60, 0.45], [0.92, 0.38, 0.45]],
+            // z = 0.95: rear of front wheel arch
+            [[0.55, 0.70, 0.95], [0.74, 0.77, 0.95], [0.87, 0.73, 0.95], [0.95, 0.62, 0.95], [0.94, 0.40, 0.95]],
+            // z = 1.38: apex over front wheel center (wheel at z=1.38, y=0.35, r=0.35)
+            [[0.54, 0.67, 1.38], [0.75, 0.79, 1.38], [0.91, 0.75, 1.38], [0.98, 0.64, 1.38], [0.96, 0.46, 1.38]],
+            // z = 1.70: front curve ahead of wheel
+            [[0.50, 0.63, 1.70], [0.74, 0.74, 1.70], [0.88, 0.69, 1.70], [0.95, 0.58, 1.70], [0.92, 0.38, 1.70]],
+            // z = 1.90: headlight pod transition
+            [[0.44, 0.58, 1.90], [0.74, 0.67, 1.90], [0.85, 0.61, 1.90], [0.91, 0.50, 1.90], [0.88, 0.34, 1.90]],
+            // z = 2.06: bumper nose corner
+            [[0.38, 0.50, 2.06], [0.68, 0.54, 2.06], [0.78, 0.48, 2.06], [0.84, 0.40, 2.06], [0.80, 0.28, 2.06]]
+        ];
+
+        for (const mirror of [false, true]) {
+            const fenderGeo = this.createLoftedGeometry(frontFenderSlices, mirror);
+            const fenderMesh = new THREE.Mesh(fenderGeo, paintMat);
+            fenderMesh.castShadow = true;
+            fenderMesh.receiveShadow = true;
+            body.add(fenderMesh);
+        }
 
         const headlightMat = new THREE.MeshStandardMaterial({
             map: tg ? tg.createPorscheHeadlightTexture() : null,
@@ -913,17 +989,9 @@ class Car {
         });
 
         for (const s of [-1, 1]) {
-            // Raised fender arch torpedo
-            const fenderPod = new THREE.Mesh(podGeo, paintMat);
-            fenderPod.position.set(s * 0.74, 0.62, 1.25);
-            fenderPod.rotation.x = 0.18;
-            fenderPod.scale.set(1.0, 0.82, 1.0);
-            fenderPod.castShadow = true;
-            body.add(fenderPod);
-
             // Tilted round/oval headlight lens with 4-Point DRL signature (Photo 0!)
             const headLens = new THREE.Mesh(new THREE.CircleGeometry(0.21, 24), headlightMat);
-            headLens.position.set(s * 0.74, 0.65, 1.88);
+            headLens.position.set(s * 0.74, 0.67, 1.90);
             headLens.rotation.x = -0.38;
             headLens.rotation.y = s * 0.08;
             body.add(headLens);
@@ -933,6 +1001,14 @@ class Car {
             bezel.position.copy(headLens.position);
             bezel.rotation.copy(headLens.rotation);
             body.add(bezel);
+
+            // Headlight sculpted bucket backing
+            const bucketMat = new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.3, metalness: 0.8 });
+            const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.16, 0.12, 20), bucketMat);
+            bucket.position.set(s * 0.74, 0.64, 1.84);
+            bucket.rotation.x = -0.38 + Math.PI / 2;
+            bucket.rotation.y = s * 0.08;
+            body.add(bucket);
         }
 
         // 4. Front Bumper Fascia & Triple Air Intakes with Front Splitter (Photo 0!)
@@ -976,32 +1052,50 @@ class Car {
 
         // 5. Classic 911 "Flyline" Arched Roof & Greenhouse (Side View Photo 2!)
         const wsMat = glassMat;
-        const windshield = new THREE.Mesh(new THREE.PlaneGeometry(1.42, 0.76), wsMat);
-        windshield.position.set(0, 0.88, 0.45);
-        windshield.rotation.x = -0.58;
-        body.add(windshield);
 
-        // Smoothly arched roof panel
-        const roof = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.05, 1.45), paintMat);
-        roof.position.set(0, 1.2, -0.32);
+        // Arched Aerodynamic Roof Panel (continuous compound curvature matching 911 flyline)
+        const roofSlices = [
+            // z = -0.95: rear window header
+            [[-0.58, 1.13, -0.95], [-0.30, 1.16, -0.95], [0.00, 1.17, -0.95], [0.30, 1.16, -0.95], [0.58, 1.13, -0.95]],
+            // z = -0.40: roof mid-rear
+            [[-0.64, 1.18, -0.40], [-0.32, 1.22, -0.40], [0.00, 1.23, -0.40], [0.32, 1.22, -0.40], [0.64, 1.18, -0.40]],
+            // z = 0.00: roof center peak
+            [[-0.66, 1.19, 0.00], [-0.33, 1.23, 0.00], [0.00, 1.24, 0.00], [0.33, 1.23, 0.00], [0.66, 1.19, 0.00]],
+            // z = 0.35: front windshield header
+            [[-0.64, 1.14, 0.35], [-0.32, 1.18, 0.35], [0.00, 1.19, 0.35], [0.32, 1.18, 0.35], [0.64, 1.14, 0.35]]
+        ];
+        const roofGeo = this.createLoftedGeometry(roofSlices, false);
+        const roof = new THREE.Mesh(roofGeo, paintMat);
         roof.castShadow = true;
+        roof.receiveShadow = true;
         body.add(roof);
 
+        // Windshield raked smoothly up from cowl to roof header
+        const windshield = new THREE.Mesh(new THREE.PlaneGeometry(1.36, 0.88), wsMat);
+        windshield.position.set(0, 0.94, 0.58);
+        windshield.rotation.x = -0.62;
+        body.add(windshield);
+
         // Flowing rear fastback window (Backlite - Photo 1 & 2!)
-        const rearGlass = new THREE.Mesh(new THREE.PlaneGeometry(1.35, 1.25), wsMat);
-        rearGlass.position.set(0, 0.94, -1.22);
-        rearGlass.rotation.x = 0.72; // Long graceful slope to engine lid
+        const rearGlass = new THREE.Mesh(new THREE.PlaneGeometry(1.28, 1.32), wsMat);
+        rearGlass.position.set(0, 0.96, -1.28);
+        rearGlass.rotation.x = 0.70; // Graceful continuous slope into decklid
         body.add(rearGlass);
 
-        // Teardrop Side Windows (Photo 2)
+        // Teardrop Side Windows & Aerodynamic Roof Cant Rails (Photo 2)
         for (const s of [-1, 1]) {
-            const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.38, 1.7), wsMat);
-            sideWindow.position.set(s * 0.78, 0.98, -0.28);
+            const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 1.65), wsMat);
+            sideWindow.position.set(s * 0.74, 0.96, -0.30);
             body.add(sideWindow);
 
-            const windowTrim = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 1.76), darkTrimMat);
-            windowTrim.position.set(s * 0.77, 0.98, -0.28);
+            const windowTrim = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.40, 1.70), darkTrimMat);
+            windowTrim.position.set(s * 0.73, 0.96, -0.30);
             body.add(windowTrim);
+
+            // A-pillar to C-pillar arched body color cant rail
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1.75), paintMat);
+            rail.position.set(s * 0.72, 1.15, -0.30);
+            body.add(rail);
         }
 
         // Interior: Sports Steering Wheel & 2 High-Back Bucket Seats (Photo 0 & 2)
@@ -1054,19 +1148,31 @@ class Car {
             body.add(mirrorGlassFace);
         }
 
-        // 7. Widebody Sculpted Rear Haunches & Decklid Louvers (Photo 1 & 2!)
-        for (const s of [-1, 1]) {
-            const haunchGeo = new THREE.CylinderGeometry(0.52, 0.52, 1.5, 16);
-            haunchGeo.rotateX(Math.PI / 2);
-            const haunch = new THREE.Mesh(haunchGeo, paintMat);
-            haunch.position.set(s * 0.82, 0.58, -1.25);
-            haunch.scale.set(0.68, 0.75, 1.0);
-            haunch.castShadow = true;
-            body.add(haunch);
+        // 7. Muscular Widebody Rear Haunches & Decklid Louvers (Photo 1 & 2!)
+        // Organic lofted widebody rear haunches replacing raw cylinder primitives
+        const rearHaunchSlices = [
+            // z = -2.16: rear bumper corner / taillight wraparound
+            [[0.55, 0.74, -2.16], [0.75, 0.71, -2.16], [0.90, 0.65, -2.16], [0.94, 0.48, -2.16], [0.90, 0.26, -2.16]],
+            // z = -1.85: rear arch taper / bumper transition
+            [[0.60, 0.78, -1.85], [0.80, 0.77, -1.85], [0.96, 0.71, -1.85], [0.99, 0.55, -1.85], [0.96, 0.32, -1.85]],
+            // z = -1.38: apex over wide rear wheel (wheel at z=-1.38, y=0.37, r=0.37, width=0.35)
+            [[0.62, 0.82, -1.38], [0.82, 0.82, -1.38], [0.99, 0.77, -1.38], [1.04, 0.61, -1.38], [1.01, 0.45, -1.38]],
+            // z = -0.85: quarter panel swell
+            [[0.68, 0.86, -0.85], [0.83, 0.80, -0.85], [0.94, 0.70, -0.85], [0.98, 0.52, -0.85], [0.94, 0.28, -0.85]],
+            // z = -0.35: door shutline waistline
+            [[0.74, 0.88, -0.35], [0.82, 0.78, -0.35], [0.88, 0.65, -0.35], [0.90, 0.48, -0.35], [0.89, 0.28, -0.35]]
+        ];
+
+        for (const mirror of [false, true]) {
+            const haunchGeo = this.createLoftedGeometry(rearHaunchSlices, mirror);
+            const haunchMesh = new THREE.Mesh(haunchGeo, paintMat);
+            haunchMesh.castShadow = true;
+            haunchMesh.receiveShadow = true;
+            body.add(haunchMesh);
         }
 
         // Rear engine lid with cooling grille slats
-        const decklid = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.12, 0.95), paintMat);
+        const decklid = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.12, 0.95), paintMat);
         decklid.position.set(0, 0.72, -1.55);
         decklid.rotation.x = -0.12;
         body.add(decklid);
