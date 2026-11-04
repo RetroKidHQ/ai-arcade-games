@@ -21,129 +21,553 @@ class WorldManager {
         this.buildRoadProps();
     }
 
-    // 1. Downtown City Zone - Modular PBR High-Rises & Retail Storefronts
+    // 1. Downtown City Zone - Varied Architectural Skyscrapers Modeled on Reference Photos 0-4
     buildCity() {
         const cityX = -120;
         const cityZ = -120;
         const tg = window.textureGenerator;
-        const facadeTex = tg ? tg.createBuildingFacadeTexture(512, 512) : null;
-        if (facadeTex) {
-            facadeTex.wrapS = THREE.RepeatWrapping;
-            facadeTex.wrapT = THREE.RepeatWrapping;
-            facadeTex.repeat.set(2, 4); // Repeating stories and window bays for huge towers
-        }
 
+        // Architectural PBR Textures for the 5 Styles
+        // Style 0: Limestone Art Deco Tower (Photo 0)
+        const decoTex = tg && tg.createLimestoneArtDecoTexture ? tg.createLimestoneArtDecoTexture(512, 512) : null;
+        if (decoTex) { decoTex.wrapS = THREE.RepeatWrapping; decoTex.wrapT = THREE.RepeatWrapping; decoTex.repeat.set(2, 6); }
+
+        // Style 1: Chicago Romanesque Red Brick (Photo 1)
+        const brickTex = tg && tg.createRedBrickRomanesqueTexture ? tg.createRedBrickRomanesqueTexture(512, 512) : null;
+        if (brickTex) { brickTex.wrapS = THREE.RepeatWrapping; brickTex.wrapT = THREE.RepeatWrapping; brickTex.repeat.set(2, 4); }
+
+        // Rusticated Stone Podium (Photos 1 & 3)
+        const rusticatedTex = tg && tg.createRusticatedStoneTexture ? tg.createRusticatedStoneTexture(512, 512) : null;
+        if (rusticatedTex) { rusticatedTex.wrapS = THREE.RepeatWrapping; rusticatedTex.wrapT = THREE.RepeatWrapping; rusticatedTex.repeat.set(2, 1); }
+
+        // Style 2: Modern Curvilinear Glass (Photo 2)
+        const modernTex = tg && tg.createCurvilinearGlassTexture ? tg.createCurvilinearGlassTexture(512, 512) : null;
+        if (modernTex) { modernTex.wrapS = THREE.RepeatWrapping; modernTex.wrapT = THREE.RepeatWrapping; modernTex.repeat.set(2, 4); }
+
+        // Style 3: Beaux-Arts Classical Facade (Photo 3)
+        const beauxTex = tg && tg.createBeauxArtsFacadeTexture ? tg.createBeauxArtsFacadeTexture(512, 512) : null;
+        if (beauxTex) { beauxTex.wrapS = THREE.RepeatWrapping; beauxTex.wrapT = THREE.RepeatWrapping; beauxTex.repeat.set(2, 4); }
+
+        // Style 4: Neo-Gothic Architectural Terra Cotta (Photo 4)
+        const gothicTex = tg && tg.createNeoGothicFacadeTexture ? tg.createNeoGothicFacadeTexture(512, 512) : null;
+        if (gothicTex) { gothicTex.wrapS = THREE.RepeatWrapping; gothicTex.wrapT = THREE.RepeatWrapping; gothicTex.repeat.set(2, 6); }
+
+        // Street-Level Retail Storefronts
         const storeTex = tg ? tg.createStorefrontTexture(512, 256) : null;
-        if (storeTex) {
-            storeTex.wrapS = THREE.RepeatWrapping;
-            storeTex.wrapT = THREE.RepeatWrapping;
-            storeTex.repeat.set(2, 1);
-        }
+        if (storeTex) { storeTex.wrapS = THREE.RepeatWrapping; storeTex.wrapT = THREE.RepeatWrapping; storeTex.repeat.set(2, 1); }
 
-        // PBR Facade Material with Reflective Window Glass & Concrete Piers
-        const facadeMat = new THREE.MeshStandardMaterial({
-            map: facadeTex,
-            roughness: 0.35,
-            metalness: 0.65
-        });
+        // Specialized Architectural Materials
+        const decoMat = new THREE.MeshStandardMaterial({ map: decoTex, roughness: 0.65, metalness: 0.2 });
+        const brickMat = new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.8, metalness: 0.15 });
+        const rusticatedMat = new THREE.MeshStandardMaterial({ map: rusticatedTex, roughness: 0.9, metalness: 0.1 });
+        const modernGlassMat = new THREE.MeshStandardMaterial({ map: modernTex, roughness: 0.2, metalness: 0.8 });
+        const beauxMat = new THREE.MeshStandardMaterial({ map: beauxTex, roughness: 0.65, metalness: 0.25 });
+        const gothicMat = new THREE.MeshStandardMaterial({ map: gothicTex, roughness: 0.6, metalness: 0.2 });
+        const storeMat = new THREE.MeshStandardMaterial({ map: storeTex, roughness: 0.4, metalness: 0.3 });
 
-        // Street-level retail boutique storefront material
-        const storeMat = new THREE.MeshStandardMaterial({
-            map: storeTex,
-            roughness: 0.4,
-            metalness: 0.3
-        });
-
-        const concreteMat = new THREE.MeshStandardMaterial({
-            color: 0x2e3036,
-            roughness: 0.9,
-            metalness: 0.1
-        });
-
-        const roofMetalMat = new THREE.MeshStandardMaterial({
-            color: 0x484d54,
-            roughness: 0.5,
-            metalness: 0.8
-        });
+        // Accent Materials
+        const copperRoofMat = new THREE.MeshStandardMaterial({ color: 0x487c65, roughness: 0.5, metalness: 0.4 }); // Weathered green copper
+        const copperDarkMat = new THREE.MeshStandardMaterial({ color: 0x365444, roughness: 0.55, metalness: 0.35 });
+        const whiteRibbonMat = new THREE.MeshStandardMaterial({ color: 0xf5f7fa, roughness: 0.3, metalness: 0.1 }); // Smooth white balcony trim
+        const balconyGlassMat = new THREE.MeshStandardMaterial({ color: 0x567a99, roughness: 0.1, metalness: 0.85, transparent: true, opacity: 0.7 });
+        const goldFinialMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.25, metalness: 0.85 }); // Gilded spire & finial
+        const limestoneTrimMat = new THREE.MeshStandardMaterial({ color: 0xd3c7ae, roughness: 0.7, metalness: 0.1 });
+        const darkCorniceMat = new THREE.MeshStandardMaterial({ color: 0x58241a, roughness: 0.75, metalness: 0.15 });
+        const concreteMat = new THREE.MeshStandardMaterial({ color: 0x2e3036, roughness: 0.9, metalness: 0.1 });
+        const roofMetalMat = new THREE.MeshStandardMaterial({ color: 0x484d54, roughness: 0.5, metalness: 0.8 });
 
         const gridRows = 4;
         const gridCols = 4;
-        const blockSize = 108; // 3 times more far apart (was 36, now 108m spacing)
+        const blockSize = 108; // 3 times more far apart (108m spacing)
 
         for (let r = 0; r < gridRows; r++) {
             for (let c = 0; c < gridCols; c++) {
-                if (r === 1 && c === 1) continue; // City square / open central plaza
+                if (r === 1 && c === 1) continue; // Open central park / plaza
 
                 const bx = cityX + (c - gridCols / 2) * blockSize;
                 const bz = cityZ + (r - gridRows / 2) * blockSize;
                 const by = this.terrain.getHeight(bx, bz);
 
-                // Twice as big (36m to 50m wide/deep) and twice as tall (68m to 180m tall)
-                const width = 36 + Math.random() * 14;
-                const depth = 36 + Math.random() * 14;
-                const totalHeight = 68 + Math.random() * 112;
+                // Assign style archetype (0, 1, 2, 3, 4) evenly across the downtown grid
+                const style = (r * 2 + c * 3) % 5;
 
                 const buildingGroup = new THREE.Group();
                 buildingGroup.position.set(bx, by, bz);
 
-                // Tier 1: Street-Level Storefront Podium (12m tall, twice as big)
-                const podH = 12.0;
-                const pod = new THREE.Mesh(new THREE.BoxGeometry(width, podH, depth), storeMat);
-                pod.position.y = podH * 0.5;
-                pod.castShadow = true;
-                pod.receiveShadow = true;
-                buildingGroup.add(pod);
+                let width, depth, totalHeight;
 
-                // Concrete sidewalk plinth around base
-                const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 4.0, 0.4, depth + 4.0), concreteMat);
-                curb.position.y = 0.2;
-                curb.receiveShadow = true;
-                buildingGroup.add(curb);
+                if (style === 0) {
+                    // =========================================================================
+                    // STYLE 0: Slender Limestone Art Deco Tower with Colonnade Crown (Photo 0)
+                    // =========================================================================
+                    width = 34 + Math.random() * 6;
+                    depth = 34 + Math.random() * 6;
+                    totalHeight = 120 + Math.random() * 55; // 120m - 175m ultra-slender
 
-                // Tier 2: Main Multi-Story Office / Residential Tower (Twice as tall and big)
-                const towerH = totalHeight - podH;
-                const towerW = width * 0.92;
-                const towerD = depth * 0.92;
-                const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerD), facadeMat);
-                tower.position.y = podH + towerH * 0.5;
-                tower.castShadow = true;
-                tower.receiveShadow = true;
-                buildingGroup.add(tower);
+                    // Sidewalk plinth
+                    const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 4.0, 0.4, depth + 4.0), concreteMat);
+                    curb.position.y = 0.2;
+                    curb.receiveShadow = true;
+                    buildingGroup.add(curb);
 
-                // Tier 3: Rooftop Mechanical Penthouse & HVAC Units
-                const roofY = podH + towerH;
+                    // Podium (podH = 12m)
+                    const podH = 12.0;
+                    const pod = new THREE.Mesh(new THREE.BoxGeometry(width, podH, depth), storeMat);
+                    pod.position.y = podH * 0.5;
+                    pod.castShadow = true;
+                    buildingGroup.add(pod);
 
-                // Parapet roof border
-                const parapet = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.4, 1.4, towerD + 0.4), concreteMat);
-                parapet.position.y = roofY + 0.7;
-                buildingGroup.add(parapet);
+                    // Main Shaft: Slender limestone shaft rising to 72% height
+                    const shaftH = totalHeight * 0.64;
+                    const shaftW = width * 0.92;
+                    const shaftD = depth * 0.92;
+                    const shaft = new THREE.Mesh(new THREE.BoxGeometry(shaftW, shaftH, shaftD), decoMat);
+                    shaft.position.y = podH + shaftH * 0.5;
+                    shaft.castShadow = true;
+                    buildingGroup.add(shaft);
 
-                // Elevator penthouse bulkhead (twice as big)
-                const pentW = towerW * 0.38;
-                const pentD = towerD * 0.38;
-                const pentH = 7.5;
-                const penthouse = new THREE.Mesh(new THREE.BoxGeometry(pentW, pentH, pentD), concreteMat);
-                penthouse.position.set(0, roofY + pentH * 0.5, 0);
-                penthouse.castShadow = true;
-                buildingGroup.add(penthouse);
+                    // Setback 1 (Upper Mid Tower)
+                    const sb1Y = podH + shaftH;
+                    const sb1W = shaftW * 0.86;
+                    const sb1D = shaftD * 0.86;
+                    const sb1H = totalHeight * 0.12;
+                    const sb1 = new THREE.Mesh(new THREE.BoxGeometry(sb1W, sb1H, sb1D), decoMat);
+                    sb1.position.y = sb1Y + sb1H * 0.5;
+                    sb1.castShadow = true;
+                    buildingGroup.add(sb1);
 
-                // Cylindrical HVAC cooling chiller (twice as big)
-                const hvac = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 3.8, 14), roofMetalMat);
-                hvac.position.set(towerW * 0.25, roofY + 1.9, -towerD * 0.25);
-                hvac.castShadow = true;
-                buildingGroup.add(hvac);
+                    // Setback 1 cornice ledge
+                    const led1 = new THREE.Mesh(new THREE.BoxGeometry(shaftW + 0.6, 0.8, shaftD + 0.6), limestoneTrimMat);
+                    led1.position.y = sb1Y + 0.4;
+                    buildingGroup.add(led1);
 
-                // Communications radio antenna mast on tall towers
-                if (totalHeight > 95) {
-                    const mastH = 24;
-                    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.35, mastH, 8), roofMetalMat);
-                    mast.position.set(-towerW * 0.2, roofY + mastH * 0.5, towerD * 0.2);
-                    buildingGroup.add(mast);
+                    // Setback 2 (Sub-Crown)
+                    const sb2Y = sb1Y + sb1H;
+                    const sb2W = sb1W * 0.86;
+                    const sb2D = sb1D * 0.86;
+                    const sb2H = totalHeight * 0.08;
+                    const sb2 = new THREE.Mesh(new THREE.BoxGeometry(sb2W, sb2H, sb2D), decoMat);
+                    sb2.position.y = sb2Y + sb2H * 0.5;
+                    sb2.castShadow = true;
+                    buildingGroup.add(sb2);
 
-                    // Red aviation obstacle warning light
-                    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff1e1e }));
-                    beacon.position.set(-towerW * 0.2, roofY + mastH, towerD * 0.2);
-                    buildingGroup.add(beacon);
+                    // Crown: Iconic Open Vertical Colonnade / Loggia (from Photo 0!)
+                    const crownY = sb2Y + sb2H;
+                    const crownH = totalHeight - crownY;
+                    const crownW = sb2W * 0.88;
+                    const crownD = sb2D * 0.88;
+
+                    // Recessed interior penthouse core
+                    const coreW = crownW * 0.56;
+                    const coreD = crownD * 0.56;
+                    const core = new THREE.Mesh(new THREE.BoxGeometry(coreW, crownH, coreD), decoMat);
+                    core.position.y = crownY + crownH * 0.5;
+                    core.castShadow = true;
+                    buildingGroup.add(core);
+
+                    // 4 massive corner stone pillars
+                    const pilW = crownW * 0.18;
+                    const pilH = crownH;
+                    const pilGeom = new THREE.BoxGeometry(pilW, pilH, pilW);
+                    const cornerOffX = (crownW - pilW) * 0.5;
+                    const cornerOffZ = (crownD - pilW) * 0.5;
+                    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([ox, oz]) => {
+                        const pil = new THREE.Mesh(pilGeom, limestoneTrimMat);
+                        pil.position.set(ox * cornerOffX, crownY + pilH * 0.5, oz * cornerOffZ);
+                        pil.castShadow = true;
+                        buildingGroup.add(pil);
+                    });
+
+                    // Intermediate open colonnade columns along the 4 loggia faces
+                    const colW = crownW * 0.08;
+                    const colGeom = new THREE.BoxGeometry(colW, pilH, colW);
+                    [
+                        [-crownW * 0.22, cornerOffZ], [crownW * 0.22, cornerOffZ],
+                        [-crownW * 0.22, -cornerOffZ], [crownW * 0.22, -cornerOffZ],
+                        [cornerOffX, -crownD * 0.22], [cornerOffX, crownD * 0.22],
+                        [-cornerOffX, -crownD * 0.22], [-cornerOffX, crownD * 0.22]
+                    ].forEach(([cx, cz]) => {
+                        const col = new THREE.Mesh(colGeom, limestoneTrimMat);
+                        col.position.set(cx, crownY + pilH * 0.5, cz);
+                        col.castShadow = true;
+                        buildingGroup.add(col);
+                    });
+
+                    // Colonnade Entablature & Parapet Roof Cap
+                    const cap = new THREE.Mesh(new THREE.BoxGeometry(crownW + 1.2, 1.8, crownD + 1.2), limestoneTrimMat);
+                    cap.position.y = crownY + crownH + 0.9;
+                    cap.castShadow = true;
+                    buildingGroup.add(cap);
+
+                    // Copper accent rooftop lantern
+                    const copperLantern = new THREE.Mesh(new THREE.BoxGeometry(coreW * 0.7, 3.2, coreD * 0.7), copperRoofMat);
+                    copperLantern.position.y = crownY + crownH + 2.5;
+                    buildingGroup.add(copperLantern);
+
+                } else if (style === 1) {
+                    // =========================================================================
+                    // STYLE 1: Chicago Romanesque Red Brick & Terracotta High-Rise (Photo 1)
+                    // =========================================================================
+                    width = 44 + Math.random() * 8;
+                    depth = 44 + Math.random() * 8;
+                    totalHeight = 72 + Math.random() * 42; // 72m - 114m solid Chicago block
+
+                    // Sidewalk plinth
+                    const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 4.0, 0.4, depth + 4.0), concreteMat);
+                    curb.position.y = 0.2;
+                    curb.receiveShadow = true;
+                    buildingGroup.add(curb);
+
+                    // Tier 1: Heavy Rusticated Granite Podium (podH = 15m)
+                    const podH = 15.0;
+                    const pod = new THREE.Mesh(new THREE.BoxGeometry(width, podH, depth), rusticatedMat);
+                    pod.position.y = podH * 0.5;
+                    pod.castShadow = true;
+                    buildingGroup.add(pod);
+
+                    // Large street-level glass display windows set into rusticated stone
+                    const displayW = width * 0.92;
+                    const displayH = 6.0;
+                    const displayF = new THREE.Mesh(new THREE.BoxGeometry(displayW, displayH, 0.4), storeMat);
+                    displayF.position.set(0, displayH * 0.5 + 2.0, depth * 0.5 + 0.1);
+                    buildingGroup.add(displayF);
+
+                    // Projecting carved stone beltcourse above podium
+                    const belt = new THREE.Mesh(new THREE.BoxGeometry(width + 1.4, 1.2, depth + 1.4), limestoneTrimMat);
+                    belt.position.y = podH + 0.6;
+                    buildingGroup.add(belt);
+
+                    // Tier 2: Main Terracotta Red Brick Tower Shaft
+                    const towerH = totalHeight - podH - 4.0;
+                    const towerW = width * 0.96;
+                    const towerD = depth * 0.96;
+                    const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerD), brickMat);
+                    tower.position.y = podH + towerH * 0.5;
+                    tower.castShadow = true;
+                    buildingGroup.add(tower);
+
+                    // Tier 3: Massive Overhanging Romanesque / Italianate Dentil Cornice!
+                    const corniceY = podH + towerH;
+                    const corniceSlab = new THREE.Mesh(new THREE.BoxGeometry(towerW + 3.2, 1.8, towerD + 3.2), darkCorniceMat);
+                    corniceSlab.position.y = corniceY + 0.9;
+                    corniceSlab.castShadow = true;
+                    buildingGroup.add(corniceSlab);
+
+                    // Array of decorative dentil modillion brackets underneath cornice
+                    const bracketGeom = new THREE.BoxGeometry(1.2, 1.4, 1.4);
+                    const numBrackets = 10;
+                    const stepB = towerW / numBrackets;
+                    for (let i = 0; i <= numBrackets; i++) {
+                        const bxPos = -towerW * 0.5 + i * stepB;
+                        const bFront = new THREE.Mesh(bracketGeom, darkCorniceMat);
+                        bFront.position.set(bxPos, corniceY - 0.5, towerD * 0.5 + 0.6);
+                        buildingGroup.add(bFront);
+                        const bBack = new THREE.Mesh(bracketGeom, darkCorniceMat);
+                        bBack.position.set(bxPos, corniceY - 0.5, -towerD * 0.5 - 0.6);
+                        buildingGroup.add(bBack);
+                    }
+
+                    // Rooftop parapet & mechanical water cooling tank
+                    const parapet = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.4, 1.5, towerD + 0.4), darkCorniceMat);
+                    parapet.position.y = corniceY + 2.5;
+                    buildingGroup.add(parapet);
+
+                    const waterTank = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 4.5, 14), roofMetalMat);
+                    waterTank.position.set(towerW * 0.2, corniceY + 4.2, -towerD * 0.2);
+                    waterTank.castShadow = true;
+                    buildingGroup.add(waterTank);
+
+                } else if (style === 2) {
+                    // =========================================================================
+                    // STYLE 2: Curvilinear Modern Balcony Tower & Tinted Glass (Photo 2)
+                    // =========================================================================
+                    width = 40 + Math.random() * 8;
+                    depth = 40 + Math.random() * 8;
+                    totalHeight = 85 + Math.random() * 60; // 85m - 145m luxury modern tower
+
+                    // Sidewalk plinth
+                    const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 4.0, 0.4, depth + 4.0), concreteMat);
+                    curb.position.y = 0.2;
+                    curb.receiveShadow = true;
+                    buildingGroup.add(curb);
+
+                    // Tier 1: High-Ceiling Open Glazed Ground Lobby with Round Pilotis (podH = 9m)
+                    const podH = 9.0;
+                    const lobbyW = width * 0.82;
+                    const lobbyD = depth * 0.82;
+                    const lobby = new THREE.Mesh(new THREE.BoxGeometry(lobbyW, podH, lobbyD), modernGlassMat);
+                    lobby.position.y = podH * 0.5;
+                    buildingGroup.add(lobby);
+
+                    // Perimeter round concrete pilotis / columns (as seen supporting the overhang in Photo 2)
+                    const colRadius = 0.85;
+                    const colGeom = new THREE.CylinderGeometry(colRadius, colRadius, podH, 16);
+                    const colOffX = width * 0.45;
+                    const colOffZ = depth * 0.45;
+                    [
+                        [-colOffX, -colOffZ], [0, -colOffZ], [colOffX, -colOffZ],
+                        [-colOffX, colOffZ], [0, colOffZ], [colOffX, colOffZ],
+                        [-colOffX, 0], [colOffX, 0]
+                    ].forEach(([px, pz]) => {
+                        const col = new THREE.Mesh(colGeom, whiteRibbonMat);
+                        col.position.set(px, podH * 0.5, pz);
+                        col.castShadow = true;
+                        buildingGroup.add(col);
+                    });
+
+                    // Tier 2: Dark Tinted Glass Curtain Wall Core
+                    const towerH = totalHeight - podH - 7.0;
+                    const coreW = width * 0.88;
+                    const coreD = depth * 0.88;
+                    const core = new THREE.Mesh(new THREE.BoxGeometry(coreW, towerH, coreD), modernGlassMat);
+                    core.position.y = podH + towerH * 0.5;
+                    core.castShadow = true;
+                    buildingGroup.add(core);
+
+                    // Staggered Aerodynamic Wrap-Around Balcony Ribbons (Iconic look from Photo 2!)
+                    const floorSpacing = 4.8;
+                    const numFloors = Math.floor(towerH / floorSpacing);
+                    for (let i = 0; i < numFloors; i++) {
+                        const slabY = podH + (i + 1) * floorSpacing;
+
+                        // Alternating organic cantilever offsets create the fluid curvilinear profile
+                        const isEven = (i % 2 === 0);
+                        const bScaleX = isEven ? 1.04 : 0.99;
+                        const bScaleZ = isEven ? 0.99 : 1.04;
+                        const slabW = width * bScaleX;
+                        const slabD = depth * bScaleZ;
+
+                        // Cantilevered white horizontal slab
+                        const slab = new THREE.Mesh(new THREE.BoxGeometry(slabW, 0.55, slabD), whiteRibbonMat);
+                        slab.position.y = slabY;
+                        slab.castShadow = true;
+                        buildingGroup.add(slab);
+
+                        // Tinted glass perimeter balustrade / railing
+                        const railing = new THREE.Mesh(new THREE.BoxGeometry(slabW + 0.1, 1.15, slabD + 0.1), balconyGlassMat);
+                        railing.position.y = slabY + 0.7;
+                        buildingGroup.add(railing);
+                    }
+
+                    // Tier 3: Modern Penthouse & Cantilevered Aerodynamic Roof Canopy
+                    const roofY = podH + towerH;
+                    const pentW = coreW * 0.72;
+                    const pentD = coreD * 0.72;
+                    const pentH = 6.0;
+                    const penthouse = new THREE.Mesh(new THREE.BoxGeometry(pentW, pentH, pentD), modernGlassMat);
+                    penthouse.position.y = roofY + pentH * 0.5;
+                    buildingGroup.add(penthouse);
+
+                    // Overhanging thin aerodynamic white roof canopy
+                    const canopy = new THREE.Mesh(new THREE.BoxGeometry(coreW * 0.95, 0.7, coreD * 0.95), whiteRibbonMat);
+                    canopy.position.y = roofY + pentH + 0.35;
+                    canopy.castShadow = true;
+                    buildingGroup.add(canopy);
+
+                } else if (style === 3) {
+                    // =========================================================================
+                    // STYLE 3: Beaux-Arts Classical Tower with Mansard Dome & Cupola Spire (Photo 3)
+                    // =========================================================================
+                    width = 38 + Math.random() * 8;
+                    depth = 38 + Math.random() * 8;
+                    totalHeight = 110 + Math.random() * 55; // 110m - 165m monumental classical tower
+
+                    // Sidewalk plinth
+                    const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 4.0, 0.4, depth + 4.0), concreteMat);
+                    curb.position.y = 0.2;
+                    curb.receiveShadow = true;
+                    buildingGroup.add(curb);
+
+                    // Tier 1: Classical Rusticated Limestone Podium (podH = 14m)
+                    const podH = 14.0;
+                    const pod = new THREE.Mesh(new THREE.BoxGeometry(width, podH, depth), rusticatedMat);
+                    pod.position.y = podH * 0.5;
+                    pod.castShadow = true;
+                    buildingGroup.add(pod);
+
+                    // Projecting classical base cornice
+                    const baseCornice = new THREE.Mesh(new THREE.BoxGeometry(width + 1.2, 1.0, depth + 1.2), limestoneTrimMat);
+                    baseCornice.position.y = podH + 0.5;
+                    buildingGroup.add(baseCornice);
+
+                    // Tier 2: Main Beaux-Arts Classical Shaft (to ~78% height)
+                    const shaftH = totalHeight * 0.62;
+                    const shaftW = width * 0.92;
+                    const shaftD = depth * 0.92;
+                    const shaft = new THREE.Mesh(new THREE.BoxGeometry(shaftW, shaftH, shaftD), beauxMat);
+                    shaft.position.y = podH + shaftH * 0.5;
+                    shaft.castShadow = true;
+                    buildingGroup.add(shaft);
+
+                    // Intermediate beltcourse cornice at mid-shaft
+                    const midCornice = new THREE.Mesh(new THREE.BoxGeometry(shaftW + 0.8, 0.8, shaftD + 0.8), limestoneTrimMat);
+                    midCornice.position.y = podH + shaftH * 0.5;
+                    buildingGroup.add(midCornice);
+
+                    // Tier 3: Upper Attic Story with Classical Balustrade
+                    const atticY = podH + shaftH;
+                    const atticW = shaftW * 0.88;
+                    const atticD = shaftD * 0.88;
+                    const atticH = 10.0;
+
+                    // Projecting heavy attic cornice
+                    const atticCornice = new THREE.Mesh(new THREE.BoxGeometry(shaftW + 1.8, 1.4, shaftD + 1.8), limestoneTrimMat);
+                    atticCornice.position.y = atticY + 0.7;
+                    atticCornice.castShadow = true;
+                    buildingGroup.add(atticCornice);
+
+                    // Attic block
+                    const attic = new THREE.Mesh(new THREE.BoxGeometry(atticW, atticH, atticD), beauxMat);
+                    attic.position.y = atticY + 1.4 + atticH * 0.5;
+                    attic.castShadow = true;
+                    buildingGroup.add(attic);
+
+                    // 4 Corner miniature cupola turrets on attic roof
+                    const turretH = 6.0;
+                    const turretR = 1.6;
+                    const turretGeom = new THREE.CylinderGeometry(turretR, turretR, turretH, 12);
+                    const turretDomeGeom = new THREE.SphereGeometry(turretR * 1.1, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
+                    const tOffX = atticW * 0.44;
+                    const tOffZ = atticD * 0.44;
+                    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([ox, oz]) => {
+                        const t = new THREE.Mesh(turretGeom, limestoneTrimMat);
+                        t.position.set(ox * tOffX, atticY + 1.4 + atticH + turretH * 0.5, oz * tOffZ);
+                        buildingGroup.add(t);
+                        const td = new THREE.Mesh(turretDomeGeom, copperDarkMat);
+                        td.position.set(ox * tOffX, atticY + 1.4 + atticH + turretH, oz * tOffZ);
+                        buildingGroup.add(td);
+                    });
+
+                    // Tier 4: Grand Ribbed Mansard Dome & Cupola Spire (Iconic Crown from Photo 3!)
+                    const domeY = atticY + 1.4 + atticH;
+                    const domeRadius = atticW * 0.42;
+                    const domeH = 14.0;
+
+                    // Mansard dome base cylinder (octagonal/ribbed profile)
+                    const dome = new THREE.Mesh(new THREE.CylinderGeometry(domeRadius * 0.65, domeRadius, domeH, 16), copperDarkMat);
+                    dome.position.y = domeY + domeH * 0.5;
+                    dome.castShadow = true;
+                    buildingGroup.add(dome);
+
+                    // Classical Lantern Cupola on top of dome
+                    const lanternY = domeY + domeH;
+                    const lanternR = domeRadius * 0.38;
+                    const lanternH = 6.0;
+                    const lantern = new THREE.Mesh(new THREE.CylinderGeometry(lanternR, lanternR, lanternH, 12), limestoneTrimMat);
+                    lantern.position.y = lanternY + lanternH * 0.5;
+                    lantern.castShadow = true;
+                    buildingGroup.add(lantern);
+
+                    // Crowning Needle Spire & Golden Apex Finial
+                    const spireH = 12.0;
+                    const spire = new THREE.Mesh(new THREE.ConeGeometry(lanternR * 0.7, spireH, 8), copperRoofMat);
+                    spire.position.y = lanternY + lanternH + spireH * 0.5;
+                    buildingGroup.add(spire);
+
+                    const goldBall = new THREE.Mesh(new THREE.SphereGeometry(1.2, 12, 12), goldFinialMat);
+                    goldBall.position.y = lanternY + lanternH + spireH + 0.6;
+                    buildingGroup.add(goldBall);
+
+                } else {
+                    // =========================================================================
+                    // STYLE 4: Neo-Gothic Cathedral Skyscraper with Pinnacle Spire (Photo 4)
+                    // =========================================================================
+                    width = 44 + Math.random() * 8;
+                    depth = 44 + Math.random() * 8;
+                    totalHeight = 130 + Math.random() * 55; // 130m - 185m soaring Gothic cathedral
+
+                    // Sidewalk plinth
+                    const curb = new THREE.Mesh(new THREE.BoxGeometry(width + 4.0, 0.4, depth + 4.0), concreteMat);
+                    curb.position.y = 0.2;
+                    curb.receiveShadow = true;
+                    buildingGroup.add(curb);
+
+                    // Tier 1 & 2: Wide Base & Symmetrical Shoulder Pavilions (from ground to ~52% height)
+                    const baseH = totalHeight * 0.50;
+                    const baseBlock = new THREE.Mesh(new THREE.BoxGeometry(width, baseH, depth), gothicMat);
+                    baseBlock.position.y = baseH * 0.5;
+                    baseBlock.castShadow = true;
+                    buildingGroup.add(baseBlock);
+
+                    // Continuous vertical Gothic buttress piers on corners
+                    const pierW = 1.6;
+                    const pierGeom = new THREE.BoxGeometry(pierW, baseH, pierW);
+                    const pOffX = (width - pierW) * 0.5;
+                    const pOffZ = (depth - pierW) * 0.5;
+                    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([ox, oz]) => {
+                        const pier = new THREE.Mesh(pierGeom, limestoneTrimMat);
+                        pier.position.set(ox * pOffX, baseH * 0.5, oz * pOffZ);
+                        buildingGroup.add(pier);
+                    });
+
+                    // Stepped Side Shoulder Pavilions with Patinated Green Copper Mansard Roofs
+                    const shoulderW = (width - width * 0.62) * 0.5;
+                    const shoulderRoofH = 6.0;
+                    const sRoofGeom = new THREE.BoxGeometry(shoulderW, shoulderRoofH, depth);
+                    const sRoofL = new THREE.Mesh(sRoofGeom, copperRoofMat);
+                    sRoofL.position.set(-width * 0.5 + shoulderW * 0.5, baseH + shoulderRoofH * 0.5, 0);
+                    buildingGroup.add(sRoofL);
+
+                    const sRoofR = new THREE.Mesh(sRoofGeom, copperRoofMat);
+                    sRoofR.position.set(width * 0.5 - shoulderW * 0.5, baseH + shoulderRoofH * 0.5, 0);
+                    buildingGroup.add(sRoofR);
+
+                    // Tier 3: Slender Soaring Central Tower Shaft
+                    const towerY = baseH;
+                    const towerH = totalHeight * 0.32;
+                    const towerW = width * 0.62;
+                    const towerD = depth * 0.62;
+                    const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerD), gothicMat);
+                    tower.position.y = towerY + towerH * 0.5;
+                    tower.castShadow = true;
+                    buildingGroup.add(tower);
+
+                    // Vertical buttresses on central tower
+                    const tPierGeom = new THREE.BoxGeometry(1.2, towerH, 1.2);
+                    const tpOffX = (towerW - 1.2) * 0.5;
+                    const tpOffZ = (towerD - 1.2) * 0.5;
+                    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([ox, oz]) => {
+                        const tp = new THREE.Mesh(tPierGeom, limestoneTrimMat);
+                        tp.position.set(ox * tpOffX, towerY + towerH * 0.5, oz * tpOffZ);
+                        buildingGroup.add(tp);
+                    });
+
+                    // Tier 4: Spectacular Gothic Cathedral Crown & Copper Pinnacle Spire (from Photo 4!)
+                    const crownY = towerY + towerH;
+                    const crownW = towerW * 0.88;
+                    const crownD = towerD * 0.88;
+                    const crownBaseH = 5.0;
+
+                    // Gothic parapet transition gallery
+                    const gallery = new THREE.Mesh(new THREE.BoxGeometry(crownW, crownBaseH, crownD), gothicMat);
+                    gallery.position.y = crownY + crownBaseH * 0.5;
+                    gallery.castShadow = true;
+                    buildingGroup.add(gallery);
+
+                    // 4 Corner Tourelle / Spire Pinnacles
+                    const spireR = 1.4;
+                    const cornerSpireH = 9.0;
+                    const csGeom = new THREE.ConeGeometry(spireR, cornerSpireH, 8);
+                    const csOffX = crownW * 0.45;
+                    const csOffZ = crownD * 0.45;
+                    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([ox, oz]) => {
+                        const cs = new THREE.Mesh(csGeom, copperRoofMat);
+                        cs.position.set(ox * csOffX, crownY + crownBaseH + cornerSpireH * 0.5, oz * csOffZ);
+                        buildingGroup.add(cs);
+                    });
+
+                    // Monumental Central Copper-Green Gothic Pyramidal Pinnacle Spire!
+                    const pinnacleH = totalHeight - (crownY + crownBaseH);
+                    const pinnacleR = crownW * 0.42;
+                    const pinnacle = new THREE.Mesh(new THREE.ConeGeometry(pinnacleR, pinnacleH, 8), copperRoofMat);
+                    pinnacle.position.y = crownY + crownBaseH + pinnacleH * 0.5;
+                    pinnacle.castShadow = true;
+                    buildingGroup.add(pinnacle);
+
+                    // Gilded Apex Finial Cross / Needle
+                    const finial = new THREE.Mesh(new THREE.ConeGeometry(0.6, 5.0, 6), goldFinialMat);
+                    finial.position.y = crownY + crownBaseH + pinnacleH + 2.5;
+                    buildingGroup.add(finial);
                 }
 
                 this.scene.add(buildingGroup);

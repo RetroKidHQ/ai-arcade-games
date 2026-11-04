@@ -1124,6 +1124,530 @@ class TextureGenerator {
         return texture;
     }
 
+    // 10l-0. Style 0: Limestone Art Deco Tower Facade (Photo 0: 30 Park Place / 220 CPS style)
+    createLimestoneArtDecoTexture(width = 512, height = 512) {
+        if (this.cache['limestoneArtDeco']) return this.cache['limestoneArtDeco'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Warm buff / creamy limestone base
+        ctx.fillStyle = '#d6c9ad';
+        ctx.fillRect(0, 0, width, height);
+
+        // Subtle fine limestone sedimentary grain
+        for (let i = 0; i < 600; i++) {
+            const gx = Math.random() * width;
+            const gy = Math.random() * height;
+            ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(120, 105, 80, 0.08)';
+            ctx.fillRect(gx, gy, 2 + Math.random() * 4, 1 + Math.random() * 3);
+        }
+
+        // Slender vertical Art Deco bays (6 bays x 8 floors)
+        const floors = 8;
+        const bays = 6;
+        const bayW = width / bays;
+        const floorH = height / floors;
+
+        // Vertical continuous limestone piers
+        for (let b = 0; b <= bays; b++) {
+            const px = b * bayW;
+            ctx.fillStyle = '#c7b99b';
+            ctx.fillRect(px - 3, 0, 6, height);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.fillRect(px - 1, 0, 2, height);
+        }
+
+        // Punched rectangular windows with deep stone reveals
+        for (let f = 0; f < floors; f++) {
+            const y = f * floorH;
+            for (let b = 0; b < bays; b++) {
+                const x = b * bayW;
+                const wx = x + 8;
+                const wy = y + 8;
+                const ww = bayW - 16;
+                const wh = floorH - 16;
+
+                // Deep reveal shadow
+                ctx.fillStyle = '#8f836c';
+                ctx.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
+
+                // Tinted architectural glass
+                const glassGrad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+                glassGrad.addColorStop(0.0, '#2e3d48');
+                glassGrad.addColorStop(0.4, '#1b252c');
+                glassGrad.addColorStop(1.0, '#12181c');
+                ctx.fillStyle = glassGrad;
+                ctx.fillRect(wx, wy, ww, wh);
+
+                // Luxury warm interior amber light in select windows
+                if ((f * 5 + b * 11) % 4 === 0) {
+                    ctx.fillStyle = 'rgba(255, 228, 160, 0.55)';
+                    ctx.fillRect(wx + 2, wy + wh * 0.45, ww - 4, wh * 0.4);
+                }
+
+                // Dark bronze window frame & mullion
+                ctx.strokeStyle = '#221e1a';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(wx, wy, ww, wh);
+                ctx.beginPath();
+                ctx.moveTo(wx + ww * 0.5, wy);
+                ctx.lineTo(wx + ww * 0.5, wy + wh);
+                ctx.stroke();
+
+                // Spandrel panel between floors: Art Deco fluting
+                ctx.fillStyle = '#c4b699';
+                ctx.fillRect(x + 5, y + floorH - 6, bayW - 10, 5);
+                ctx.fillStyle = '#9e9176';
+                ctx.fillRect(x + 6, y + floorH - 2, bayW - 12, 1);
+            }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['limestoneArtDeco'] = texture;
+        return texture;
+    }
+
+    // 10l-1. Style 1: Chicago Romanesque Red Brick & Terracotta (Photo 1)
+    createRedBrickRomanesqueTexture(width = 512, height = 512) {
+        if (this.cache['redBrickRomanesque']) return this.cache['redBrickRomanesque'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Deep terracotta red brick base
+        ctx.fillStyle = '#833425';
+        ctx.fillRect(0, 0, width, height);
+
+        // Brick mortar courses
+        const brickH = 8;
+        const brickW = 20;
+        ctx.fillStyle = '#4e2319';
+        for (let y = 0; y < height; y += brickH) {
+            ctx.fillRect(0, y, width, 1.5);
+            const rowOffset = (Math.floor(y / brickH) % 2) * (brickW * 0.5);
+            for (let x = rowOffset; x < width; x += brickW) {
+                ctx.fillRect(x, y, 1.5, brickH);
+            }
+        }
+
+        // Slight brick color variation
+        for (let i = 0; i < 400; i++) {
+            const bx = Math.floor(Math.random() * (width / brickW)) * brickW;
+            const by = Math.floor(Math.random() * (height / brickH)) * brickH;
+            ctx.fillStyle = Math.random() > 0.5 ? 'rgba(168, 70, 50, 0.35)' : 'rgba(90, 30, 20, 0.4)';
+            ctx.fillRect(bx + 1, by + 1, brickW - 2, brickH - 2);
+        }
+
+        // Windows: 6 bays x 8 floors
+        const floors = 8;
+        const bays = 6;
+        const bayW = width / bays;
+        const floorH = height / floors;
+
+        for (let f = 0; f < floors; f++) {
+            const y = f * floorH;
+            const isArchedTopTier = (f < 2); // Top 2 floors have round Romanesque arched windows!
+
+            for (let b = 0; b < bays; b++) {
+                const x = b * bayW;
+                const wx = x + 10;
+                const wy = y + 10;
+                const ww = bayW - 20;
+                const wh = floorH - 18;
+
+                if (isArchedTopTier) {
+                    // Round Romanesque arch top
+                    const archRadius = ww * 0.5;
+                    const archCenterY = wy + archRadius;
+
+                    // Stone arch voussoirs / surround
+                    ctx.fillStyle = '#baa895';
+                    ctx.beginPath();
+                    ctx.arc(wx + archRadius, archCenterY, archRadius + 4, Math.PI, 0, false);
+                    ctx.lineTo(wx + ww + 4, wy + wh);
+                    ctx.lineTo(wx - 4, wy + wh);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Glass arch pane
+                    ctx.fillStyle = '#17222c';
+                    ctx.beginPath();
+                    ctx.arc(wx + archRadius, archCenterY, archRadius, Math.PI, 0, false);
+                    ctx.lineTo(wx + ww, wy + wh);
+                    ctx.lineTo(wx, wy + wh);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Dark frame
+                    ctx.strokeStyle = '#2d1e15';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else {
+                    // Rectangular window with stone lintel & sill
+                    // Stone lintel (top)
+                    ctx.fillStyle = '#baa895';
+                    ctx.fillRect(wx - 2, wy - 4, ww + 4, 4);
+
+                    // Stone sill (bottom)
+                    ctx.fillRect(wx - 4, wy + wh, ww + 8, 4);
+
+                    // Glass pane
+                    ctx.fillStyle = '#17222c';
+                    ctx.fillRect(wx, wy, ww, wh);
+
+                    // Mullions
+                    ctx.strokeStyle = '#2d1e15';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(wx, wy, ww, wh);
+                    ctx.beginPath();
+                    ctx.moveTo(wx + ww * 0.5, wy);
+                    ctx.lineTo(wx + ww * 0.5, wy + wh);
+                    ctx.moveTo(wx, wy + wh * 0.5);
+                    ctx.lineTo(wx + ww, wy + wh * 0.5);
+                    ctx.stroke();
+                }
+
+                // Random warm lighting glint
+                if ((f * 7 + b * 13) % 4 === 1) {
+                    ctx.fillStyle = 'rgba(255, 230, 165, 0.4)';
+                    ctx.fillRect(wx + 2, wy + wh * 0.5, ww - 4, wh * 0.4);
+                }
+            }
+
+            // Terracotta beltcourse between floors
+            ctx.fillStyle = '#68291c';
+            ctx.fillRect(0, y + floorH - 3, width, 3);
+            ctx.fillStyle = '#baa895';
+            ctx.fillRect(0, y + floorH - 1, width, 1.5);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['redBrickRomanesque'] = texture;
+        return texture;
+    }
+
+    // 10l-1b. Heavy Rusticated Granite/Sandstone Podium Base (Photos 1 & 3)
+    createRusticatedStoneTexture(width = 512, height = 512) {
+        if (this.cache['rusticatedStone']) return this.cache['rusticatedStone'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Grey-buff coarse granite stone
+        ctx.fillStyle = '#9c9285';
+        ctx.fillRect(0, 0, width, height);
+
+        // Heavy ashlar stone blocks
+        const blockH = 48;
+        const blockW = 128;
+        for (let y = 0; y < height; y += blockH) {
+            const row = Math.floor(y / blockH);
+            const xOff = (row % 2) * (blockW * 0.5);
+
+            for (let x = -blockW * 0.5 + xOff; x < width + blockW; x += blockW) {
+                // Pillow face / bevel highlight & shadow
+                const shade = 145 + Math.floor(Math.random() * 25);
+                ctx.fillStyle = `rgb(${shade + 5}, ${shade}, ${shade - 10})`;
+                ctx.fillRect(x + 4, y + 4, blockW - 8, blockH - 8);
+
+                // Deep rusticated V-groove shadow
+                ctx.strokeStyle = '#433d36';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(x + 2, y + 2, blockW - 4, blockH - 4);
+
+                // Top highlight line
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x + 4, y + 4);
+                ctx.lineTo(x + blockW - 4, y + 4);
+                ctx.stroke();
+            }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['rusticatedStone'] = texture;
+        return texture;
+    }
+
+    // 10l-2. Style 2: Curvilinear Modern Ribbon Balconies & Glass Curtain Wall (Photo 2)
+    createCurvilinearGlassTexture(width = 512, height = 512) {
+        if (this.cache['curvilinearGlass']) return this.cache['curvilinearGlass'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Dark tinted blue-grey structural glass curtain wall
+        ctx.fillStyle = '#182430';
+        ctx.fillRect(0, 0, width, height);
+
+        const floors = 8;
+        const floorH = height / floors;
+
+        for (let f = 0; f < floors; f++) {
+            const y = f * floorH;
+
+            // Subtle vertical mullions (high tech floor-to-ceiling glass)
+            const mullions = 12;
+            const mw = width / mullions;
+            for (let m = 0; m < mullions; m++) {
+                const x = m * mw;
+                // Tint gradient
+                const grad = ctx.createLinearGradient(x, y, x, y + floorH);
+                grad.addColorStop(0.0, '#2d4358');
+                grad.addColorStop(0.5, '#192532');
+                grad.addColorStop(1.0, '#10171f');
+                ctx.fillStyle = grad;
+                ctx.fillRect(x + 2, y + 8, mw - 4, floorH - 12);
+
+                // Ultra slim dark mullion
+                ctx.fillStyle = '#0e141a';
+                ctx.fillRect(x, y, 2, floorH);
+
+                // Occasional interior warm spotlight
+                if ((f * 3 + m * 5) % 6 === 0) {
+                    ctx.fillStyle = 'rgba(255, 240, 200, 0.35)';
+                    ctx.fillRect(x + 6, y + floorH * 0.35, mw - 12, 10);
+                }
+            }
+
+            // White aerodynamic slab trim band
+            ctx.fillStyle = '#f3f6fa';
+            ctx.fillRect(0, y + floorH - 6, width, 6);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+            ctx.fillRect(0, y + floorH - 1, width, 1.5);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['curvilinearGlass'] = texture;
+        return texture;
+    }
+
+    // 10l-3. Style 3: Beaux-Arts Classical Facade with Pediments & Quoins (Photo 3)
+    createBeauxArtsFacadeTexture(width = 512, height = 512) {
+        if (this.cache['beauxArtsFacade']) return this.cache['beauxArtsFacade'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Warm light grey-limestone classical facade
+        ctx.fillStyle = '#cdc5b7';
+        ctx.fillRect(0, 0, width, height);
+
+        // Quoin stones on borders
+        const quoinW = 24;
+        const quoinH = 20;
+        for (let y = 0; y < height; y += quoinH) {
+            const isLong = (Math.floor(y / quoinH) % 2 === 0);
+            const qw = isLong ? quoinW : quoinW * 0.65;
+            ctx.fillStyle = '#b8af9f';
+            ctx.fillRect(0, y + 1, qw, quoinH - 2);
+            ctx.fillRect(width - qw, y + 1, qw, quoinH - 2);
+            ctx.strokeStyle = '#9e9587';
+            ctx.strokeRect(0, y + 1, qw, quoinH - 2);
+            ctx.strokeRect(width - qw, y + 1, qw, quoinH - 2);
+        }
+
+        // 5 bays x 8 floors
+        const floors = 8;
+        const bays = 5;
+        const bayW = (width - quoinW * 2) / bays;
+        const floorH = height / floors;
+
+        for (let f = 0; f < floors; f++) {
+            const y = f * floorH;
+            const hasPediment = (f % 2 === 0); // Alternating floors have triangular pediments!
+            const isArchedTop = (f < 2);
+
+            for (let b = 0; b < bays; b++) {
+                const x = quoinW + b * bayW;
+                const wx = x + 12;
+                const wy = y + 12;
+                const ww = bayW - 24;
+                const wh = floorH - 22;
+
+                if (isArchedTop) {
+                    // Arched window
+                    const r = ww * 0.5;
+                    ctx.fillStyle = '#a89f91';
+                    ctx.beginPath();
+                    ctx.arc(wx + r, wy + r, r + 4, Math.PI, 0, false);
+                    ctx.lineTo(wx + ww + 4, wy + wh);
+                    ctx.lineTo(wx - 4, wy + wh);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.fillStyle = '#1c2630';
+                    ctx.beginPath();
+                    ctx.arc(wx + r, wy + r, r, Math.PI, 0, false);
+                    ctx.lineTo(wx + ww, wy + wh);
+                    ctx.lineTo(wx, wy + wh);
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    // Pediment crown on window
+                    if (hasPediment) {
+                        ctx.fillStyle = '#b5ac9d';
+                        ctx.beginPath();
+                        ctx.moveTo(wx - 4, wy - 3);
+                        ctx.lineTo(wx + ww * 0.5, wy - 10);
+                        ctx.lineTo(wx + ww + 4, wy - 3);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#8d8373';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                    } else {
+                        // Flat molded cornice over window
+                        ctx.fillStyle = '#b5ac9d';
+                        ctx.fillRect(wx - 4, wy - 5, ww + 8, 4);
+                    }
+
+                    // Window glass
+                    ctx.fillStyle = '#1c2630';
+                    ctx.fillRect(wx, wy, ww, wh);
+
+                    // Carved stone balustrade under window
+                    ctx.fillStyle = '#bbb2a3';
+                    ctx.fillRect(wx - 3, wy + wh, ww + 6, 5);
+                    for (let bx = wx; bx < wx + ww; bx += 6) {
+                        ctx.fillStyle = '#7a7164';
+                        ctx.fillRect(bx, wy + wh + 1, 2, 4);
+                    }
+                }
+
+                // Window mullions
+                ctx.strokeStyle = '#322c24';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(wx + ww * 0.5, wy);
+                ctx.lineTo(wx + ww * 0.5, wy + wh);
+                ctx.moveTo(wx, wy + wh * 0.5);
+                ctx.lineTo(wx + ww, wy + wh * 0.5);
+                ctx.stroke();
+
+                // Warm interior lamp
+                if ((f * 3 + b * 5) % 4 === 0) {
+                    ctx.fillStyle = 'rgba(255, 230, 160, 0.45)';
+                    ctx.fillRect(wx + 2, wy + wh * 0.5, ww - 4, wh * 0.45);
+                }
+            }
+
+            // Classical projecting dentil cornice every 2 floors
+            if (f % 2 === 1) {
+                ctx.fillStyle = '#a49b8c';
+                ctx.fillRect(0, y + floorH - 6, width, 6);
+                ctx.fillStyle = '#746c5f';
+                for (let dx = 8; dx < width - 8; dx += 12) {
+                    ctx.fillRect(dx, y + floorH - 4, 6, 4);
+                }
+            }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['beauxArtsFacade'] = texture;
+        return texture;
+    }
+
+    // 10l-4. Style 4: Neo-Gothic Cathedral Architectural Terra Cotta (Photo 4: Woolworth style)
+    createNeoGothicFacadeTexture(width = 512, height = 512) {
+        if (this.cache['neoGothicFacade']) return this.cache['neoGothicFacade'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Pale creamy architectural terra-cotta base
+        ctx.fillStyle = '#dad3c5';
+        ctx.fillRect(0, 0, width, height);
+
+        // 8 bays x 8 floors
+        const floors = 8;
+        const bays = 8;
+        const bayW = width / bays;
+        const floorH = height / floors;
+
+        // Prominent continuous vertical Gothic piers (piers continue unbroken top to bottom)
+        for (let b = 0; b <= bays; b++) {
+            const px = b * bayW;
+            ctx.fillStyle = '#b7ae9e';
+            ctx.fillRect(px - 4, 0, 8, height);
+            ctx.fillStyle = '#ece8e0';
+            ctx.fillRect(px - 1, 0, 2, height);
+            ctx.fillStyle = '#8f8574';
+            ctx.fillRect(px - 4, 0, 1.5, height);
+        }
+
+        // Gothic lancet windows with tracery
+        for (let f = 0; f < floors; f++) {
+            const y = f * floorH;
+            for (let b = 0; b < bays; b++) {
+                const x = b * bayW;
+                const wx = x + 7;
+                const wy = y + 7;
+                const ww = bayW - 14;
+                const wh = floorH - 14;
+
+                // Gothic pointed arch hood
+                ctx.fillStyle = '#c5bea0';
+                ctx.beginPath();
+                ctx.moveTo(wx, wy + 8);
+                ctx.quadraticCurveTo(wx + ww * 0.5, wy - 3, wx + ww, wy + 8);
+                ctx.lineTo(wx + ww, wy + wh);
+                ctx.lineTo(wx, wy + wh);
+                ctx.closePath();
+                ctx.fill();
+
+                // Dark recessed window pane
+                ctx.fillStyle = '#1c252d';
+                ctx.fillRect(wx + 2, wy + 4, ww - 4, wh - 6);
+
+                // Delicate vertical Gothic tracery rib
+                ctx.strokeStyle = '#c5bea0';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(wx + ww * 0.5, wy + 2);
+                ctx.lineTo(wx + ww * 0.5, wy + wh - 2);
+                ctx.stroke();
+
+                // Spandrel panel between stories: carved Gothic Quatrefoil ornament
+                ctx.fillStyle = '#b7ae9e';
+                ctx.fillRect(x + 5, y + floorH - 6, bayW - 10, 5);
+                ctx.fillStyle = '#8f8574';
+                ctx.fillRect(x + bayW * 0.5 - 2, y + floorH - 5, 4, 3);
+
+                // Warm interior candle/light
+                if ((f * 5 + b * 9) % 5 === 0) {
+                    ctx.fillStyle = 'rgba(255, 235, 175, 0.45)';
+                    ctx.fillRect(wx + 3, wy + wh * 0.45, ww - 6, wh * 0.45);
+                }
+            }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['neoGothicFacade'] = texture;
+        return texture;
+    }
+
+
     // 10m. Street-Level Retail Storefront Texture
     createStorefrontTexture(width = 512, height = 256) {
         if (this.cache['storefront']) return this.cache['storefront'];
