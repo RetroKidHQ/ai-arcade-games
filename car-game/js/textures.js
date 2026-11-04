@@ -964,6 +964,7 @@ class TextureGenerator {
     }
 
     // 10j. High-Definition Asphalt Road Texture with Stone Aggregate & Markings
+    // 10j. Photorealistic 2-Lane Asphalt Highway Texture (Double-Wide with Dual-Lane Markings)
     createAsphaltRoadTexture(width = 512, height = 512) {
         if (this.cache['asphaltRoad']) return this.cache['asphaltRoad'];
         const canvas = document.createElement('canvas');
@@ -972,49 +973,72 @@ class TextureGenerator {
         const ctx = canvas.getContext('2d');
 
         // Dark weathered bitumen base
-        ctx.fillStyle = '#222326';
+        ctx.fillStyle = '#202124';
         ctx.fillRect(0, 0, width, height);
 
-        // Micro-aggregate mineral noise (fine gravel crushed stones)
+        // Micro-aggregate mineral noise (fine crushed stone aggregate)
         const imgData = ctx.getImageData(0, 0, width, height);
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
-            const noise = (Math.random() - 0.5) * 45;
+            const noise = (Math.random() - 0.5) * 40;
             data[i] = Math.min(255, Math.max(0, data[i] + noise));
             data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));
-            data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise * 1.1));
+            data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise * 1.08));
         }
         ctx.putImageData(imgData, 0, 0);
 
-        // Center tire burnish grooves (darker worn rubber paths)
+        // 2-Lane Dual Tire Burnish Grooves (worn rubber wheel tracks in BOTH lanes)
+        // Left Lane (0.0 to 0.5): tracks at 0.18 and 0.36
+        // Right Lane (0.5 to 1.0): tracks at 0.64 and 0.82
         const burnishGrad = ctx.createLinearGradient(0, 0, width, 0);
-        burnishGrad.addColorStop(0.0, 'rgba(20, 20, 22, 0.4)');
-        burnishGrad.addColorStop(0.2, 'rgba(10, 10, 12, 0.7)'); // Left wheel track
-        burnishGrad.addColorStop(0.5, 'rgba(35, 36, 40, 0.1)'); // Center crown
-        burnishGrad.addColorStop(0.8, 'rgba(10, 10, 12, 0.7)'); // Right wheel track
-        burnishGrad.addColorStop(1.0, 'rgba(20, 20, 22, 0.4)');
+        burnishGrad.addColorStop(0.00, 'rgba(22, 23, 26, 0.3)');
+        burnishGrad.addColorStop(0.18, 'rgba(10, 11, 13, 0.65)'); // Left lane outer tire track
+        burnishGrad.addColorStop(0.27, 'rgba(32, 33, 37, 0.15)');
+        burnishGrad.addColorStop(0.36, 'rgba(10, 11, 13, 0.65)'); // Left lane inner tire track
+        burnishGrad.addColorStop(0.48, 'rgba(26, 27, 30, 0.1)');  // Center crown
+        burnishGrad.addColorStop(0.52, 'rgba(26, 27, 30, 0.1)');
+        burnishGrad.addColorStop(0.64, 'rgba(10, 11, 13, 0.65)'); // Right lane inner tire track
+        burnishGrad.addColorStop(0.73, 'rgba(32, 33, 37, 0.15)');
+        burnishGrad.addColorStop(0.82, 'rgba(10, 11, 13, 0.65)'); // Right lane outer tire track
+        burnishGrad.addColorStop(1.00, 'rgba(22, 23, 26, 0.3)');
         ctx.fillStyle = burnishGrad;
         ctx.fillRect(0, 0, width, height);
 
-        // Yellow center dashed line
-        ctx.strokeStyle = '#e6b800';
-        ctx.lineWidth = 14;
-        ctx.setLineDash([48, 36]);
+        // Center Double-Yellow Divider Lines (Standard 2-Lane Highway)
+        ctx.strokeStyle = '#f5be18';
+        ctx.lineWidth = 5;
+        ctx.setLineDash([]);
+        // Left center line
         ctx.beginPath();
-        ctx.moveTo(width * 0.5, 0);
-        ctx.lineTo(width * 0.5, height);
+        ctx.moveTo(width * 0.485, 0);
+        ctx.lineTo(width * 0.485, height);
+        ctx.stroke();
+        // Right center line
+        ctx.beginPath();
+        ctx.moveTo(width * 0.515, 0);
+        ctx.lineTo(width * 0.515, height);
         ctx.stroke();
 
-        // White solid outer shoulder lines
-        ctx.strokeStyle = '#e0e4e8';
-        ctx.lineWidth = 10;
-        ctx.setLineDash([]);
+        // Retroreflective amber center road markers (cat's eyes every 48px)
+        ctx.fillStyle = '#ffe066';
+        for (let y = 12; y < height; y += 48) {
+            ctx.fillRect(width * 0.5 - 2, y, 4, 8);
+        }
+
+        // Outer Solid White Shoulder / Fog Lines
+        ctx.strokeStyle = '#f0f3f6';
+        ctx.lineWidth = 8;
         ctx.beginPath();
-        ctx.moveTo(width * 0.08, 0);
-        ctx.lineTo(width * 0.08, height);
-        ctx.moveTo(width * 0.92, 0);
-        ctx.lineTo(width * 0.92, height);
+        ctx.moveTo(width * 0.06, 0);
+        ctx.lineTo(width * 0.06, height);
+        ctx.moveTo(width * 0.94, 0);
+        ctx.lineTo(width * 0.94, height);
         ctx.stroke();
+
+        // Shoulder margins outside white lines (gravel / weathered edge)
+        ctx.fillStyle = 'rgba(15, 15, 17, 0.4)';
+        ctx.fillRect(0, 0, width * 0.05, height);
+        ctx.fillRect(width * 0.95, 0, width * 0.05, height);
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.wrapS = THREE.RepeatWrapping;

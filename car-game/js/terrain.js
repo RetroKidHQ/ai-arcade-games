@@ -9,30 +9,70 @@ class TerrainManager {
         this.segments = 180;
         this.waterHeight = -2.0;
 
-        // Road network spline waypoints
+        // Double as wide: 18.0 meters wide (was 9.0m), true 2-lane roadway
+        this.roadWidth = 18.0;
+
+        // Road network spline waypoints: 2-lane roads leading to every building in the world
         this.roads = [
-            // Main coastal highway loop
+            // =========================================================================
+            // DOWNTOWN GRID: 2-Lane Avenues & Cross Streets Enclosing Every Building
+            // Every skyscraper block sits between these 18m-wide 2-lane roadways!
+            // =========================================================================
+            // North-South Avenues (along Z):
+            // Avenue A (West perimeter avenue)
+            [ { x: -390, z: -390 }, { x: -390, z: 42 } ],
+            // Avenue B (West-central avenue - branches to Farmland & Barn)
+            [ { x: -282, z: -390 }, { x: -282, z: 42 } ],
+            // Avenue C (Grand Arterial - connects North & South Coastal Highways)
+            [ { x: -174, z: -550 }, { x: -174, z: 480 } ],
+            // Avenue D (East-central avenue)
+            [ { x: -66, z: -390 }, { x: -66, z: 42 } ],
+            // Avenue E (East perimeter avenue)
+            [ { x: 42, z: -390 }, { x: 42, z: 42 } ],
+
+            // East-West Cross Streets (along X):
+            // Street 1 (North perimeter street)
+            [ { x: -390, z: -390 }, { x: 42, z: -390 } ],
+            // Street 2 (North-central street)
+            [ { x: -390, z: -282 }, { x: 42, z: -282 } ],
+            // Street 3 (Main East-West Boulevard - connects West Coast to Mountain Pass)
+            [ { x: -450, z: -174 }, { x: 42, z: -174 }, { x: 120, z: -120 } ],
+            // Street 4 (South-central street)
+            [ { x: -390, z: -66 }, { x: 42, z: -66 } ],
+            // Street 5 (South perimeter street)
+            [ { x: -390, z: 42 }, { x: 42, z: 42 } ],
+
+            // =========================================================================
+            // REGIONAL HIGHWAYS & BUILDING ACCESS ROADS
+            // =========================================================================
+            // Farmland & Country Barn Scenic Drive (leads directly to Barn & Windmills)
             [
-                { x: -500, z: -500 }, { x: 0, z: -550 }, { x: 500, z: -480 },
-                { x: 580, z: -100 }, { x: 520, z: 450 }, { x: 0, z: 520 },
+                { x: -282, z: 42 }, { x: -282, z: 160 }, { x: -280, z: 280 }
+            ],
+
+            // Cape Point Lighthouse Coastal Drive (leads directly to Lighthouse)
+            [
+                { x: -280, z: 280 }, { x: -360, z: 340 }, { x: -460, z: 380 }
+            ],
+
+            // Main Coastal Highway Loop
+            [
+                { x: -500, z: -500 }, { x: -174, z: -550 }, { x: 150, z: -520 }, { x: 500, z: -480 },
+                { x: 580, z: -100 }, { x: 520, z: 450 }, { x: 150, z: 520 }, { x: -174, z: 480 },
                 { x: -480, z: 460 }, { x: -560, z: 0 }, { x: -500, z: -500 }
             ],
-            // Cross-country mountain pass
+
+            // Mountain Pass Highway
             [
-                { x: -480, z: 0 }, { x: -250, z: -50 }, { x: 0, z: 0 },
-                { x: 250, z: 80 }, { x: 520, z: 120 }
+                { x: 120, z: -120 }, { x: 250, z: 0 }, { x: 380, z: 80 }, { x: 520, z: 120 }
             ],
-            // Downtown grid road
+
+            // Coastal Dunes & Arena Access Road
             [
-                { x: -50, z: -550 }, { x: -50, z: 520 }
-            ],
-            // Stunt arena loop access
-            [
-                { x: 100, z: 100 }, { x: 300, z: 250 }, { x: 420, z: 380 }
+                { x: 120, z: -120 }, { x: 220, z: 120 }, { x: 320, z: 250 }, { x: 420, z: 380 }
             ]
         ];
 
-        this.roadWidth = 9.0;
         this.mesh = null;
     }
 
@@ -111,8 +151,9 @@ class TerrainManager {
     }
 
     getNaturalHeight(x, z) {
-        const distFromCenter = Math.hypot(x + 120, z + 120);
-        const centerFlatFactor = Math.min(1.0, Math.max(0, (distFromCenter - 220) / 100));
+        // Flat metropolis foundation plateau covering all downtown avenues & skyscraper blocks
+        const distFromCenter = Math.hypot(x + 174, z + 174);
+        const centerFlatFactor = Math.min(1.0, Math.max(0, (distFromCenter - 320) / 80));
 
         let baseHeight = (this.perlin(x, z) - 10) * centerFlatFactor;
 
@@ -138,7 +179,7 @@ class TerrainManager {
         const roadInfo = this.getDistanceToRoad(x, z);
 
         // Wide, gentle road corridor transition (no steep narrow cliffs entering the road)
-        const corridorWidth = 32.0; // 32-meter smooth transition zone
+        const corridorWidth = Math.max(40.0, this.roadWidth + 22.0); // 40-meter smooth transition zone
         if (roadInfo.distance < corridorWidth) {
             let roadCenterY = this.getNaturalHeight(roadInfo.projX, roadInfo.projZ);
 
@@ -176,9 +217,10 @@ class TerrainManager {
         if (height < this.waterHeight) return 'water';
 
         const roadInfo = this.getDistanceToRoad(x, z);
-        if (roadInfo.distance <= this.roadWidth) {
+        const halfW = this.roadWidth * 0.5;
+        if (roadInfo.distance <= halfW) {
             return 'road';
-        } else if (roadInfo.distance <= this.roadWidth * 1.5) {
+        } else if (roadInfo.distance <= halfW + 4.0) {
             return 'road_shoulder';
         }
         return 'grass';
@@ -223,12 +265,13 @@ class TerrainManager {
             const dist = roadInfo.distance;
 
             let col = new THREE.Color();
-            if (dist <= this.roadWidth) {
+            const halfW = this.roadWidth * 0.5;
+            if (dist <= halfW) {
                 // Asphalt & gravel roadway
                 col.copy(cGravelRoad);
-            } else if (dist <= this.roadWidth + 3.5) {
+            } else if (dist <= halfW + 4.0) {
                 // Gravel shoulder blend into grass
-                const t = (dist - this.roadWidth) / 3.5;
+                const t = (dist - halfW) / 4.0;
                 col.copy(cGravelRoad).lerp(cGrassLush, t);
             } else if (vy < this.waterHeight + 2.5) {
                 // Shoreline beach sand
@@ -414,7 +457,7 @@ class TerrainManager {
                 positions.push(rx, roadSurfaceY, rz);
                 positions.push(rx, skirtY, rz);
 
-                const v = curr.dist / 8.0;
+                const v = curr.dist / 14.0;
                 uvs.push(0.0, v);
                 uvs.push(0.06, v);
                 uvs.push(0.94, v);

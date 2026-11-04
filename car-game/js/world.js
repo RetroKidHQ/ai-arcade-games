@@ -757,8 +757,9 @@ class WorldManager {
             const ty = this.terrain.getHeight(tx, tz);
 
             if (ty < this.terrain.waterHeight + 1.5) continue;
-            if (this.terrain.getDistanceToRoad(tx, tz).distance < 14) continue;
-            if (Math.hypot(tx + 120, tz + 120) < 110) continue; // City
+            // Clear of 18m 2-lane roadway and sidewalks
+            if (this.terrain.getDistanceToRoad(tx, tz).distance < this.terrain.roadWidth * 0.5 + 5.0) continue;
+            if (Math.hypot(tx + 174, tz + 174) < 280) continue; // Keep downtown avenues and skyscraper plazas clear
             if (Math.hypot(tx - 300, tz - 300) < 95) continue;  // Stunt park
 
             const template = treeTemplates[Math.floor(Math.random() * treeTemplates.length)];
@@ -793,7 +794,8 @@ class WorldManager {
             const rx = (Math.random() - 0.5) * (this.terrain.worldSize - 100);
             const rz = (Math.random() - 0.5) * (this.terrain.worldSize - 100);
             const ry = this.terrain.getHeight(rx, rz);
-            if (this.terrain.getDistanceToRoad(rx, rz).distance < 12) continue;
+            if (this.terrain.getDistanceToRoad(rx, rz).distance < this.terrain.roadWidth * 0.5 + 4.5) continue;
+            if (Math.hypot(rx + 174, rz + 174) < 280) continue;
 
             const rScale = 0.8 + Math.random() * 1.5;
             dummy.position.set(rx, ry + rScale * 0.8, rz);
@@ -948,10 +950,12 @@ class WorldManager {
                     const rx = p1.x + t * (p2.x - p1.x);
                     const rz = p1.z + t * (p2.z - p1.z);
 
-                    // Place clusters along road shoulder and outer meadows
+                    // Place clusters along road shoulder and outer meadows (exclude downtown sidewalks)
+                    if (Math.hypot(rx + 174, rz + 174) < 280) continue;
+
                     for (const side of [-1, 1]) {
                         if (count >= maxTufts) break;
-                        const distOffset = side * (5.5 + Math.random() * 8.0);
+                        const distOffset = side * (this.terrain.roadWidth * 0.5 + 2.0 + Math.random() * 8.0);
                         const gx = rx + distOffset;
                         const gz = rz + (Math.random() - 0.5) * 6;
                         const gy = this.terrain.getHeight(gx, gz);
@@ -973,35 +977,53 @@ class WorldManager {
         this.scene.add(tuftMesh);
     }
 
-    // 6. Street Lamps
+    // 6. Street Lamps along 2-Lane Avenues and Highways
     buildRoadProps() {
+        const halfW = this.terrain.roadWidth * 0.5; // 9.0m
+        const sidewalkOff = halfW + 2.5; // 11.5m from road center (stands on sidewalk curb)
+
         const lampPositions = [
-            { x: -50, z: -400 }, { x: -50, z: -250 }, { x: -50, z: -100 },
-            { x: -50, z: 50 }, { x: -50, z: 200 }, { x: -50, z: 350 },
-            { x: -200, z: -50 }, { x: 50, z: 0 }, { x: 200, z: 40 }
+            // Downtown Central Avenue C (x = -174)
+            { x: -174 + sidewalkOff, z: -350 }, { x: -174 - sidewalkOff, z: -250 },
+            { x: -174 + sidewalkOff, z: -150 }, { x: -174 - sidewalkOff, z: -50 },
+            { x: -174 + sidewalkOff, z: 50 }, { x: -174 - sidewalkOff, z: 150 },
+            { x: -174 + sidewalkOff, z: 250 }, { x: -174 - sidewalkOff, z: 350 },
+
+            // Downtown Avenue B (x = -282)
+            { x: -282 + sidewalkOff, z: -250 }, { x: -282 - sidewalkOff, z: -100 },
+            { x: -282 + sidewalkOff, z: 50 },
+
+            // Downtown Avenue D (x = -66)
+            { x: -66 + sidewalkOff, z: -250 }, { x: -66 - sidewalkOff, z: -100 },
+            { x: -66 + sidewalkOff, z: 50 },
+
+            // Regional Highways & Farmland
+            { x: -280 + sidewalkOff, z: 220 }, { x: -400 + sidewalkOff, z: 350 },
+            { x: 120 + sidewalkOff, z: -120 }, { x: 250 + sidewalkOff, z: 20 },
+            { x: 380 + sidewalkOff, z: 80 }
         ];
 
         for (const lp of lampPositions) {
-            const ly = this.terrain.getHeight(lp.x + 8, lp.z);
+            const ly = this.terrain.getHeight(lp.x, lp.z);
             const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 9), new THREE.MeshStandardMaterial({ color: 0x2d3036, metalness: 0.8, roughness: 0.3 }));
-            pole.position.set(lp.x + 8, ly + 4.5, lp.z);
+            pole.position.set(lp.x, ly + 4.5, lp.z);
             this.scene.add(pole);
 
-            // Arm extension
+            // Arm extension reaching toward the road
             const arm = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.12, 0.12), new THREE.MeshStandardMaterial({ color: 0x2d3036 }));
-            arm.position.set(lp.x + 6.8, ly + 8.8, lp.z);
+            arm.position.set(lp.x - 1.2, ly + 8.8, lp.z);
             this.scene.add(arm);
 
             const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfff4d0 }));
-            bulb.position.set(lp.x + 5.6, ly + 8.6, lp.z);
+            bulb.position.set(lp.x - 2.4, ly + 8.6, lp.z);
             this.scene.add(bulb);
 
             const light = new THREE.PointLight(0xffeedd, 1.8, 45, 1.5);
-            light.position.set(lp.x + 5.6, ly + 8.4, lp.z);
+            light.position.set(lp.x - 2.4, ly + 8.4, lp.z);
             this.scene.add(light);
             this.streetLights.push(light);
 
-            this.colliders.push({ type: 'cylinder', x: lp.x + 8, z: lp.z, radius: 0.5 });
+            this.colliders.push({ type: 'cylinder', x: lp.x, z: lp.z, radius: 0.5 });
         }
     }
 

@@ -68,11 +68,12 @@ class Minimap {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
+        const rWidth = (this.terrain.roadWidth || 18.0) * scale;
         for (const road of this.terrain.roads) {
-            // Road base (dark gray)
+            // Road base (dark asphalt bitumen)
             ctx.beginPath();
-            ctx.strokeStyle = '#383b42';
-            ctx.lineWidth = 9 * scale;
+            ctx.strokeStyle = '#282a2e';
+            ctx.lineWidth = rWidth;
             for (let i = 0; i < road.length; i++) {
                 const pt = worldToCanvas(road[i].x, road[i].z);
                 if (i === 0) ctx.moveTo(pt.x, pt.y);
@@ -80,10 +81,10 @@ class Minimap {
             }
             ctx.stroke();
 
-            // Centerline
+            // Center double-yellow divider
             ctx.beginPath();
-            ctx.strokeStyle = '#f1c40f';
-            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = '#f5be18';
+            ctx.lineWidth = Math.max(1.2, rWidth * 0.12);
             for (let i = 0; i < road.length; i++) {
                 const pt = worldToCanvas(road[i].x, road[i].z);
                 if (i === 0) ctx.moveTo(pt.x, pt.y);
