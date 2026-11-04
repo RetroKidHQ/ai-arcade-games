@@ -12,7 +12,8 @@ class Minimap {
 
         this.pois = [
             { name: 'City Downtown', x: -120, z: -120, icon: '🏙️', color: '#3498db' },
-            { name: 'Stunt Park', x: 300, z: 300, icon: '⚡', color: '#e67e22' },
+            { name: 'Historic Lofts & Apartments', x: -174, z: 96, icon: '🏢', color: '#e67e22' },
+            { name: 'Stunt Park', x: 300, z: 300, icon: '⚡', color: '#f39c12' },
             { name: 'Windmill Farm', x: -320, z: 240, icon: '🌾', color: '#2ecc71' },
             { name: 'Lighthouse', x: -460, z: 380, icon: '🏮', color: '#e74c3c' },
             { name: 'Mountain Peak', x: 380, z: -320, icon: '⛰️', color: '#9b59b6' }

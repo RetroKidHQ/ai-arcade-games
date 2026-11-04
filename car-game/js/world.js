@@ -15,6 +15,7 @@ class WorldManager {
 
     buildAll() {
         this.buildCity();
+        this.buildApartments();
         this.buildFarmland();
         this.buildLighthouse();
         this.buildRealisticBushland();
@@ -619,6 +620,267 @@ class WorldManager {
         }
     }
 
+    // 1b. Historic Brick Apartment & Loft District (Shorter, Wider Buildings Modeled on Reference Photos)
+    buildApartments() {
+        const tg = window.textureGenerator;
+
+        // Specialized Apartment Textures matching user photos
+        const loftTex = tg && tg.createIndustrialLoftTexture ? tg.createIndustrialLoftTexture(512, 512) : null;
+        if (loftTex) { loftTex.wrapS = THREE.RepeatWrapping; loftTex.wrapT = THREE.RepeatWrapping; loftTex.repeat.set(2, 1); }
+
+        const fireEscapeTex = tg && tg.createFireEscapeApartmentTexture ? tg.createFireEscapeApartmentTexture(512, 512) : null;
+        if (fireEscapeTex) { fireEscapeTex.wrapS = THREE.RepeatWrapping; fireEscapeTex.wrapT = THREE.RepeatWrapping; fireEscapeTex.repeat.set(2, 1); }
+
+        const brownstoneTex = tg && tg.createBrownstoneApartmentTexture ? tg.createBrownstoneApartmentTexture(512, 512) : null;
+        if (brownstoneTex) { brownstoneTex.wrapS = THREE.RepeatWrapping; brownstoneTex.wrapT = THREE.RepeatWrapping; brownstoneTex.repeat.set(2, 1); }
+
+        const rusticatedTex = tg && tg.createRusticatedStoneTexture ? tg.createRusticatedStoneTexture(512, 512) : null;
+        if (rusticatedTex) { rusticatedTex.wrapS = THREE.RepeatWrapping; rusticatedTex.wrapT = THREE.RepeatWrapping; rusticatedTex.repeat.set(2, 1); }
+
+        // Materials
+        const loftMat = new THREE.MeshStandardMaterial({ map: loftTex, roughness: 0.82, metalness: 0.15 });
+        const fireEscapeMat = new THREE.MeshStandardMaterial({ map: fireEscapeTex, roughness: 0.78, metalness: 0.15 });
+        const brownstoneMat = new THREE.MeshStandardMaterial({ map: brownstoneTex, roughness: 0.75, metalness: 0.2 });
+        const rusticatedMat = new THREE.MeshStandardMaterial({ map: rusticatedTex, roughness: 0.88, metalness: 0.1 });
+        const ironBlackMat = new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.45, metalness: 0.85 });
+        const brickTrimMat = new THREE.MeshStandardMaterial({ color: 0x5a2418, roughness: 0.85, metalness: 0.1 });
+        const sandstoneTrimMat = new THREE.MeshStandardMaterial({ color: 0x9b9080, roughness: 0.7, metalness: 0.1 });
+        const concreteMat = new THREE.MeshStandardMaterial({ color: 0x2e3036, roughness: 0.9, metalness: 0.1 });
+        const roofGravelMat = new THREE.MeshStandardMaterial({ color: 0x3d3f44, roughness: 0.9, metalness: 0.1 });
+
+        // Apartment site placements along 2-lane avenues and cross-streets
+        const apartmentSites = [
+            // South Apartment District (Framed between Street 5 at z=42 and Street 6 at z=150)
+            { x: -336, z: 96, rot: 0, style: 0, width: 56, depth: 26, height: 20 }, // Style A: Warehouse Loft with Tower (Photo 0)
+            { x: -228, z: 96, rot: 0, style: 1, width: 52, depth: 24, height: 22 }, // Style B: Red Brick with Fire Escape (Photo 1)
+            { x: -120, z: 96, rot: 0, style: 2, width: 48, depth: 24, height: 18 }, // Style C: Ornate Brownstone with Balconies (Photo 2)
+            { x: -12,  z: 96, rot: 0, style: 0, width: 56, depth: 26, height: 20 }, // Style A: Warehouse Loft with Tower (Photo 0)
+
+            // West Avenue A residential frontage
+            { x: -450, z: -282, rot: Math.PI / 2, style: 1, width: 52, depth: 24, height: 22 }, // Style B (Photo 1)
+            { x: -450, z: -66,  rot: Math.PI / 2, style: 2, width: 48, depth: 24, height: 18 }, // Style C (Photo 2)
+
+            // Central Park District frontage (facing the park plaza)
+            { x: -228, z: -228, rot: 0, style: 1, width: 52, depth: 24, height: 22 }  // Style B (Photo 1)
+        ];
+
+        for (const site of apartmentSites) {
+            const by = this.terrain.getHeight(site.x, site.z);
+            const group = new THREE.Group();
+            group.position.set(site.x, by, site.z);
+            group.rotation.y = site.rot;
+
+            const w = site.width;
+            const d = site.depth;
+            const h = site.height;
+
+            // Concrete Sidewalk Base Plinth
+            const curb = new THREE.Mesh(new THREE.BoxGeometry(w + 4.0, 0.4, d + 4.0), concreteMat);
+            curb.position.y = 0.2;
+            curb.receiveShadow = true;
+            group.add(curb);
+
+            if (site.style === 0) {
+                // =====================================================================
+                // STYLE A: Industrial Warehouse / Factory Loft with Corner Tower (Photo 0)
+                // =====================================================================
+                // Main wide 4-story loft building
+                const mainBody = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), loftMat);
+                mainBody.position.y = h * 0.5;
+                mainBody.castShadow = true;
+                mainBody.receiveShadow = true;
+                group.add(mainBody);
+
+                // Brick corbel table parapet along the roof perimeter
+                const parapet = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 1.4, d + 0.8), brickTrimMat);
+                parapet.position.y = h + 0.7;
+                group.add(parapet);
+
+                // Flat gravel roof
+                const roof = new THREE.Mesh(new THREE.BoxGeometry(w - 0.4, 0.2, d - 0.4), roofGravelMat);
+                roof.position.y = h + 0.1;
+                group.add(roof);
+
+                // Iconic Raised Corner Tower (Photo 0!)
+                const towerW = 10.0;
+                const towerD = 10.0;
+                const towerH = h + 8.0; // Rises 8 meters above the roof
+                const towerX = (w - towerW) * 0.5;
+                const towerZ = (d - towerD) * 0.5;
+
+                const tower = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerD), loftMat);
+                tower.position.set(towerX, towerH * 0.5, towerZ);
+                tower.castShadow = true;
+                group.add(tower);
+
+                // Crenellated / battlement parapet on tower
+                const towerCap = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.8, 1.2, towerD + 0.8), brickTrimMat);
+                towerCap.position.set(towerX, towerH + 0.6, towerZ);
+                group.add(towerCap);
+
+                // 4 Corner crenellation merlons
+                const merlonGeom = new THREE.BoxGeometry(2.2, 1.6, 2.2);
+                [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([ox, oz]) => {
+                    const m = new THREE.Mesh(merlonGeom, brickTrimMat);
+                    m.position.set(towerX + ox * (towerW * 0.5 - 1.1), towerH + 1.8, towerZ + oz * (towerD * 0.5 - 1.1));
+                    group.add(m);
+                });
+
+                // Industrial roof skylights
+                const skylightGeom = new THREE.BoxGeometry(8, 1.5, 4);
+                const sky1 = new THREE.Mesh(skylightGeom, ironBlackMat);
+                sky1.position.set(-w * 0.25, h + 0.75, 0);
+                group.add(sky1);
+                const sky2 = new THREE.Mesh(skylightGeom, ironBlackMat);
+                sky2.position.set(0, h + 0.75, -d * 0.2);
+                group.add(sky2);
+
+            } else if (site.style === 1) {
+                // =====================================================================
+                // STYLE B: Classic Red Brick Apartment with Black Fire Escape (Photo 1)
+                // =====================================================================
+                // Main wide 5-story brick apartment building
+                const mainBody = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), fireEscapeMat);
+                mainBody.position.y = h * 0.5;
+                mainBody.castShadow = true;
+                mainBody.receiveShadow = true;
+                group.add(mainBody);
+
+                // Brick dentil cornice & parapet
+                const parapet = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 1.4, d + 0.8), brickTrimMat);
+                parapet.position.y = h + 0.7;
+                group.add(parapet);
+
+                // Roof gravel bed
+                const roof = new THREE.Mesh(new THREE.BoxGeometry(w - 0.4, 0.2, d - 0.4), roofGravelMat);
+                roof.position.y = h + 0.1;
+                group.add(roof);
+
+                // Authentic Black Metal Exterior Fire Escape (Photo 1!)
+                // 4 stacked floor levels with iron platform trays, railings, and zigzag ladders
+                const feLevels = 4;
+                const feFloorH = (h - 4) / feLevels;
+                const fePlatW = 6.5;
+                const fePlatD = 2.4;
+                const feZ = d * 0.5 + fePlatD * 0.5;
+
+                for (let level = 0; level < feLevels; level++) {
+                    const platY = 4.0 + (level + 1) * feFloorH;
+
+                    // Metal grated platform
+                    const plat = new THREE.Mesh(new THREE.BoxGeometry(fePlatW, 0.2, fePlatD), ironBlackMat);
+                    plat.position.set(0, platY, feZ);
+                    group.add(plat);
+
+                    // Perimeter safety handrails
+                    const frontRail = new THREE.Mesh(new THREE.BoxGeometry(fePlatW, 1.0, 0.08), ironBlackMat);
+                    frontRail.position.set(0, platY + 0.5, feZ + fePlatD * 0.5);
+                    group.add(frontRail);
+
+                    const sideRailL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, fePlatD), ironBlackMat);
+                    sideRailL.position.set(-fePlatW * 0.5, platY + 0.5, feZ);
+                    group.add(sideRailL);
+
+                    const sideRailR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, fePlatD), ironBlackMat);
+                    sideRailR.position.set(fePlatW * 0.5, platY + 0.5, feZ);
+                    group.add(sideRailR);
+
+                    // Zigzag diagonal ladder connecting down to next floor
+                    const ladder = new THREE.Mesh(new THREE.BoxGeometry(0.6, feFloorH * 1.15, 0.1), ironBlackMat);
+                    const angle = (level % 2 === 0 ? 0.35 : -0.35);
+                    ladder.rotation.z = angle;
+                    ladder.position.set((level % 2 === 0 ? -1.2 : 1.2), platY - feFloorH * 0.5, feZ + 0.4);
+                    group.add(ladder);
+                }
+
+                // Vertical dark iron drainage downspouts flanking the windows
+                const pipeGeom = new THREE.CylinderGeometry(0.12, 0.12, h, 8);
+                [-w * 0.35, -w * 0.18, w * 0.18, w * 0.35].forEach((px) => {
+                    const pipe = new THREE.Mesh(pipeGeom, ironBlackMat);
+                    pipe.position.set(px, h * 0.5, d * 0.5 + 0.15);
+                    group.add(pipe);
+                });
+
+            } else {
+                // =====================================================================
+                // STYLE C: Ornate Brownstone Luxury Apartments with Balconies (Photo 2)
+                // =====================================================================
+                // Ground Floor: Rusticated stone foundation arcade (5m height)
+                const groundH = 5.0;
+                const groundBase = new THREE.Mesh(new THREE.BoxGeometry(w, groundH, d), rusticatedMat);
+                groundBase.position.y = groundH * 0.5;
+                groundBase.castShadow = true;
+                group.add(groundBase);
+
+                // Upper Stories: Warm honey-orange brick (13m height)
+                const upperH = h - groundH;
+                const upperBody = new THREE.Mesh(new THREE.BoxGeometry(w * 0.98, upperH, d * 0.98), brownstoneMat);
+                upperBody.position.y = groundH + upperH * 0.5;
+                upperBody.castShadow = true;
+                group.add(upperBody);
+
+                // Classical stone stringcourse dividing base from upper brick
+                const belt = new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 0.8, d + 0.6), sandstoneTrimMat);
+                belt.position.y = groundH + 0.4;
+                group.add(belt);
+
+                // Wrought-Iron Balcony Railings across the front facade (Photo 2!)
+                const balconyLevels = [groundH + 4.0, groundH + 8.2, groundH + 12.4];
+                const balcZ = d * 0.5 + 0.9;
+                for (const bY of balconyLevels) {
+                    // Center grand balcony tray
+                    const trayC = new THREE.Mesh(new THREE.BoxGeometry(11.0, 0.25, 1.8), ironBlackMat);
+                    trayC.position.set(0, bY, balcZ);
+                    group.add(trayC);
+
+                    const railC = new THREE.Mesh(new THREE.BoxGeometry(11.0, 1.0, 0.08), ironBlackMat);
+                    railC.position.set(0, bY + 0.5, balcZ + 0.9);
+                    group.add(railC);
+
+                    // Left & right wing balconies
+                    [-w * 0.28, w * 0.28].forEach((bx) => {
+                        const tray = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.25, 1.4), ironBlackMat);
+                        tray.position.set(bx, bY, balcZ - 0.2);
+                        group.add(tray);
+
+                        const rail = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.9, 0.08), ironBlackMat);
+                        rail.position.set(bx, bY + 0.45, balcZ + 0.5);
+                        group.add(rail);
+                    });
+                }
+
+                // Parapet roof cornice
+                const parapet = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 1.2, d + 0.8), brickTrimMat);
+                parapet.position.y = h + 0.6;
+                group.add(parapet);
+
+                // Iconic Arched Center Roof Pediment Crown (Photo 2!)
+                const pedimentW = 14.0;
+                const pedimentD = 2.0;
+                const pedArch = new THREE.Mesh(new THREE.CylinderGeometry(pedimentW * 0.5, pedimentW * 0.5, pedimentD, 16, 1, false, 0, Math.PI), sandstoneTrimMat);
+                pedArch.rotation.z = Math.PI * 0.5;
+                pedArch.rotation.x = Math.PI * 0.5;
+                pedArch.position.set(0, h + 1.2, d * 0.5 - 0.5);
+                group.add(pedArch);
+            }
+
+            this.scene.add(group);
+
+            // Register exact 3D bounding collision box
+            const collW = (site.rot === 0) ? w : d;
+            const collD = (site.rot === 0) ? d : w;
+            this.colliders.push({
+                type: 'box',
+                minX: site.x - collW / 2,
+                maxX: site.x + collW / 2,
+                minZ: site.z - collD / 2,
+                maxZ: site.z + collD / 2,
+                y: by,
+                height: h + 8.0
+            });
+        }
+    }
+
     // Stunt Park & Ramps removed as requested to keep the road completely clear
     buildStuntPark() {
         // No-op
@@ -793,7 +1055,7 @@ class WorldManager {
             if (ty < this.terrain.waterHeight + 1.5) continue;
             // Clear of 18m 2-lane roadway and sidewalks
             if (this.terrain.getDistanceToRoad(tx, tz).distance < this.terrain.roadWidth * 0.5 + 5.0) continue;
-            if (Math.hypot(tx + 174, tz + 174) < 280) continue; // Keep downtown avenues and skyscraper plazas clear
+            if (Math.hypot(tx + 174, tz + 120) < 340) continue; // Keep skyscraper core and apartment district clear
             if (Math.hypot(tx - 300, tz - 300) < 95) continue;  // Stunt park
 
             const template = treeTemplates[Math.floor(Math.random() * treeTemplates.length)];
@@ -829,7 +1091,7 @@ class WorldManager {
             const rz = (Math.random() - 0.5) * (this.terrain.worldSize - 100);
             const ry = this.terrain.getHeight(rx, rz);
             if (this.terrain.getDistanceToRoad(rx, rz).distance < this.terrain.roadWidth * 0.5 + 4.5) continue;
-            if (Math.hypot(rx + 174, rz + 174) < 280) continue;
+            if (Math.hypot(rx + 174, rz + 120) < 340) continue;
 
             const rScale = 0.8 + Math.random() * 1.5;
             dummy.position.set(rx, ry + rScale * 0.8, rz);
@@ -984,7 +1246,7 @@ class WorldManager {
                     const rz = p1.z + t * (p2.z - p1.z);
 
                     // Place clusters along road shoulder and outer meadows (exclude downtown sidewalks)
-                    if (Math.hypot(rx + 174, rz + 174) < 280) continue;
+                    if (Math.hypot(rx + 174, rz + 120) < 340) continue;
 
                     for (const side of [-1, 1]) {
                         if (count >= maxTufts) break;

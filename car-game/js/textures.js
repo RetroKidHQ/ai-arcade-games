@@ -1671,6 +1671,342 @@ class TextureGenerator {
         return texture;
     }
 
+    // 10l-5. Apartment Style A: Historic Industrial Warehouse Loft (Photo 0)
+    createIndustrialLoftTexture(width = 512, height = 512) {
+        if (this.cache['industrialLoft']) return this.cache['industrialLoft'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Weathered deep industrial red-brown brick
+        ctx.fillStyle = '#733122';
+        ctx.fillRect(0, 0, width, height);
+
+        // Brick courses
+        const brickH = 8;
+        const brickW = 20;
+        ctx.fillStyle = '#441d14';
+        for (let y = 0; y < height; y += brickH) {
+            ctx.fillRect(0, y, width, 1.5);
+            const xOff = (Math.floor(y / brickH) % 2) * (brickW * 0.5);
+            for (let x = xOff; x < width; x += brickW) {
+                ctx.fillRect(x, y, 1.5, brickH);
+            }
+        }
+
+        // Brick variation & weathering
+        for (let i = 0; i < 350; i++) {
+            const bx = Math.floor(Math.random() * (width / brickW)) * brickW;
+            const by = Math.floor(Math.random() * (height / brickH)) * brickH;
+            ctx.fillStyle = Math.random() > 0.5 ? 'rgba(148, 62, 42, 0.35)' : 'rgba(68, 26, 18, 0.4)';
+            ctx.fillRect(bx + 1, by + 1, brickW - 2, brickH - 2);
+        }
+
+        // Brick corbel frieze along the top parapet
+        ctx.fillStyle = '#572418';
+        ctx.fillRect(0, 0, width, 24);
+        for (let x = 6; x < width; x += 16) {
+            ctx.fillStyle = '#8a3c2a';
+            ctx.fillRect(x, 10, 8, 14);
+            ctx.fillStyle = '#3c1810';
+            ctx.fillRect(x + 1, 20, 6, 4);
+        }
+
+        // 4 floors x 6 bays (Wide warehouse loft bays)
+        const floors = 4;
+        const bays = 6;
+        const bayW = width / bays;
+        const floorH = (height - 30) / floors;
+
+        for (let f = 0; f < floors; f++) {
+            const y = 30 + f * floorH;
+            for (let b = 0; b < bays; b++) {
+                const x = b * bayW;
+                const wx = x + 10;
+                const wy = y + 10;
+                const ww = bayW - 20;
+                const wh = floorH - 18;
+
+                // Segmental brick arch header
+                ctx.fillStyle = '#5c251a';
+                ctx.beginPath();
+                ctx.arc(wx + ww * 0.5, wy + 6, ww * 0.5 + 4, Math.PI, 0, false);
+                ctx.lineTo(wx + ww + 4, wy + wh);
+                ctx.lineTo(wx - 4, wy + wh);
+                ctx.closePath();
+                ctx.fill();
+
+                // Multi-pane factory iron grid window
+                ctx.fillStyle = '#182128';
+                ctx.fillRect(wx, wy + 4, ww, wh - 4);
+
+                // Multi-pane grid (4 columns x 3 rows of small panes)
+                ctx.strokeStyle = '#2c1e18';
+                ctx.lineWidth = 1.5;
+                for (let px = 1; px <= 3; px++) {
+                    ctx.beginPath();
+                    ctx.moveTo(wx + px * (ww / 4), wy + 4);
+                    ctx.lineTo(wx + px * (ww / 4), wy + wh);
+                    ctx.stroke();
+                }
+                for (let py = 1; py <= 2; py++) {
+                    ctx.beginPath();
+                    ctx.moveTo(wx, wy + 4 + py * ((wh - 4) / 3));
+                    ctx.lineTo(wx + ww, wy + 4 + py * ((wh - 4) / 3));
+                    ctx.stroke();
+                }
+
+                // Random warm cozy loft interior lighting
+                if ((f * 3 + b * 7) % 3 === 0) {
+                    ctx.fillStyle = 'rgba(255, 225, 150, 0.4)';
+                    ctx.fillRect(wx + 4, wy + wh * 0.4, ww - 8, wh * 0.45);
+                }
+            }
+
+            // Horizontal brick belt course
+            ctx.fillStyle = '#4c1e15';
+            ctx.fillRect(0, y + floorH - 3, width, 3);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['industrialLoft'] = texture;
+        return texture;
+    }
+
+    // 10l-6. Apartment Style B: Classic Brick Apartment with Black Metal Fire Escape (Photo 1)
+    createFireEscapeApartmentTexture(width = 512, height = 512) {
+        if (this.cache['fireEscapeApartment']) return this.cache['fireEscapeApartment'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Warm vibrant red-orange brick
+        ctx.fillStyle = '#8f3724';
+        ctx.fillRect(0, 0, width, height);
+
+        // Brick mortar lines
+        const brickH = 8;
+        const brickW = 20;
+        ctx.fillStyle = '#522116';
+        for (let y = 0; y < height; y += brickH) {
+            ctx.fillRect(0, y, width, 1.2);
+            const xOff = (Math.floor(y / brickH) % 2) * (brickW * 0.5);
+            for (let x = xOff; x < width; x += brickW) {
+                ctx.fillRect(x, y, 1.2, brickH);
+            }
+        }
+
+        // Top decorative brick corbel parapet
+        ctx.fillStyle = '#652619';
+        ctx.fillRect(0, 0, width, 22);
+        for (let x = 8; x < width; x += 18) {
+            ctx.fillStyle = '#aa4730';
+            ctx.fillRect(x, 6, 10, 16);
+        }
+
+        // 5 floors x 7 bays (Dense classic residential apartment windows)
+        const floors = 5;
+        const bays = 7;
+        const bayW = width / bays;
+        const floorH = (height - 25) / floors;
+
+        for (let f = 0; f < floors; f++) {
+            const y = 25 + f * floorH;
+            const isArchedTop = (f === 0); // Top floor has round arches!
+
+            for (let b = 0; b < bays; b++) {
+                const x = b * bayW;
+                const wx = x + 8;
+                const wy = y + 8;
+                const ww = bayW - 16;
+                const wh = floorH - 14;
+
+                if (isArchedTop) {
+                    // Semicircular arched window
+                    const r = ww * 0.5;
+                    ctx.fillStyle = '#aa4730';
+                    ctx.beginPath();
+                    ctx.arc(wx + r, wy + r, r + 3, Math.PI, 0, false);
+                    ctx.lineTo(wx + ww + 3, wy + wh);
+                    ctx.lineTo(wx - 3, wy + wh);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Glass
+                    ctx.fillStyle = '#1c2630';
+                    ctx.beginPath();
+                    ctx.arc(wx + r, wy + r, r, Math.PI, 0, false);
+                    ctx.lineTo(wx + ww, wy + wh);
+                    ctx.lineTo(wx, wy + wh);
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    // Segmental arch with brick lintel & stone sill
+                    ctx.fillStyle = '#b55238';
+                    ctx.fillRect(wx - 2, wy - 3, ww + 4, 3);
+                    ctx.fillStyle = '#7a7064'; // stone sill
+                    ctx.fillRect(wx - 3, wy + wh, ww + 6, 3);
+
+                    // Window glass
+                    ctx.fillStyle = '#1c2630';
+                    ctx.fillRect(wx, wy, ww, wh);
+
+                    // Multi-pane sash frame
+                    ctx.strokeStyle = '#2b1b14';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(wx, wy, ww, wh);
+                    ctx.beginPath();
+                    ctx.moveTo(wx + ww * 0.5, wy);
+                    ctx.lineTo(wx + ww * 0.5, wy + wh);
+                    ctx.moveTo(wx, wy + wh * 0.5);
+                    ctx.lineTo(wx + ww, wy + wh * 0.5);
+                    ctx.stroke();
+                }
+
+                // Decorative brick rosette medallion in spandrel
+                if (f > 0 && (b % 2 === 0)) {
+                    ctx.fillStyle = '#aa4730';
+                    ctx.beginPath();
+                    ctx.arc(x + bayW * 0.5, y - 2, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Warm interior lamp
+                if ((f * 4 + b * 9) % 3 === 1) {
+                    ctx.fillStyle = 'rgba(255, 235, 175, 0.45)';
+                    ctx.fillRect(wx + 2, wy + wh * 0.45, ww - 4, wh * 0.45);
+                }
+            }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['fireEscapeApartment'] = texture;
+        return texture;
+    }
+
+    // 10l-7. Apartment Style C: Ornate Brownstone Luxury Apartments (Photo 2)
+    createBrownstoneApartmentTexture(width = 512, height = 512) {
+        if (this.cache['brownstoneApartment']) return this.cache['brownstoneApartment'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Warm honey / burnt orange brick
+        ctx.fillStyle = '#9b4728';
+        ctx.fillRect(0, 0, width, height);
+
+        // Ground floor: Rusticated ashlar stone base
+        const groundH = height * 0.28;
+        ctx.fillStyle = '#80776b';
+        ctx.fillRect(0, height - groundH, width, groundH);
+
+        // Rusticated stone blocks on ground floor
+        ctx.strokeStyle = '#4e4840';
+        ctx.lineWidth = 2.5;
+        for (let gy = height - groundH; gy < height; gy += 28) {
+            ctx.beginPath();
+            ctx.moveTo(0, gy);
+            ctx.lineTo(width, gy);
+            ctx.stroke();
+            const xOff = (Math.floor(gy / 28) % 2) * 50;
+            for (let gx = xOff; gx < width; gx += 100) {
+                ctx.beginPath();
+                ctx.moveTo(gx, gy);
+                ctx.lineTo(gx, gy + 28);
+                ctx.stroke();
+            }
+        }
+
+        // Grand arched ground floor portal windows & doors (3 wide bays)
+        const bays = 3;
+        const bayW = width / bays;
+        for (let b = 0; b < bays; b++) {
+            const bx = b * bayW;
+            const wx = bx + 16;
+            const ww = bayW - 32;
+            const wy = height - groundH + 12;
+            const wh = groundH - 18;
+            const r = ww * 0.5;
+
+            // Grand stone arch
+            ctx.fillStyle = '#3a352e';
+            ctx.beginPath();
+            ctx.arc(wx + r, wy + r, r, Math.PI, 0, false);
+            ctx.lineTo(wx + ww, wy + wh);
+            ctx.lineTo(wx, wy + wh);
+            ctx.closePath();
+            ctx.fill();
+
+            // Glass
+            ctx.fillStyle = '#1c2833';
+            ctx.fillRect(wx + 4, wy + r, ww - 8, wh - r);
+
+            // Warm lobby glow
+            ctx.fillStyle = 'rgba(255, 230, 160, 0.5)';
+            ctx.fillRect(wx + 8, wy + r + 6, ww - 16, wh - r - 12);
+        }
+
+        // Upper 3 residential stories (Warm brick with wide studio windows)
+        const upperH = height - groundH;
+        const upperFloors = 3;
+        const uFloorH = upperH / upperFloors;
+
+        for (let f = 0; f < upperFloors; f++) {
+            const y = f * uFloorH;
+            for (let b = 0; b < bays; b++) {
+                const bx = b * bayW;
+                const wx = bx + 18;
+                const wy = y + 14;
+                const ww = bayW - 36;
+                const wh = uFloorH - 24;
+                const r = ww * 0.5;
+
+                // Wide studio arched window
+                ctx.fillStyle = '#7a341c';
+                ctx.beginPath();
+                ctx.arc(wx + r, wy + r * 0.7, r + 3, Math.PI, 0, false);
+                ctx.lineTo(wx + ww + 3, wy + wh);
+                ctx.lineTo(wx - 3, wy + wh);
+                ctx.closePath();
+                ctx.fill();
+
+                // Glass
+                ctx.fillStyle = '#1b242e';
+                ctx.fillRect(wx, wy + r * 0.7, ww, wh - r * 0.7);
+
+                // Luxury warm interior drapery highlights
+                ctx.fillStyle = 'rgba(255, 220, 160, 0.4)';
+                ctx.fillRect(wx + 4, wy + wh * 0.35, ww - 8, wh * 0.55);
+
+                // Window mullions (dark bronze)
+                ctx.strokeStyle = '#221914';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(wx, wy + r * 0.7, ww, wh - r * 0.7);
+                ctx.beginPath();
+                ctx.moveTo(wx + ww * 0.5, wy);
+                ctx.lineTo(wx + ww * 0.5, wy + wh);
+                ctx.stroke();
+            }
+
+            // Classical belt cornice between floors
+            ctx.fillStyle = '#5c2616';
+            ctx.fillRect(0, y + uFloorH - 4, width, 4);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        this.cache['brownstoneApartment'] = texture;
+        return texture;
+    }
+
 
     // 10m. Street-Level Retail Storefront Texture
     createStorefrontTexture(width = 512, height = 256) {

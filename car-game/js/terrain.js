@@ -20,15 +20,15 @@ class TerrainManager {
             // =========================================================================
             // North-South Avenues (along Z):
             // Avenue A (West perimeter avenue)
-            [ { x: -390, z: -390 }, { x: -390, z: 42 } ],
-            // Avenue B (West-central avenue - branches to Farmland & Barn)
-            [ { x: -282, z: -390 }, { x: -282, z: 42 } ],
+            [ { x: -390, z: -390 }, { x: -390, z: 150 } ],
+            // Avenue B (West-central avenue)
+            [ { x: -282, z: -390 }, { x: -282, z: 150 } ],
             // Avenue C (Grand Arterial - connects North & South Coastal Highways)
             [ { x: -174, z: -550 }, { x: -174, z: 480 } ],
             // Avenue D (East-central avenue)
-            [ { x: -66, z: -390 }, { x: -66, z: 42 } ],
+            [ { x: -66, z: -390 }, { x: -66, z: 150 } ],
             // Avenue E (East perimeter avenue)
-            [ { x: 42, z: -390 }, { x: 42, z: 42 } ],
+            [ { x: 42, z: -390 }, { x: 42, z: 150 } ],
 
             // East-West Cross Streets (along X):
             // Street 1 (North perimeter street)
@@ -39,15 +39,17 @@ class TerrainManager {
             [ { x: -450, z: -174 }, { x: 42, z: -174 }, { x: 120, z: -120 } ],
             // Street 4 (South-central street)
             [ { x: -390, z: -66 }, { x: 42, z: -66 } ],
-            // Street 5 (South perimeter street)
+            // Street 5 (Mid-boulevard street - between skyscrapers & apartment district)
             [ { x: -390, z: 42 }, { x: 42, z: 42 } ],
+            // Street 6 (South apartment boulevard - framing the apartment blocks)
+            [ { x: -390, z: 150 }, { x: 42, z: 150 } ],
 
             // =========================================================================
             // REGIONAL HIGHWAYS & BUILDING ACCESS ROADS
             // =========================================================================
             // Farmland & Country Barn Scenic Drive (leads directly to Barn & Windmills)
             [
-                { x: -282, z: 42 }, { x: -282, z: 160 }, { x: -280, z: 280 }
+                { x: -282, z: 150 }, { x: -282, z: 200 }, { x: -280, z: 280 }
             ],
 
             // Cape Point Lighthouse Coastal Drive (leads directly to Lighthouse)
@@ -174,11 +176,11 @@ class TerrainManager {
     }
 
     getNaturalHeight(x, z) {
-        // Fast early-out for flat downtown metropolis foundation plateau
-        const distFromCenter = Math.hypot(x + 174, z + 174);
-        if (distFromCenter <= 300) return 0.0;
+        // Fast early-out for flat metropolis & apartment district foundation plateau
+        const distFromCenter = Math.hypot(x + 174, z + 120);
+        if (distFromCenter <= 340) return 0.0;
 
-        const centerFlatFactor = Math.min(1.0, Math.max(0, (distFromCenter - 320) / 80));
+        const centerFlatFactor = Math.min(1.0, Math.max(0, (distFromCenter - 350) / 80));
         let baseHeight = (this.perlin(x, z) - 10) * centerFlatFactor;
 
         // Mountain region
@@ -199,9 +201,9 @@ class TerrainManager {
     }
 
     getHeight(x, z) {
-        // Instant early-out for downtown grid
-        const distFromCenter = Math.hypot(x + 174, z + 174);
-        if (distFromCenter <= 280) {
+        // Instant early-out for downtown skyscrapers and apartment district
+        const distFromCenter = Math.hypot(x + 174, z + 120);
+        if (distFromCenter <= 330) {
             return 0.0;
         }
 
