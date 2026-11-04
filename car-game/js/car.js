@@ -88,7 +88,11 @@ class Car {
 
     setCarType(type, colorHex) {
         this.carType = type;
-        if (colorHex) this.paintColor = colorHex;
+        if (colorHex) {
+            this.paintColor = colorHex;
+        } else if (type === 'supercar') {
+            this.paintColor = 0xd91616; // Iconic Guards Red from Porsche photos
+        }
         this.buildVehicle(this.carType);
     }
 
@@ -177,9 +181,9 @@ class Car {
             this.topSpeed = 140;
         } else if (type === 'supercar') {
             this.wheelGroundOffset = 0.0;
-            this.buildSupercar(this.mainPaintMaterial, chromeMat, blackTrim, glassMat);
-            this.acceleration = 36.0;
-            this.topSpeed = 230;
+            this.buildPorsche911(this.mainPaintMaterial, chromeMat, blackTrim, glassMat);
+            this.acceleration = 38.0;
+            this.topSpeed = 310;
         }
 
         // Add Realistic Headlights
@@ -814,53 +818,417 @@ class Car {
         this.bodyMeshGroup.add(body);
     }
 
-    buildSupercar(paintMat, chromeMat, blackTrim, glassMat) {
+    // Exact 1:1 replica of the Porsche 911 Carrera S from the 3 reference views (Front, Rear, Side)
+    buildPorsche911(paintMat, chromeMat, blackTrim, glassMat) {
+        const tg = window.textureGenerator;
+        const skyTex = tg ? tg.createSkyTexture() : null;
         const body = new THREE.Group();
-        const nose = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.35, 2.2), paintMat);
-        nose.position.set(0, 0.35, 1.1);
-        body.add(nose);
 
-        const rear = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.45, 2.2), paintMat);
-        rear.position.set(0, 0.45, -1.0);
-        body.add(rear);
+        const darkTrimMat = new THREE.MeshStandardMaterial({
+            color: 0x141416,
+            roughness: 0.45,
+            metalness: 0.25
+        });
 
-        const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), glassMat);
-        canopy.scale.set(0.9, 0.65, 1.5);
-        canopy.position.set(0, 0.5, 0);
-        body.add(canopy);
+        // 1. Aerodynamic Porsche 911 Lower Chassis / Underbody Tub
+        const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.86, 0.36, 4.15), paintMat);
+        chassis.position.set(0, 0.36, 0);
+        chassis.castShadow = true;
+        chassis.receiveShadow = true;
+        body.add(chassis);
 
-        const wing = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.06, 0.45), blackTrim);
-        wing.position.set(0, 1.05, -2.1);
-        body.add(wing);
+        // Dark satin lower rocker sill extensions (Side View Photo 2)
+        const rockerL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 2.5), darkTrimMat);
+        rockerL.position.set(-0.94, 0.22, 0);
+        body.add(rockerL);
+        const rockerR = rockerL.clone();
+        rockerR.position.x = 0.94;
+        body.add(rockerR);
 
-        const strutL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.45, 0.2), blackTrim);
-        strutL.position.set(-0.7, 0.8, -2.1);
-        const strutR = strutL.clone();
-        strutR.position.x = 0.7;
-        body.add(strutL);
-        body.add(strutR);
+        // 2. Sloping Front Hood / Frunk with Contour Creases (Front View Photo 0 & 2)
+        const hoodGeo = new THREE.BoxGeometry(1.42, 0.16, 1.35);
+        const hood = new THREE.Mesh(hoodGeo, paintMat);
+        hood.position.set(0, 0.58, 1.25);
+        hood.rotation.x = 0.14; // Forward rake
+        hood.castShadow = true;
+        body.add(hood);
 
-        const underglow = new THREE.PointLight(0x00f0ff, 1.2, 5);
-        underglow.position.set(0, 0.1, 0);
-        body.add(underglow);
+        // Gold Porsche Crest Emblem on Front Hood Tip (Photo 0!)
+        const badgeMat = new THREE.MeshStandardMaterial({
+            map: tg ? tg.createPorscheBadgeTexture() : null,
+            roughness: 0.15,
+            metalness: 0.85,
+            transparent: true
+        });
+        const badge = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.11), badgeMat);
+        badge.position.set(0, 0.53, 1.95);
+        badge.rotation.x = -Math.PI / 4.5;
+        body.add(badge);
 
+        // Front Hood "Smile" Air Extractor Slot (Photo 0!)
+        const smileVent = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.02, 0.05), darkTrimMat);
+        smileVent.position.set(0, 0.51, 1.98);
+        body.add(smileVent);
+
+        // 3. Iconic Raised Front Fender Torpedoes & 4-Point LED Headlights (Photo 0 & 2!)
+        const podGeo = new THREE.CylinderGeometry(0.24, 0.28, 1.35, 18);
+        podGeo.rotateX(Math.PI / 2);
+
+        const headlightMat = new THREE.MeshStandardMaterial({
+            map: tg ? tg.createPorscheHeadlightTexture() : null,
+            roughness: 0.08,
+            metalness: 0.8,
+            emissive: 0x446688,
+            emissiveIntensity: 0.35
+        });
+
+        for (const s of [-1, 1]) {
+            // Raised fender arch torpedo
+            const fenderPod = new THREE.Mesh(podGeo, paintMat);
+            fenderPod.position.set(s * 0.74, 0.62, 1.25);
+            fenderPod.rotation.x = 0.18;
+            fenderPod.scale.set(1.0, 0.82, 1.0);
+            fenderPod.castShadow = true;
+            body.add(fenderPod);
+
+            // Tilted round/oval headlight lens with 4-Point DRL signature (Photo 0!)
+            const headLens = new THREE.Mesh(new THREE.CircleGeometry(0.21, 24), headlightMat);
+            headLens.position.set(s * 0.74, 0.65, 1.88);
+            headLens.rotation.x = -0.38;
+            headLens.rotation.y = s * 0.08;
+            body.add(headLens);
+
+            // Headlight outer dark chrome bezel
+            const bezel = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.018, 12, 24), chromeMat);
+            bezel.position.copy(headLens.position);
+            bezel.rotation.copy(headLens.rotation);
+            body.add(bezel);
+        }
+
+        // 4. Front Bumper Fascia & Triple Air Intakes with Front Splitter (Photo 0!)
+        const noseBumper = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.32, 0.35), paintMat);
+        noseBumper.position.set(0, 0.36, 1.98);
+        body.add(noseBumper);
+
+        const meshMat = new THREE.MeshStandardMaterial({
+            map: tg ? tg.createPorscheHoneycombTexture() : null,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+
+        // Center wide trapezoidal radiator intake
+        const centerIntake = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.2, 0.06), meshMat);
+        centerIntake.position.set(0, 0.26, 2.14);
+        body.add(centerIntake);
+
+        // Left & right rectangular brake cooling ducts + horizontal LED DRL turn signals
+        const drlMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0xe0f2fe,
+            emissiveIntensity: 0.9
+        });
+
+        for (const s of [-1, 1]) {
+            const sideIntake = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.2, 0.06), meshMat);
+            sideIntake.position.set(s * 0.68, 0.28, 2.12);
+            body.add(sideIntake);
+
+            // Horizontal slim LED light strip (Photo 0!)
+            const drlStrip = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.03, 0.02), drlMat);
+            drlStrip.position.set(s * 0.68, 0.36, 2.15);
+            body.add(drlStrip);
+        }
+
+        // Lower Aerodynamic Front Splitter / Chin Spoiler (Photo 0!)
+        const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.04, 0.45), darkTrimMat);
+        splitter.position.set(0, 0.14, 2.06);
+        body.add(splitter);
+
+        // 5. Classic 911 "Flyline" Arched Roof & Greenhouse (Side View Photo 2!)
+        const wsMat = glassMat;
+        const windshield = new THREE.Mesh(new THREE.PlaneGeometry(1.42, 0.76), wsMat);
+        windshield.position.set(0, 0.88, 0.45);
+        windshield.rotation.x = -0.58;
+        body.add(windshield);
+
+        // Smoothly arched roof panel
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.05, 1.45), paintMat);
+        roof.position.set(0, 1.2, -0.32);
+        roof.castShadow = true;
+        body.add(roof);
+
+        // Flowing rear fastback window (Backlite - Photo 1 & 2!)
+        const rearGlass = new THREE.Mesh(new THREE.PlaneGeometry(1.35, 1.25), wsMat);
+        rearGlass.position.set(0, 0.94, -1.22);
+        rearGlass.rotation.x = 0.72; // Long graceful slope to engine lid
+        body.add(rearGlass);
+
+        // Teardrop Side Windows (Photo 2)
+        for (const s of [-1, 1]) {
+            const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.38, 1.7), wsMat);
+            sideWindow.position.set(s * 0.78, 0.98, -0.28);
+            body.add(sideWindow);
+
+            const windowTrim = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 1.76), darkTrimMat);
+            windowTrim.position.set(s * 0.77, 0.98, -0.28);
+            body.add(windowTrim);
+        }
+
+        // Interior: Sports Steering Wheel & 2 High-Back Bucket Seats (Photo 0 & 2)
+        const seatMat = new THREE.MeshStandardMaterial({ color: 0x161618, roughness: 0.6 });
+        for (const s of [-0.36, 0.36]) {
+            const seatBottom = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.55), seatMat);
+            seatBottom.position.set(s, 0.46, -0.15);
+            body.add(seatBottom);
+
+            const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.58, 0.12), seatMat);
+            seatBack.position.set(s, 0.74, -0.42);
+            seatBack.rotation.x = -0.2;
+            body.add(seatBack);
+
+            const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.22, 0.1), seatMat);
+            headrest.position.set(s, 1.05, -0.49);
+            headrest.rotation.x = -0.2;
+            body.add(headrest);
+        }
+
+        // Dashboard & 3-Spoke Sport Steering Wheel (Left-Hand Drive, Photo 0)
+        const dash = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.25, 0.5), darkTrimMat);
+        dash.position.set(0, 0.72, 0.4);
+        body.add(dash);
+
+        const steerCol = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.22), darkTrimMat);
+        steerCol.rotation.x = Math.PI / 4;
+        steerCol.position.set(-0.36, 0.76, 0.22);
+        body.add(steerCol);
+
+        const steerWheel = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.02, 12, 24), darkTrimMat);
+        steerWheel.position.set(-0.36, 0.84, 0.14);
+        steerWheel.rotation.x = Math.PI / 4;
+        body.add(steerWheel);
+
+        // 6. SportDesign Aerodynamic Stalk Mirrors (Photo 0 & 2!)
+        for (const s of [-1, 1]) {
+            const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.14), darkTrimMat);
+            stalk.position.set(s * 0.88, 0.76, 0.48);
+            stalk.rotation.z = -s * 0.5;
+            body.add(stalk);
+
+            const mirrorCap = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.12), paintMat);
+            mirrorCap.position.set(s * 0.98, 0.82, 0.48);
+            body.add(mirrorCap);
+
+            const mirrorGlassFace = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.08), chromeMat);
+            mirrorGlassFace.position.set(s * 0.98, 0.82, 0.42);
+            mirrorGlassFace.rotation.y = Math.PI;
+            body.add(mirrorGlassFace);
+        }
+
+        // 7. Widebody Sculpted Rear Haunches & Decklid Louvers (Photo 1 & 2!)
+        for (const s of [-1, 1]) {
+            const haunchGeo = new THREE.CylinderGeometry(0.52, 0.52, 1.5, 16);
+            haunchGeo.rotateX(Math.PI / 2);
+            const haunch = new THREE.Mesh(haunchGeo, paintMat);
+            haunch.position.set(s * 0.82, 0.58, -1.25);
+            haunch.scale.set(0.68, 0.75, 1.0);
+            haunch.castShadow = true;
+            body.add(haunch);
+        }
+
+        // Rear engine lid with cooling grille slats
+        const decklid = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.12, 0.95), paintMat);
+        decklid.position.set(0, 0.72, -1.55);
+        decklid.rotation.x = -0.12;
+        body.add(decklid);
+
+        // Vertical engine louver vanes (992 signature)
+        for (let l = -0.44; l <= 0.44; l += 0.08) {
+            const slat = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.04, 0.78), darkTrimMat);
+            slat.position.set(l, 0.76, -1.55);
+            slat.rotation.x = -0.12;
+            body.add(slat);
+        }
+
+        // Integrated Aerodynamic Ducktail / Spoiler Lip (Photo 1!)
+        const ducktail = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.08, 0.28), paintMat);
+        ducktail.position.set(0, 0.78, -1.95);
+        ducktail.rotation.x = -0.1;
+        ducktail.castShadow = true;
+        body.add(ducktail);
+
+        // 8. Full-Width 3D LED Lightbar with "PORSCHE" & "911 Carrera S" (Rear View Photo 1!)
+        const lightbarGeo = new THREE.PlaneGeometry(1.92, 0.22);
+        const lightbarMat = new THREE.MeshStandardMaterial({
+            map: tg ? tg.createPorscheLightbarTexture() : null,
+            roughness: 0.1,
+            metalness: 0.7,
+            emissive: 0xff1e1e,
+            emissiveMap: tg ? tg.createPorscheLightbarTexture() : null,
+            emissiveIntensity: 0.4
+        });
+        const lightbar = new THREE.Mesh(lightbarGeo, lightbarMat);
+        lightbar.position.set(0, 0.66, -2.18);
+        lightbar.rotation.y = Math.PI;
+        body.add(lightbar);
+        this.brakeLights.push(lightbarMat);
+
+        // Rear California License Plate ("16403" Photo 1!)
+        const caPlateMat = new THREE.MeshBasicMaterial({
+            map: tg ? tg.createCaliforniaPlateTexture() : null
+        });
+        const rearPlate = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.21), caPlateMat);
+        rearPlate.position.set(0, 0.45, -2.19);
+        rearPlate.rotation.y = Math.PI;
+        body.add(rearPlate);
+
+        // 9. Rear Bumper Diffuser & Dual Massive Oval Sport Exhaust Tips (Photo 1!)
+        const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.92, 0.28, 0.45), darkTrimMat);
+        diffuser.position.set(0, 0.22, -2.06);
+        body.add(diffuser);
+
+        // Diffuser vertical aerodynamic strakes
+        for (const dx of [-0.22, 0.22]) {
+            const strake = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.16, 0.38), darkTrimMat);
+            strake.position.set(dx, 0.18, -2.08);
+            body.add(strake);
+        }
+
+        // Dual Large Oval Sport Exhaust Tips (Left & Right - Photo 1!)
+        const exhaustChrome = new THREE.MeshStandardMaterial({
+            color: 0x3a3d42,
+            roughness: 0.2,
+            metalness: 0.95,
+            envMap: skyTex,
+            envMapIntensity: 2.5
+        });
+        const exhaustHole = new THREE.MeshBasicMaterial({ color: 0x050505 });
+
+        this.exhaustPipes = [];
+        for (const s of [-1, 1]) {
+            const pipeX = s * 0.48;
+            const pipeY = 0.25;
+            const pipeZ = -2.18;
+
+            const ovalPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.15, 20), exhaustChrome);
+            ovalPipe.scale.set(1.4, 1.0, 0.9);
+            ovalPipe.rotation.x = Math.PI / 2;
+            ovalPipe.position.set(pipeX, pipeY, pipeZ);
+            body.add(ovalPipe);
+
+            const innerHole = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), exhaustHole);
+            innerHole.scale.set(1.35, 0.85, 1.0);
+            innerHole.rotation.y = Math.PI;
+            innerHole.position.set(pipeX, pipeY, pipeZ - 0.08);
+            body.add(innerHole);
+
+            this.exhaustPipes.push({ x: pipeX, y: pipeY, z: pipeZ - 0.1 });
+        }
+
+        // Headlight positions for active high-beam SpotLights
         this.headlightPositions = [
-            { x: -0.75, y: 0.38, z: 2.15 },
-            { x: 0.75, y: 0.38, z: 2.15 }
+            { x: -0.74, y: 0.65, z: 1.95 },
+            { x: 0.74, y: 0.65, z: 1.95 }
         ];
-        this.taillightPositions = [
-            { x: -0.85, y: 0.45, z: -2.12 },
-            { x: 0.85, y: 0.45, z: -2.12 }
+        this.taillightPositions = []; // Handled by continuous lightbar!
+
+        // 10. Staggered Gold / Satin Aurum Multi-Spoke Alloy Wheels & Carbon Brakes (Side View Photo 2!)
+        const wheelOffsets = [
+            { x: -0.96, y: 0.35, z: 1.38, isFront: true, radius: 0.35, width: 0.28 },
+            { x: 0.96, y: 0.35, z: 1.38, isFront: true, radius: 0.35, width: 0.28 },
+            { x: -1.02, y: 0.37, z: -1.38, isFront: false, radius: 0.37, width: 0.35 },
+            { x: 1.02, y: 0.37, z: -1.38, isFront: false, radius: 0.37, width: 0.35 }
         ];
 
-        const wheelOffsets = [
-            { x: -0.98, y: 0.36, z: 1.4, isFront: true },
-            { x: 0.98, y: 0.36, z: 1.4, isFront: true },
-            { x: -1.02, y: 0.38, z: -1.35, isFront: false },
-            { x: 1.02, y: 0.38, z: -1.35, isFront: false }
-        ];
-        this.attachModernWheels(body, wheelOffsets, 0.36, 0.28);
+        this.attachPorscheWheels(body, wheelOffsets, skyTex);
         this.bodyMeshGroup.add(body);
+    }
+
+    attachPorscheWheels(parent, offsets, skyTex) {
+        // Satin Aurum / Gold Lightweight Wheel Material (Photo 2!)
+        const goldMat = new THREE.MeshStandardMaterial({
+            color: 0xc8a462,
+            metalness: 0.85,
+            roughness: 0.22,
+            envMap: skyTex,
+            envMapIntensity: 2.2
+        });
+
+        // High performance Michelin low-profile tire
+        const tireMat = new THREE.MeshStandardMaterial({
+            color: 0x18181a,
+            roughness: 0.88,
+            metalness: 0.08
+        });
+
+        // Cross-drilled carbon brake rotor & Guards Red caliper
+        const rotorMat = new THREE.MeshStandardMaterial({
+            color: 0x5a5e66,
+            roughness: 0.35,
+            metalness: 0.85
+        });
+
+        const caliperMat = new THREE.MeshStandardMaterial({
+            color: 0xd61818,
+            roughness: 0.25,
+            metalness: 0.2
+        });
+
+        for (const off of offsets) {
+            const hubGroup = new THREE.Group();
+            hubGroup.position.set(off.x, off.y, off.z);
+
+            const wheelMesh = new THREE.Group();
+
+            // Low Profile Tire
+            const tireGeo = new THREE.CylinderGeometry(off.radius, off.radius, off.width, 28);
+            tireGeo.rotateZ(Math.PI / 2);
+            const tire = new THREE.Mesh(tireGeo, tireMat);
+            tire.castShadow = true;
+            wheelMesh.add(tire);
+
+            // Outer Gold Rim Lip
+            const rimGeo = new THREE.CylinderGeometry(off.radius * 0.88, off.radius * 0.88, off.width + 0.01, 24, 1, true);
+            rimGeo.rotateZ(Math.PI / 2);
+            const rim = new THREE.Mesh(rimGeo, goldMat);
+            wheelMesh.add(rim);
+
+            // Center Gold Hub with mini crest
+            const centerHub = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, off.width + 0.02, 16), goldMat);
+            centerHub.rotation.z = Math.PI / 2;
+            wheelMesh.add(centerHub);
+
+            // 10 Elegant Y-Spoke Dual Radial Rays (Photo 2!)
+            const spokeLen = off.radius * 0.78;
+            for (let s = 0; s < 10; s++) {
+                const angle = (s * Math.PI) / 5;
+                const spokeGroup = new THREE.Group();
+                spokeGroup.rotation.x = angle;
+
+                const spoke1 = new THREE.Mesh(new THREE.BoxGeometry(off.width * 0.3, 0.024, spokeLen), goldMat);
+                spoke1.position.set(0, 0, spokeLen * 0.5);
+                spokeGroup.add(spoke1);
+
+                wheelMesh.add(spokeGroup);
+            }
+
+            // Fixed Brake Disc & Red Caliper (stays upright while wheel spins!)
+            const rotor = new THREE.Mesh(new THREE.CylinderGeometry(off.radius * 0.68, off.radius * 0.68, 0.03, 20), rotorMat);
+            rotor.rotation.z = Math.PI / 2;
+            rotor.position.x = off.x > 0 ? -0.04 : 0.04;
+            hubGroup.add(rotor);
+
+            const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.08, off.radius * 0.38, 0.12), caliperMat);
+            caliper.position.set(off.x > 0 ? -0.04 : 0.04, off.radius * 0.38, 0);
+            hubGroup.add(caliper);
+
+            hubGroup.add(wheelMesh);
+            parent.add(hubGroup);
+
+            this.wheels.push(wheelMesh);
+            if (off.isFront) {
+                this.frontWheelHubs.push(hubGroup);
+            }
+        }
     }
 
     attachModernWheels(parent, offsets, radius, width) {

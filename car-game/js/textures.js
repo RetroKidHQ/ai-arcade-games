@@ -627,6 +627,300 @@ class TextureGenerator {
         return texture;
     }
 
+    // 10e. Porsche Gold Crest Emblem (Front Hood from Photo 0)
+    createPorscheBadgeTexture(size = 256) {
+        if (this.cache['porscheBadge']) return this.cache['porscheBadge'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Gold metallic shield outline
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(size * 0.22, size * 0.12);
+        ctx.lineTo(size * 0.78, size * 0.12);
+        ctx.lineTo(size * 0.76, size * 0.58);
+        ctx.bezierCurveTo(size * 0.72, size * 0.82, size * 0.5, size * 0.94, size * 0.5, size * 0.96);
+        ctx.bezierCurveTo(size * 0.5, size * 0.94, size * 0.28, size * 0.82, size * 0.24, size * 0.58);
+        ctx.closePath();
+
+        const goldGrad = ctx.createLinearGradient(0, 0, size, size);
+        goldGrad.addColorStop(0.0, '#ffd966');
+        goldGrad.addColorStop(0.3, '#d4af37');
+        goldGrad.addColorStop(0.7, '#f7e27e');
+        goldGrad.addColorStop(1.0, '#aa820a');
+        ctx.fillStyle = goldGrad;
+        ctx.fill();
+
+        ctx.strokeStyle = '#6e5200';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+        ctx.clip();
+
+        // 4 Quadrants: Top-left & Bottom-right: gold with black stag antlers. Top-right & Bottom-left: red & black stripes.
+        const midX = size * 0.5;
+        const midY = size * 0.48;
+
+        // Top-right red/black stripes
+        ctx.fillStyle = '#b71212';
+        ctx.fillRect(midX, size * 0.22, size * 0.35, midY - size * 0.22);
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(midX + 14, size * 0.22, 12, midY - size * 0.22);
+        ctx.fillRect(midX + 42, size * 0.22, 12, midY - size * 0.22);
+
+        // Bottom-left red/black stripes
+        ctx.fillStyle = '#b71212';
+        ctx.fillRect(size * 0.2, midY, midX - size * 0.2, size * 0.45);
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(size * 0.28, midY, 12, size * 0.45);
+        ctx.fillRect(size * 0.42, midY, 12, size * 0.45);
+
+        // Center inner Stuttgart shield (gold with black prancing horse)
+        ctx.fillStyle = '#d4af37';
+        ctx.beginPath();
+        ctx.arc(midX, midY + 4, size * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = '#111111';
+        ctx.beginPath();
+        ctx.arc(midX, midY + 3, size * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+
+        // "PORSCHE" arch banner at top
+        ctx.fillStyle = '#111111';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.letterSpacing = '3px';
+        ctx.fillText('PORSCHE', midX, size * 0.2);
+
+        ctx.restore();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['porscheBadge'] = texture;
+        return texture;
+    }
+
+    // 10f. Porsche 4-Point LED Matrix Headlight Texture (Front View Photo 0)
+    createPorscheHeadlightTexture(size = 512) {
+        if (this.cache['porscheHeadlight']) return this.cache['porscheHeadlight'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Dark smoked titanium projector housing
+        const bgGrad = ctx.createRadialGradient(size * 0.5, size * 0.5, 40, size * 0.5, size * 0.5, size * 0.5);
+        bgGrad.addColorStop(0.0, '#1c1e22');
+        bgGrad.addColorStop(0.7, '#0e0f12');
+        bgGrad.addColorStop(1.0, '#050608');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, size, size);
+
+        // Outer Dark Chrome Bezel Ring
+        ctx.strokeStyle = '#353a42';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.arc(size * 0.5, size * 0.5, size * 0.46, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Concentric precision ribbed lens rings
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 3;
+        for (let r = 80; r < size * 0.42; r += 26) {
+            ctx.beginPath();
+            ctx.arc(size * 0.5, size * 0.5, r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Center Bi-LED Projector Lens ("Eyeball")
+        const projGrad = ctx.createRadialGradient(size * 0.48, size * 0.46, 6, size * 0.5, size * 0.5, 75);
+        projGrad.addColorStop(0.0, '#ffffff');
+        projGrad.addColorStop(0.2, '#cce6ff');
+        projGrad.addColorStop(0.6, '#304c66');
+        projGrad.addColorStop(1.0, '#111822');
+        ctx.fillStyle = projGrad;
+        ctx.beginPath();
+        ctx.arc(size * 0.5, size * 0.5, 75, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#52667d';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        // The iconic Porsche 4-Point LED Daytime Running Lights (4 bright glowing squares at 12, 3, 6, 9 o'clock)
+        const d = size * 0.33;
+        const pts = [
+            { x: size * 0.5, y: size * 0.5 - d },
+            { x: size * 0.5 + d, y: size * 0.5 },
+            { x: size * 0.5, y: size * 0.5 + d },
+            { x: size * 0.5 - d, y: size * 0.5 }
+        ];
+
+        for (const pt of pts) {
+            // Glow halo
+            const glow = ctx.createRadialGradient(pt.x, pt.y, 4, pt.x, pt.y, 36);
+            glow.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+            glow.addColorStop(0.3, 'rgba(210, 240, 255, 0.85)');
+            glow.addColorStop(0.7, 'rgba(120, 200, 255, 0.35)');
+            glow.addColorStop(1.0, 'rgba(80, 160, 255, 0.0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 36, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Sharp crystal LED core block
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(pt.x - 14, pt.y - 14, 28, 28);
+            ctx.strokeStyle = '#bfe2ff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(pt.x - 14, pt.y - 14, 28, 28);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['porscheHeadlight'] = texture;
+        return texture;
+    }
+
+    // 10g. Full-Width 3D LED Rear Lightbar with "PORSCHE" & "911 Carrera S" (Rear View Photo 1)
+    createPorscheLightbarTexture(width = 1024, height = 128) {
+        if (this.cache['porscheLightbar']) return this.cache['porscheLightbar'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Dark gloss smoke-tinted acrylic housing
+        ctx.fillStyle = '#0a0a0c';
+        ctx.fillRect(0, 0, width, height);
+
+        // Thin neon-red continuous LED light strip spanning end to end (992 signature)
+        const redGlow = ctx.createLinearGradient(0, height * 0.25, 0, height * 0.55);
+        redGlow.addColorStop(0.0, 'rgba(255, 20, 20, 0.2)');
+        redGlow.addColorStop(0.5, 'rgba(255, 50, 50, 1.0)');
+        redGlow.addColorStop(1.0, 'rgba(255, 20, 20, 0.2)');
+
+        ctx.fillStyle = redGlow;
+        ctx.fillRect(20, height * 0.32, width - 40, 16);
+
+        // Intense core neon laser line
+        ctx.fillStyle = '#ff6666';
+        ctx.fillRect(24, height * 0.36, width - 48, 6);
+
+        // Outer corner brake/turn pods
+        ctx.fillStyle = 'rgba(255, 20, 20, 0.85)';
+        ctx.fillRect(20, height * 0.2, 110, 36);
+        ctx.fillRect(width - 130, height * 0.2, 110, 36);
+
+        // Centered 3D Silver "P O R S C H E" typography in the central recess
+        ctx.fillStyle = '#f0f3f6';
+        ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.letterSpacing = '14px';
+        ctx.fillText('P O R S C H E', width * 0.5 + 7, height * 0.44);
+
+        // Centered script badge below: "911 Carrera S"
+        ctx.fillStyle = '#18181a';
+        ctx.font = 'italic bold 22px Georgia, serif';
+        ctx.letterSpacing = '2px';
+        ctx.fillText('911 Carrera S', width * 0.5, height * 0.82);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['porscheLightbar'] = texture;
+        return texture;
+    }
+
+    // 10h. California License Plate ("16403" from Rear View Photo 1)
+    createCaliforniaPlateTexture(width = 512, height = 256) {
+        if (this.cache['caPlate']) return this.cache['caPlate'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // White reflective plate surface
+        ctx.fillStyle = '#f4f6f8';
+        ctx.fillRect(0, 0, width, height);
+
+        // Outer dark embossed bevel border
+        ctx.strokeStyle = '#c2c7ce';
+        ctx.lineWidth = 12;
+        ctx.strokeRect(6, 6, width - 12, height - 12);
+
+        // Red script "California" header
+        ctx.fillStyle = '#b81818';
+        ctx.font = 'italic bold 52px "Brush Script MT", "Brush Script", "Snell Roundhand", cursive, Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('California', width * 0.5, 68);
+
+        // Registration decals
+        ctx.fillStyle = '#1c3b6a';
+        ctx.fillRect(40, 36, 48, 30);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('SEP', 64, 57);
+
+        ctx.fillStyle = '#b87518';
+        ctx.fillRect(width - 88, 36, 48, 30);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('2024', width - 64, 57);
+
+        // Centered License Plate Number: "16403" (Photo 1)
+        ctx.fillStyle = '#182b4a';
+        ctx.font = 'bold 104px "Trebuchet MS", Arial, sans-serif';
+        ctx.letterSpacing = '8px';
+        ctx.fillText('16403', width * 0.5, 178);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['caPlate'] = texture;
+        return texture;
+    }
+
+    // 10i. Dark Honeycomb Intake Mesh (Front Bumper Photo 0)
+    createPorscheHoneycombTexture(size = 256) {
+        if (this.cache['honeycomb']) return this.cache['honeycomb'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#08080a';
+        ctx.fillRect(0, 0, size, size);
+
+        ctx.strokeStyle = '#1d1e22';
+        ctx.lineWidth = 2.5;
+
+        const hexRadius = 10;
+        const hexHeight = Math.sqrt(3) * hexRadius;
+        for (let y = -hexHeight; y < size + hexHeight * 2; y += hexHeight) {
+            for (let x = -hexRadius; x < size + hexRadius * 2; x += hexRadius * 3) {
+                for (let offset = 0; offset < 2; offset++) {
+                    const cx = x + offset * (hexRadius * 1.5);
+                    const cy = y + offset * (hexHeight * 0.5);
+                    ctx.beginPath();
+                    for (let a = 0; a < 6; a++) {
+                        const angle = (Math.PI / 3) * a;
+                        const hx = cx + hexRadius * Math.cos(angle);
+                        const hy = cy + hexRadius * Math.sin(angle);
+                        if (a === 0) ctx.moveTo(hx, hy);
+                        else ctx.lineTo(hx, hy);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+            }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(4, 4);
+        this.cache['honeycomb'] = texture;
+        return texture;
+    }
+
     // 11. Photorealistic Sky Dome Texture with realistic clouds
     createSkyTexture(width = 2048, height = 1024) {
         if (this.cache['sky']) return this.cache['sky'];

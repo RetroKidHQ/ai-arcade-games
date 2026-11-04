@@ -289,15 +289,24 @@ class Game {
     initUIListeners() {
         // Vehicle Switcher Modal / Dropdown
         const vehicleSelect = document.getElementById('vehicle-select');
+        const colorPicker = document.getElementById('paint-picker');
         if (vehicleSelect) {
             vehicleSelect.addEventListener('change', (e) => {
-                this.car.setCarType(e.target.value);
+                const type = e.target.value;
+                if (type === 'supercar') {
+                    if (colorPicker) colorPicker.value = '#d91616';
+                    this.car.setCarType(type, 0xd91616);
+                } else if (type === 'vintage') {
+                    if (colorPicker) colorPicker.value = '#0a0a0c';
+                    this.car.setCarType(type, 0x0a0a0c);
+                } else {
+                    this.car.setCarType(type);
+                }
                 this.setHeadlights(this.timeOfDay !== 'day');
             });
         }
 
         // Color Picker
-        const colorPicker = document.getElementById('paint-picker');
         if (colorPicker) {
             colorPicker.addEventListener('input', (e) => {
                 const hex = parseInt(e.target.value.replace('#', '0x'));

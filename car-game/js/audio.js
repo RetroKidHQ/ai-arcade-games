@@ -168,9 +168,9 @@ class SoundEngine {
             baseFreq = 22;
             maxFreq = 110;
         } else if (carType === 'supercar') {
-            // Screaming high-pitch V10
-            baseFreq = 40;
-            maxFreq = 220;
+            // Porsche twin-turbo flat-six boxer engine roar
+            baseFreq = 34;
+            maxFreq = 240;
         } else if (carType === 'muscle') {
             // Deep burbling V8
             baseFreq = 28;
