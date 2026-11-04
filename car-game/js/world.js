@@ -19,6 +19,7 @@ class WorldManager {
         this.buildFarmland();
         this.buildLighthouse();
         this.buildRealisticBushland();
+        this.buildBuildingTrees();
         this.buildRoadProps();
         this.buildSpatialGrid();
     }
@@ -1270,6 +1271,194 @@ class WorldManager {
         tuftMesh.instanceMatrix.needsUpdate = true;
         tuftMesh.receiveShadow = true;
         this.scene.add(tuftMesh);
+    }
+
+    // Neat Urban Street / Plaza Tree Model with Circular Planter Grate
+    createUrbanPlazaTreeModel(trunkMat, leafMat, scale = 1.0) {
+        const tree = new THREE.Group();
+
+        // Slender, straight street tree trunk
+        const trunkGeo = new THREE.CylinderGeometry(0.25 * scale, 0.42 * scale, 8.5 * scale, 8);
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+        trunk.position.y = 3.8 * scale;
+        trunk.castShadow = true;
+        tree.add(trunk);
+
+        // Circular stone planter / tree grate curb at sidewalk level
+        const planterGeo = new THREE.CylinderGeometry(1.6 * scale, 1.8 * scale, 0.35, 12);
+        const planterMat = new THREE.MeshStandardMaterial({ color: 0x3d3f44, roughness: 0.88, metalness: 0.15 });
+        const planter = new THREE.Mesh(planterGeo, planterMat);
+        planter.position.y = 0.18;
+        planter.receiveShadow = true;
+        tree.add(planter);
+
+        // Lush manicured street canopy
+        const canopyClusters = [
+            { x: 0, y: 7.8 * scale, z: 0, s: 6.5 * scale },
+            { x: 1.6 * scale, y: 6.8 * scale, z: 0.8 * scale, s: 5.2 * scale },
+            { x: -1.6 * scale, y: 6.8 * scale, z: -0.8 * scale, s: 5.2 * scale },
+            { x: 0.8 * scale, y: 6.6 * scale, z: -1.6 * scale, s: 5.0 * scale },
+            { x: -0.8 * scale, y: 6.6 * scale, z: 1.6 * scale, s: 5.0 * scale }
+        ];
+
+        for (const c of canopyClusters) {
+            const cluster = this.createLeafCrossCluster(leafMat, c.s);
+            cluster.position.set(c.x, c.y, c.z);
+            cluster.rotation.y = Math.random() * Math.PI;
+            tree.add(cluster);
+        }
+
+        return tree;
+    }
+
+    // 5b. Landscaping: Trees Around the Area of Every Building
+    buildBuildingTrees() {
+        const tg = window.textureGenerator;
+        const barkTex = tg ? tg.createBarkTexture(512) : null;
+        const leafTex = tg ? tg.createLeafClusterTexture(512) : null;
+
+        const trunkMat = new THREE.MeshStandardMaterial({
+            map: barkTex,
+            roughness: 0.85,
+            metalness: 0.05
+        });
+
+        const leafMat = new THREE.MeshStandardMaterial({
+            map: leafTex,
+            transparent: true,
+            alphaTest: 0.15,
+            roughness: 0.6,
+            side: THREE.DoubleSide
+        });
+
+        const urbanTreeTemplate = this.createUrbanPlazaTreeModel(trunkMat, leafMat, 1.0);
+        const bushyTreeTemplate = this.createBushyTreeModel(trunkMat, leafMat, 1.05);
+        const eucalyptusTemplate = this.createEucalyptusTreeModel(trunkMat, leafMat, 0.95);
+
+        const treeCoords = [];
+
+        // 1. Trees around all 15 Downtown Skyscrapers
+        const gridRows = 4;
+        const gridCols = 4;
+        const blockSize = 108;
+        const cityX = -120;
+        const cityZ = -120;
+
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                if (r === 1 && c === 1) continue; // Central park plaza handled below
+
+                const bx = cityX + (c - gridCols / 2) * blockSize;
+                const bz = cityZ + (r - gridRows / 2) * blockSize;
+
+                // 6 trees framing each skyscraper's sidewalk plaza (staying well clear of 18m roadbed)
+                const dCorner = 25;
+                const dMid = 26;
+                treeCoords.push(
+                    { x: bx - dCorner, z: bz - dCorner, type: 'urban' },
+                    { x: bx + dCorner, z: bz - dCorner, type: 'urban' },
+                    { x: bx - dCorner, z: bz + dCorner, type: 'urban' },
+                    { x: bx + dCorner, z: bz + dCorner, type: 'urban' },
+                    { x: bx, z: bz - dMid, type: 'urban' },
+                    { x: bx, z: bz + dMid, type: 'urban' }
+                );
+            }
+        }
+
+        // 2. Trees around all 7 Historic Apartment Buildings
+        const apartmentSites = [
+            { x: -336, z: 96,  w: 56, d: 26 },
+            { x: -228, z: 96,  w: 52, d: 24 },
+            { x: -120, z: 96,  w: 48, d: 24 },
+            { x: -12,  z: 96,  w: 56, d: 26 },
+            { x: -450, z: -282, w: 24, d: 52 },
+            { x: -450, z: -66,  w: 24, d: 48 },
+            { x: -228, z: -228, w: 52, d: 24 }
+        ];
+
+        for (const apt of apartmentSites) {
+            const isRotated = (apt.d > apt.w);
+            if (!isRotated) {
+                // Front and rear street trees
+                treeCoords.push(
+                    { x: apt.x - apt.w * 0.38, z: apt.z + apt.d * 0.5 + 4.5, type: 'urban' },
+                    { x: apt.x,               z: apt.z + apt.d * 0.5 + 4.5, type: 'urban' },
+                    { x: apt.x + apt.w * 0.38, z: apt.z + apt.d * 0.5 + 4.5, type: 'urban' },
+                    { x: apt.x - apt.w * 0.38, z: apt.z - apt.d * 0.5 - 4.5, type: 'urban' },
+                    { x: apt.x + apt.w * 0.38, z: apt.z - apt.d * 0.5 - 4.5, type: 'urban' }
+                );
+            } else {
+                // Rotated side frontage
+                treeCoords.push(
+                    { x: apt.x + apt.w * 0.5 + 4.5, z: apt.z - apt.d * 0.38, type: 'urban' },
+                    { x: apt.x + apt.w * 0.5 + 4.5, z: apt.z,               type: 'urban' },
+                    { x: apt.x + apt.w * 0.5 + 4.5, z: apt.z + apt.d * 0.38, type: 'urban' },
+                    { x: apt.x - apt.w * 0.5 - 4.5, z: apt.z - apt.d * 0.38, type: 'urban' },
+                    { x: apt.x - apt.w * 0.5 - 4.5, z: apt.z + apt.d * 0.38, type: 'urban' }
+                );
+            }
+        }
+
+        // Central Park Grove (around plaza and park apartment)
+        treeCoords.push(
+            { x: -252, z: -208, type: 'bushy' },
+            { x: -204, z: -208, type: 'bushy' },
+            { x: -252, z: -248, type: 'bushy' },
+            { x: -204, z: -248, type: 'bushy' }
+        );
+
+        // 3. Trees around Farmland Country Barn (-280, 280)
+        const barnX = -280;
+        const barnZ = 280;
+        treeCoords.push(
+            { x: barnX - 18, z: barnZ - 14, type: 'bushy' },
+            { x: barnX + 18, z: barnZ - 14, type: 'bushy' },
+            { x: barnX - 18, z: barnZ + 14, type: 'eucalyptus' },
+            { x: barnX + 18, z: barnZ + 14, type: 'eucalyptus' },
+            { x: barnX - 25, z: barnZ,      type: 'eucalyptus' },
+            { x: barnX + 25, z: barnZ,      type: 'bushy' },
+            { x: barnX,      z: barnZ + 22, type: 'bushy' }
+        );
+
+        // 4. Trees around Cape Point Lighthouse (-460, 380)
+        const lhX = -460;
+        const lhZ = 380;
+        treeCoords.push(
+            { x: lhX - 16, z: lhZ - 14, type: 'eucalyptus' },
+            { x: lhX + 16, z: lhZ - 14, type: 'eucalyptus' },
+            { x: lhX - 16, z: lhZ + 16, type: 'bushy' },
+            { x: lhX + 16, z: lhZ + 16, type: 'bushy' },
+            { x: lhX - 24, z: lhZ,      type: 'eucalyptus' },
+            { x: lhX + 24, z: lhZ,      type: 'bushy' }
+        );
+
+        // Instantiate and place all perimeter building trees
+        for (let i = 0; i < treeCoords.length; i++) {
+            const pt = treeCoords[i];
+            const ty = this.terrain.getHeight(pt.x, pt.z);
+
+            let mesh;
+            if (pt.type === 'urban') {
+                mesh = urbanTreeTemplate.clone();
+            } else if (pt.type === 'bushy') {
+                mesh = bushyTreeTemplate.clone();
+            } else {
+                mesh = eucalyptusTemplate.clone();
+            }
+
+            const scale = 0.88 + Math.random() * 0.28;
+            mesh.scale.set(scale, scale, scale);
+            mesh.position.set(pt.x, ty, pt.z);
+            mesh.rotation.y = Math.random() * Math.PI * 2;
+            this.scene.add(mesh);
+
+            this.colliders.push({
+                type: 'cylinder',
+                x: pt.x,
+                z: pt.z,
+                radius: 0.9 * scale
+            });
+        }
     }
 
     // 6. Street Lamps along 2-Lane Avenues and Highways
