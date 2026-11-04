@@ -37,7 +37,7 @@ class Minimap {
         ctx.clip();
 
         // 1. Radar background
-        ctx.fillStyle = '#2fbf1f'; // 3x greener lush grass land
+        ctx.fillStyle = '#187a11'; // dark green grass land
         ctx.fillRect(0, 0, width, height);
 
         // Grid lines

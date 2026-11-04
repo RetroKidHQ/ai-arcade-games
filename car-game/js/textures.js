@@ -15,25 +15,25 @@ class TextureGenerator {
         canvas.height = size;
         const ctx = canvas.getContext('2d');
 
-        // Vibrant, 3x greener lush lawn undertone (#2f941f, #33c221)
-        ctx.fillStyle = '#2b8f1c';
+        // Rich, deep dark green lawn undertone (#187a11, #1b8513)
+        ctx.fillStyle = '#166e0f';
         ctx.fillRect(0, 0, size, size);
 
-        // Noise and lush underlayer
+        // Noise and dark lush underlayer
         const imgData = ctx.getImageData(0, 0, size, size);
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
-            const noise = (Math.random() - 0.5) * 35;
-            data[i] = Math.min(255, Math.max(0, 50 + noise * 0.7));      // R: deep emerald
-            data[i + 1] = Math.min(255, Math.max(0, 195 + noise));       // G: 3x vibrant green
-            data[i + 2] = Math.min(255, Math.max(0, 35 + noise * 0.4));  // B: rich chlorophyll
+            const noise = (Math.random() - 0.5) * 25;
+            data[i] = Math.min(255, Math.max(0, 24 + noise * 0.6));      // R: dark forest
+            data[i + 1] = Math.min(255, Math.max(0, 126 + noise));       // G: deep dark green
+            data[i + 2] = Math.min(255, Math.max(0, 17 + noise * 0.4));  // B: chlorophyll base
         }
         ctx.putImageData(imgData, 0, 0);
 
-        // Individual grass blades matching the 3x greener vibrant turf palette
+        // Individual grass blades matching the dark green lush turf palette
         const bladeColors = [
-            '#38cc27', '#33c221', '#36c724', '#2fbf1f', '#3ed62c',
-            '#25a61a', '#44e031', '#1f8c14', '#52e83e', '#2bb31f'
+            '#187a11', '#1b8513', '#177f10', '#1a8511', '#13780c',
+            '#156b0d', '#209117', '#11570a', '#249e1b', '#186e10'
         ];
         const bladeCount = 28000;
         for (let i = 0; i < bladeCount; i++) {
@@ -1235,8 +1235,8 @@ class TextureGenerator {
         // Transparent background
         ctx.clearRect(0, 0, width, height);
 
-        // Multiple natural curving grass blades in a cluster matching 3x greener lush turf
-        const bladeColors = ['#1f8c14', '#25a61a', '#2fbf1f', '#33c221', '#38cc27', '#3ed62c', '#44e031'];
+        // Multiple natural curving grass blades in a cluster matching dark green lush turf
+        const bladeColors = ['#11570a', '#156b0d', '#187a11', '#1b8513', '#177f10', '#1a8511', '#209117'];
         const count = 16;
 
         for (let i = 0; i < count; i++) {
@@ -1248,9 +1248,9 @@ class TextureGenerator {
             const ctrlY = (rootY + tipY) * 0.5;
 
             const bladeGrad = ctx.createLinearGradient(rootX, rootY, tipX, tipY);
-            bladeGrad.addColorStop(0.0, '#155c0e'); // Deep emerald base
+            bladeGrad.addColorStop(0.0, '#0b3806'); // Dark forest root
             bladeGrad.addColorStop(0.4, bladeColors[i % bladeColors.length]);
-            bladeGrad.addColorStop(1.0, '#5ff048'); // 3x vibrant sunlit green tip
+            bladeGrad.addColorStop(1.0, '#2fc423'); // Dark green sunlit tip
 
 
             ctx.strokeStyle = bladeGrad;

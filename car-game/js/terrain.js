@@ -163,7 +163,7 @@ class TerrainManager {
 
         // Colors carefully balanced to blend with the realistic grass texture
         const cGrassLush = new THREE.Color(0xffffff);  // Full procedural grass colors
-        const cGrassWarm = new THREE.Color(0xe8ffe4);  // 3x greener sunlit meadow radiance
+        const cGrassWarm = new THREE.Color(0xd0eed0);  // Deep dark green meadow radiance
         const cGravelRoad = new THREE.Color(0x6b6e76); // Dark crushed stone road
         const cSand = new THREE.Color(0xd2b785);       // Coastal sand
         const cCliffRock = new THREE.Color(0x484642);   // Stratified dark cliff rock
