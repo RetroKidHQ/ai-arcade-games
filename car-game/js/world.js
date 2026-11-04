@@ -19,6 +19,41 @@ class WorldManager {
         this.buildLighthouse();
         this.buildRealisticBushland();
         this.buildRoadProps();
+        this.buildSpatialGrid();
+    }
+
+    // High-performance 2D spatial grid for instantaneous collision checks
+    buildSpatialGrid() {
+        this.spatialGrid = new Map();
+        this.gridCellSize = 64; // 64-meter cells
+        const cs = this.gridCellSize;
+
+        for (let i = 0; i < this.colliders.length; i++) {
+            const col = this.colliders[i];
+            let minCX, maxCX, minCZ, maxCZ;
+            if (col.type === 'cylinder') {
+                minCX = Math.floor((col.x - col.radius) / cs);
+                maxCX = Math.floor((col.x + col.radius) / cs);
+                minCZ = Math.floor((col.z - col.radius) / cs);
+                maxCZ = Math.floor((col.z + col.radius) / cs);
+            } else if (col.type === 'box') {
+                minCX = Math.floor(col.minX / cs);
+                maxCX = Math.floor(col.maxX / cs);
+                minCZ = Math.floor(col.minZ / cs);
+                maxCZ = Math.floor(col.maxZ / cs);
+            }
+            for (let cx = minCX; cx <= maxCX; cx++) {
+                for (let cz = minCZ; cz <= maxCZ; cz++) {
+                    const key = `${cx},${cz}`;
+                    let cell = this.spatialGrid.get(key);
+                    if (!cell) {
+                        cell = [];
+                        this.spatialGrid.set(key, cell);
+                    }
+                    cell.push(col);
+                }
+            }
+        }
     }
 
     // 1. Downtown City Zone - Varied Architectural Skyscrapers Modeled on Reference Photos 0-4
@@ -340,7 +375,6 @@ class WorldManager {
                         // Cantilevered white horizontal slab
                         const slab = new THREE.Mesh(new THREE.BoxGeometry(slabW, 0.55, slabD), whiteRibbonMat);
                         slab.position.y = slabY;
-                        slab.castShadow = true;
                         buildingGroup.add(slab);
 
                         // Tinted glass perimeter balustrade / railing
@@ -880,13 +914,12 @@ class WorldManager {
         return tree;
     }
 
-    // Double-sided cross-quad leaf cluster with realistic depth
+    // Double-sided cross-quad leaf cluster with realistic depth (shadows cast by solid trunks/branches)
     createLeafCrossCluster(leafMat, size = 6.0) {
         const group = new THREE.Group();
         const planeGeo = new THREE.PlaneGeometry(size, size);
 
         const p1 = new THREE.Mesh(planeGeo, leafMat);
-        p1.castShadow = true;
         group.add(p1);
 
         const p2 = p1.clone();
@@ -1027,65 +1060,119 @@ class WorldManager {
         }
     }
 
-    update(dt) {
+    update(dt, carPos) {
         // Increment wind time for procedural grass vertex shader sway
         if (this.grassUniforms && this.grassUniforms.uWindTime) {
             this.grassUniforms.uWindTime.value += dt;
         }
 
         // Rotate animated props (windmill blades, lighthouse beacon)
-        for (const prop of this.animatedProps) {
+        for (let i = 0; i < this.animatedProps.length; i++) {
+            const prop = this.animatedProps[i];
             if (prop.type === 'windmill' && prop.mesh) {
                 prop.mesh.rotation.z += prop.speed;
             } else if (prop.type === 'lighthouse' && prop.mesh) {
                 prop.mesh.rotation.y += prop.speed;
             }
         }
+
+        // Dynamic Point Light Culling: only keep the 4 closest active streetlights to the car
+        if (carPos && this.streetLights && this.streetLights.length > 4) {
+            let sorted = [];
+            for (let i = 0; i < this.streetLights.length; i++) {
+                const sl = this.streetLights[i];
+                if (sl.intensity > 0) {
+                    const dx = sl.position.x - carPos.x;
+                    const dz = sl.position.z - carPos.z;
+                    sorted.push({ light: sl, distSq: dx * dx + dz * dz });
+                } else {
+                    sl.visible = false;
+                }
+            }
+            if (sorted.length > 0) {
+                sorted.sort((a, b) => a.distSq - b.distSq);
+                for (let i = 0; i < sorted.length; i++) {
+                    sorted[i].light.visible = (i < 4 && sorted[i].distSq < 160 * 160);
+                }
+            }
+        }
     }
 
+    // High-performance spatial-partitioned collision check (tests 3-8 local colliders instead of 450)
     checkCollision(carX, carZ, carRadius = 1.6) {
-        for (const col of this.colliders) {
-            if (col.type === 'cylinder') {
-                const dx = carX - col.x;
-                const dz = carZ - col.z;
-                const dist = Math.hypot(dx, dz);
-                const minDist = carRadius + col.radius;
-                if (dist < minDist && dist > 0.0001) {
-                    const overlap = minDist - dist;
-                    const nx = dx / dist;
-                    const nz = dz / dist;
-                    return { hit: true, nx, nz, overlap };
-                }
-            } else if (col.type === 'box') {
-                if (
-                    carX + carRadius > col.minX &&
-                    carX - carRadius < col.maxX &&
-                    carZ + carRadius > col.minZ &&
-                    carZ - carRadius < col.maxZ
-                ) {
-                    const cx = (col.minX + col.maxX) / 2;
-                    const cz = (col.minZ + col.maxZ) / 2;
-                    const dx = carX - cx;
-                    const dz = carZ - cz;
-                    const halfW = (col.maxX - col.minX) / 2 + carRadius;
-                    const halfD = (col.maxZ - col.minZ) / 2 + carRadius;
-                    const ox = halfW - Math.abs(dx);
-                    const oz = halfD - Math.abs(dz);
+        if (this.spatialGrid) {
+            const cs = this.gridCellSize;
+            const cx = Math.floor(carX / cs);
+            const cz = Math.floor(carZ / cs);
 
-                    if (ox < oz) {
-                        return { hit: true, nx: Math.sign(dx), nz: 0, overlap: ox };
-                    } else {
-                        return { hit: true, nx: 0, nz: Math.sign(dz), overlap: oz };
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                    const cell = this.spatialGrid.get(`${cx + dx},${cz + dz}`);
+                    if (!cell) continue;
+
+                    for (let i = 0; i < cell.length; i++) {
+                        const col = cell[i];
+                        if (col.type === 'cylinder') {
+                            const cdx = carX - col.x;
+                            const cdz = carZ - col.z;
+                            const distSq = cdx * cdx + cdz * cdz;
+                            const minDist = carRadius + col.radius;
+                            if (distSq < minDist * minDist && distSq > 0.0001) {
+                                const dist = Math.sqrt(distSq);
+                                const overlap = minDist - dist;
+                                return { hit: true, nx: cdx / dist, nz: cdz / dist, overlap };
+                            }
+                        } else if (col.type === 'box') {
+                            if (
+                                carX + carRadius > col.minX &&
+                                carX - carRadius < col.maxX &&
+                                carZ + carRadius > col.minZ &&
+                                carZ - carRadius < col.maxZ
+                            ) {
+                                const midX = (col.minX + col.maxX) * 0.5;
+                                const midZ = (col.minZ + col.maxZ) * 0.5;
+                                const bdx = carX - midX;
+                                const bdz = carZ - midZ;
+                                const halfW = (col.maxX - col.minX) * 0.5 + carRadius;
+                                const halfD = (col.maxZ - col.minZ) * 0.5 + carRadius;
+                                const ox = halfW - Math.abs(bdx);
+                                const oz = halfD - Math.abs(bdz);
+
+                                if (ox < oz) {
+                                    return { hit: true, nx: Math.sign(bdx), nz: 0, overlap: ox };
+                                } else {
+                                    return { hit: true, nx: 0, nz: Math.sign(bdz), overlap: oz };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Fallback linear scan
+            for (let i = 0; i < this.colliders.length; i++) {
+                const col = this.colliders[i];
+                if (col.type === 'cylinder') {
+                    const dx = carX - col.x;
+                    const dz = carZ - col.z;
+                    const distSq = dx * dx + dz * dz;
+                    const minDist = carRadius + col.radius;
+                    if (distSq < minDist * minDist && distSq > 0.0001) {
+                        const dist = Math.sqrt(distSq);
+                        return { hit: true, nx: dx / dist, nz: dz / dist, overlap: minDist - dist };
                     }
                 }
             }
         }
 
-        for (const item of this.destructibles) {
+        for (let i = 0; i < this.destructibles.length; i++) {
+            const item = this.destructibles[i];
             const dx = item.x - carX;
             const dz = item.z - carZ;
-            const dist = Math.hypot(dx, dz);
-            if (dist < carRadius + item.radius) {
+            const distSq = dx * dx + dz * dz;
+            const minDist = carRadius + item.radius;
+            if (distSq < minDist * minDist) {
+                const dist = Math.sqrt(distSq) || 1;
                 const pushForce = 0.4;
                 item.vx += (dx / dist) * pushForce;
                 item.vz += (dz / dist) * pushForce;

@@ -51,9 +51,10 @@ class Game {
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        // Optimized pixel ratio capped at 1.25 for crisp graphics with high 60fps performance
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.08;
 
@@ -104,8 +105,8 @@ class Game {
         this.dirLight = new THREE.DirectionalLight(0xfff6e5, 1.35);
         this.dirLight.position.set(250, 400, 200);
         this.dirLight.castShadow = true;
-        this.dirLight.shadow.mapSize.width = 2048;
-        this.dirLight.shadow.mapSize.height = 2048;
+        this.dirLight.shadow.mapSize.width = 1024;
+        this.dirLight.shadow.mapSize.height = 1024;
         this.dirLight.shadow.camera.near = 50;
         this.dirLight.shadow.camera.far = 1000;
         this.dirLight.shadow.bias = -0.00015;
@@ -165,6 +166,7 @@ class Game {
     setStreetLights(enabled) {
         if (!this.world || !this.world.streetLights) return;
         for (const light of this.world.streetLights) {
+            light.visible = enabled;
             light.intensity = enabled ? 2.2 : 0;
         }
     }
@@ -582,8 +584,11 @@ class Game {
         // Update Camera
         this.updateCamera(delta);
 
-        // Update Minimap
-        this.minimap.render(this.car.position, this.car.heading);
+        // Update Minimap every 2 frames (30fps radar update saves 50% canvas rendering)
+        this.frameCounter = (this.frameCounter || 0) + 1;
+        if (this.frameCounter % 2 === 0) {
+            this.minimap.render(this.car.position, this.car.heading);
+        }
 
         // Update HUD Gauges
         this.updateHUD();

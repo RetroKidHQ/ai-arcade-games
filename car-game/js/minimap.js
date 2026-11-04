@@ -69,7 +69,22 @@ class Minimap {
         ctx.lineJoin = 'round';
 
         const rWidth = (this.terrain.roadWidth || 18.0) * scale;
+        const viewDist = this.viewRadius + 40;
+
         for (const road of this.terrain.roads) {
+            // Fast bounding box culling: skip roads completely outside minimap radar
+            let minX = 9999, maxX = -9999, minZ = 9999, maxZ = -9999;
+            for (let i = 0; i < road.length; i++) {
+                if (road[i].x < minX) minX = road[i].x;
+                if (road[i].x > maxX) maxX = road[i].x;
+                if (road[i].z < minZ) minZ = road[i].z;
+                if (road[i].z > maxZ) maxZ = road[i].z;
+            }
+            if (carPos.x < minX - viewDist || carPos.x > maxX + viewDist ||
+                carPos.z < minZ - viewDist || carPos.z > maxZ + viewDist) {
+                continue;
+            }
+
             // Road base (dark asphalt bitumen)
             ctx.beginPath();
             ctx.strokeStyle = '#282a2e';
