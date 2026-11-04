@@ -15,25 +15,25 @@ class TextureGenerator {
         canvas.height = size;
         const ctx = canvas.getContext('2d');
 
-        // Warm organic turf undertone from reference photo (#7b9639, #8fa744)
-        ctx.fillStyle = '#7a9638';
+        // Vibrant, 3x greener lush lawn undertone (#2f941f, #33c221)
+        ctx.fillStyle = '#2b8f1c';
         ctx.fillRect(0, 0, size, size);
 
-        // Noise and thatch underlayer
+        // Noise and lush underlayer
         const imgData = ctx.getImageData(0, 0, size, size);
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
             const noise = (Math.random() - 0.5) * 35;
-            data[i] = Math.min(255, Math.max(0, 130 + noise * 0.9));     // R: warm olive
-            data[i + 1] = Math.min(255, Math.max(0, 160 + noise));       // G: lush green
-            data[i + 2] = Math.min(255, Math.max(0, 65 + noise * 0.5));  // B: golden grass
+            data[i] = Math.min(255, Math.max(0, 50 + noise * 0.7));      // R: deep emerald
+            data[i + 1] = Math.min(255, Math.max(0, 195 + noise));       // G: 3x vibrant green
+            data[i + 2] = Math.min(255, Math.max(0, 35 + noise * 0.4));  // B: rich chlorophyll
         }
         ctx.putImageData(imgData, 0, 0);
 
-        // Individual grass blades matching user photo's exact colors
+        // Individual grass blades matching the 3x greener vibrant turf palette
         const bladeColors = [
-            '#94b049', '#92a742', '#8fa744', '#8ea647', '#7b9639',
-            '#9fbd52', '#a8c95e', '#6f8b2d', '#5e7a25', '#b2d665'
+            '#38cc27', '#33c221', '#36c724', '#2fbf1f', '#3ed62c',
+            '#25a61a', '#44e031', '#1f8c14', '#52e83e', '#2bb31f'
         ];
         const bladeCount = 28000;
         for (let i = 0; i < bladeCount; i++) {
@@ -1235,8 +1235,8 @@ class TextureGenerator {
         // Transparent background
         ctx.clearRect(0, 0, width, height);
 
-        // Multiple natural curving grass blades in a cluster matching reference photo
-        const bladeColors = ['#5e7a25', '#6f8b2d', '#7b9639', '#8fa744', '#94b049', '#9fbd52', '#a8c95e'];
+        // Multiple natural curving grass blades in a cluster matching 3x greener lush turf
+        const bladeColors = ['#1f8c14', '#25a61a', '#2fbf1f', '#33c221', '#38cc27', '#3ed62c', '#44e031'];
         const count = 16;
 
         for (let i = 0; i < count; i++) {
@@ -1248,9 +1248,9 @@ class TextureGenerator {
             const ctrlY = (rootY + tipY) * 0.5;
 
             const bladeGrad = ctx.createLinearGradient(rootX, rootY, tipX, tipY);
-            bladeGrad.addColorStop(0.0, '#3a4a1c'); // Warm moist thatch root
+            bladeGrad.addColorStop(0.0, '#155c0e'); // Deep emerald base
             bladeGrad.addColorStop(0.4, bladeColors[i % bladeColors.length]);
-            bladeGrad.addColorStop(1.0, '#b8dc6c'); // Vibrant sunlit lime tip
+            bladeGrad.addColorStop(1.0, '#5ff048'); // 3x vibrant sunlit green tip
 
 
             ctx.strokeStyle = bladeGrad;
