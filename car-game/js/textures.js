@@ -1393,6 +1393,552 @@ class TextureGenerator {
         return texture;
     }
 
+    // 10o. 1969/1970 Pontiac GTO Split Grille, Quad Headlights & "GTO" Badge (Photo 0)
+    createGTOGrilleTexture(width = 512, height = 256) {
+        if (this.cache['gtoGrille']) return this.cache['gtoGrille'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Deep satin black radiator cavity
+        ctx.fillStyle = '#08090b';
+        ctx.fillRect(0, 0, width, height);
+
+        // Center Endura divider beak (body color orange #e64215 with 3D bevel)
+        const beakW = 28;
+        const beakGrad = ctx.createLinearGradient(width * 0.5 - beakW * 0.5, 0, width * 0.5 + beakW * 0.5, 0);
+        beakGrad.addColorStop(0.0, '#a82c0b');
+        beakGrad.addColorStop(0.3, '#ff6026');
+        beakGrad.addColorStop(0.5, '#ff7a40');
+        beakGrad.addColorStop(0.7, '#e64215');
+        beakGrad.addColorStop(1.0, '#8a2006');
+        ctx.fillStyle = beakGrad;
+        ctx.beginPath();
+        ctx.moveTo(width * 0.5 - beakW * 0.5, 0);
+        ctx.lineTo(width * 0.5 + beakW * 0.5, 0);
+        ctx.lineTo(width * 0.5 + 4, height);
+        ctx.lineTo(width * 0.5 - 4, height);
+        ctx.closePath();
+        ctx.fill();
+
+        // Pontiac Arrowhead red/chrome logo on center beak
+        const pMidX = width * 0.5;
+        const pMidY = height * 0.35;
+        ctx.fillStyle = '#cc1818';
+        ctx.beginPath();
+        ctx.moveTo(pMidX, pMidY - 14);
+        ctx.lineTo(pMidX + 8, pMidY + 12);
+        ctx.lineTo(pMidX, pMidY + 6);
+        ctx.lineTo(pMidX - 8, pMidY + 12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#f0f3f6';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Helper to draw split-grille mesh and chrome trim
+        const drawSplitGrille = (x, y, w, h, isDriverSide) => {
+            // Chrome outer surround bezel
+            const bezGrad = ctx.createLinearGradient(x, y, x, y + h);
+            bezGrad.addColorStop(0.0, '#ffffff');
+            bezGrad.addColorStop(0.2, '#c8d0da');
+            bezGrad.addColorStop(0.8, '#58606c');
+            bezGrad.addColorStop(1.0, '#22262c');
+            ctx.strokeStyle = bezGrad;
+            ctx.lineWidth = 6;
+            ctx.strokeRect(x, y, w, h);
+
+            // Black eggcrate mesh
+            ctx.fillStyle = '#0f1114';
+            ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
+
+            ctx.strokeStyle = 'rgba(180, 190, 205, 0.25)';
+            ctx.lineWidth = 1.2;
+            for (let mx = x + 12; mx < x + w - 8; mx += 10) {
+                ctx.beginPath();
+                ctx.moveTo(mx, y + 4);
+                ctx.lineTo(mx, y + h - 4);
+                ctx.stroke();
+            }
+            for (let my = y + 10; my < y + h - 4; my += 8) {
+                ctx.beginPath();
+                ctx.moveTo(x + 4, my);
+                ctx.lineTo(x + w - 4, my);
+                ctx.stroke();
+            }
+
+            // Horizontal chrome split crossbar
+            const barY = y + h * 0.5;
+            ctx.fillStyle = '#f0f4f8';
+            ctx.fillRect(x + 4, barY - 3, w - 8, 6);
+            ctx.fillStyle = '#7a8492';
+            ctx.fillRect(x + 4, barY + 3, w - 8, 2);
+
+            // Dual Quad Round Sealed-Beam Headlights
+            const r1 = 36;
+            const r2 = 36;
+            const hlSpacing = 82;
+            const hlStartX = isDriverSide ? x + w - 50 : x + 50;
+            const hlDir = isDriverSide ? -1 : 1;
+
+            for (let i = 0; i < 2; i++) {
+                const hx = hlStartX + hlDir * i * hlSpacing;
+                const hy = barY;
+
+                // Chrome outer headlight bucket ring
+                const hlRing = ctx.createRadialGradient(hx, hy, r1 - 6, hx, hy, r1 + 8);
+                hlRing.addColorStop(0.0, '#f8fafc');
+                hlRing.addColorStop(0.5, '#a4adb8');
+                hlRing.addColorStop(1.0, '#262a30');
+                ctx.strokeStyle = hlRing;
+                ctx.lineWidth = 7;
+                ctx.beginPath();
+                ctx.arc(hx, hy, r1 + 2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Round sealed-beam glass lens with fluted ribs
+                const lensGrad = ctx.createRadialGradient(hx - 8, hy - 8, 4, hx, hy, r1);
+                lensGrad.addColorStop(0.0, '#ffffff');
+                lensGrad.addColorStop(0.3, '#f2f6fa');
+                lensGrad.addColorStop(0.7, '#b8c4d2');
+                lensGrad.addColorStop(1.0, '#4a5360');
+                ctx.fillStyle = lensGrad;
+                ctx.beginPath();
+                ctx.arc(hx, hy, r1 - 1, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Fluted glass lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                ctx.lineWidth = 1.2;
+                for (let lx = hx - r1 + 8; lx < hx + r1 - 8; lx += 7) {
+                    ctx.beginPath();
+                    ctx.moveTo(lx, hy - r1 * 0.7);
+                    ctx.lineTo(lx, hy + r1 * 0.7);
+                    ctx.stroke();
+                }
+
+                // Center bulb filament point
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Bold "G T O" Badge on Driver's Side Grille (Photo 0!)
+            if (isDriverSide) {
+                const badgeX = x + 62;
+                const badgeY = barY + 1;
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Impact", "Arial Black", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.letterSpacing = '6px';
+
+                // Drop shadow
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = 4;
+                ctx.fillText('G T O', badgeX, badgeY);
+                ctx.shadowBlur = 0;
+
+                // Chrome face
+                ctx.strokeStyle = '#c8d0da';
+                ctx.lineWidth = 1;
+                ctx.strokeText('G T O', badgeX, badgeY);
+            }
+        };
+
+        const gH = height - 44;
+        const gY = 22;
+        const gW = width * 0.5 - beakW * 0.5 - 18;
+
+        // Left Passenger Side Split Grille
+        drawSplitGrille(14, gY, gW, gH, false);
+
+        // Right Driver Side Split Grille (with "GTO" badge from Photo 0)
+        drawSplitGrille(width * 0.5 + beakW * 0.5 + 4, gY, gW, gH, true);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['gtoGrille'] = texture;
+        return texture;
+    }
+
+    // 10p. 1969/1970 Pontiac GTO Chrome Rear Bumper with Integrated Taillights & VA Plate (Photo 1)
+    createGTORearBumperTaillightTexture(width = 512, height = 128) {
+        if (this.cache['gtoRearBumper']) return this.cache['gtoRearBumper'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Full-Width Polished Chrome Bumper Body (Photo 1)
+        const bumpGrad = ctx.createLinearGradient(0, 0, 0, height);
+        bumpGrad.addColorStop(0.0, '#ffffff');
+        bumpGrad.addColorStop(0.2, '#dbe2ea');
+        bumpGrad.addColorStop(0.55, '#8c98a6');
+        bumpGrad.addColorStop(0.85, '#cbd4de');
+        bumpGrad.addColorStop(1.0, '#4a525d');
+        ctx.fillStyle = bumpGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Top and bottom chrome bevel lines
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(4, 4, width - 8, height - 8);
+
+        // Function to draw horizontal recessed taillight
+        const drawTaillight = (x, y, w, h, isDriverSide) => {
+            // Recessed chrome bezel
+            ctx.fillStyle = '#1c1f24';
+            ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+            ctx.strokeStyle = '#e4ebf3';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
+
+            // Deep ruby-red ribbed brake light
+            const redGrad = ctx.createLinearGradient(0, y, 0, y + h);
+            redGrad.addColorStop(0.0, '#b80f0f');
+            redGrad.addColorStop(0.4, '#e61818');
+            redGrad.addColorStop(1.0, '#660505');
+            ctx.fillStyle = redGrad;
+            ctx.fillRect(x, y, w, h);
+
+            // Vertical lens prism ribs
+            ctx.strokeStyle = 'rgba(255, 120, 120, 0.5)';
+            ctx.lineWidth = 2;
+            for (let rx = x + 6; rx < x + w - 4; rx += 7) {
+                ctx.beginPath();
+                ctx.moveTo(rx, y + 2);
+                ctx.lineTo(rx, y + h - 2);
+                ctx.stroke();
+            }
+
+            // White/clear reverse light section on inner end (Photo 1!)
+            const revW = 28;
+            const revX = isDriverSide ? x + 4 : x + w - revW - 4;
+            const revGrad = ctx.createLinearGradient(0, y, 0, y + h);
+            revGrad.addColorStop(0.0, '#f4f7fb');
+            revGrad.addColorStop(0.5, '#c8d3e0');
+            revGrad.addColorStop(1.0, '#788494');
+            ctx.fillStyle = revGrad;
+            ctx.fillRect(revX, y + 2, revW, h - 4);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(revX, y + 2, revW, h - 4);
+        };
+
+        const tY = height * 0.42;
+        const tH = 34;
+        const tW = 145;
+
+        // Left taillight
+        drawTaillight(20, tY, tW, tH, false);
+
+        // Right taillight
+        drawTaillight(width - tW - 20, tY, tW, tH, true);
+
+        // Center Recessed License Plate: Virginia Antique Plate "4126Z VA" (Photo 1!)
+        const pW = 105;
+        const pH = 56;
+        const pX = width * 0.5 - pW * 0.5;
+        const pY = height * 0.28;
+
+        // Plate dark recess
+        ctx.fillStyle = '#111316';
+        ctx.fillRect(pX - 4, pY - 4, pW + 8, pH + 8);
+
+        // Black Virginia Antique plate
+        ctx.fillStyle = '#0f1114';
+        ctx.fillRect(pX, pY, pW, pH);
+        ctx.strokeStyle = '#f0f3f6';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(pX + 2, pY + 2, pW - 4, pH - 4);
+
+        // Top header "ANTIQUE VEHICLE"
+        ctx.fillStyle = '#d0d8e2';
+        ctx.font = 'bold 7px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('ANTIQUE', pX + pW - 8, pY + 13);
+        ctx.fillText('VEHICLE', pX + pW - 8, pY + 21);
+
+        // Plate Number: "4126Z" and "VA"
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 28px -apple-system, BlinkMacSystemFont, "Arial Black", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.letterSpacing = '1px';
+        ctx.fillText('4126Z', pX + 6, pY + 41);
+
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('VA', pX + pW - 26, pY + 40);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['gtoRearBumper'] = texture;
+        return texture;
+    }
+
+    // 10q. Pontiac Rally II 5-Spoke Muscle Car Wheels & Raised White Letter Tires (Photo 2)
+    createGTORallyWheelTexture(size = 512) {
+        if (this.cache['gtoWheel']) return this.cache['gtoWheel'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const cx = size * 0.5;
+        const cy = size * 0.5;
+        const rOuter = size * 0.48;
+
+        // Dark charcoal tire sidewall background
+        ctx.fillStyle = '#16181b';
+        ctx.beginPath();
+        ctx.arc(cx, cy, rOuter, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Raised White Lettering on Sidewall: "RADIAL T/A" and "BFGOODRICH" (Photo 2!)
+        ctx.save();
+        ctx.fillStyle = '#f4f6fa';
+        ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Impact", "Arial Black", sans-serif';
+        ctx.textAlign = 'center';
+
+        // Top arc: "RADIAL T/A"
+        const topText = 'R A D I A L   T / A';
+        const textRadius = rOuter * 0.88;
+        for (let i = 0; i < topText.length; i++) {
+            const charAngle = -Math.PI / 2 + (i - (topText.length - 1) * 0.5) * 0.085;
+            ctx.save();
+            ctx.translate(cx + Math.cos(charAngle) * textRadius, cy + Math.sin(charAngle) * textRadius);
+            ctx.rotate(charAngle + Math.PI / 2);
+            ctx.fillText(topText[i], 0, 0);
+            ctx.restore();
+        }
+
+        // Bottom arc: "BFGOODRICH"
+        const botText = 'B F G O O D R I C H';
+        for (let j = 0; j < botText.length; j++) {
+            const bAngle = Math.PI / 2 + (j - (botText.length - 1) * 0.5) * 0.075;
+            ctx.save();
+            ctx.translate(cx + Math.cos(bAngle) * textRadius, cy + Math.sin(bAngle) * textRadius);
+            ctx.rotate(bAngle - Math.PI / 2);
+            ctx.fillText(botText[j], 0, 0);
+            ctx.restore();
+        }
+        ctx.restore();
+
+        // Polished Chrome Outer Rim Beauty Ring (Photo 2!)
+        const rimR = rOuter * 0.72;
+        const rimGrad = ctx.createLinearGradient(0, 0, size, size);
+        rimGrad.addColorStop(0.0, '#ffffff');
+        rimGrad.addColorStop(0.35, '#c4cbd4');
+        rimGrad.addColorStop(0.65, '#848e9c');
+        rimGrad.addColorStop(1.0, '#f0f4f8');
+        ctx.strokeStyle = rimGrad;
+        ctx.lineWidth = 18;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rimR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Dark Argent / Charcoal Rally II Wheel Well Face
+        ctx.fillStyle = '#26292e';
+        ctx.beginPath();
+        ctx.arc(cx, cy, rimR - 9, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 5 Iconic Rally II 5-Spoke Slots (Silver Spokes with Dark Pockets) (Photo 2!)
+        for (let s = 0; s < 5; s++) {
+            const angle = (s * Math.PI * 2) / 5 - Math.PI / 2;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+
+            // Dark Charcoal Recessed Kidney Slot
+            ctx.fillStyle = '#121417';
+            ctx.beginPath();
+            ctx.moveTo(-28, 48);
+            ctx.lineTo(-38, rimR - 18);
+            ctx.lineTo(38, rimR - 18);
+            ctx.lineTo(28, 48);
+            ctx.closePath();
+            ctx.fill();
+
+            // Silver Machined Spoke Ridge
+            const spokeGrad = ctx.createLinearGradient(-15, 0, 15, rimR);
+            spokeGrad.addColorStop(0.0, '#ffffff');
+            spokeGrad.addColorStop(0.5, '#c0c8d2');
+            spokeGrad.addColorStop(1.0, '#808a96');
+            ctx.fillStyle = spokeGrad;
+            ctx.beginPath();
+            ctx.moveTo(-16, 52);
+            ctx.lineTo(-24, rimR - 22);
+            ctx.lineTo(24, rimR - 22);
+            ctx.lineTo(16, 52);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Center Chrome Hub with 5 Acorn Lug Nuts
+        ctx.fillStyle = '#a8b0bc';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 54, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#444a54';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // 5 Chrome Lug Nuts
+        for (let l = 0; l < 5; l++) {
+            const la = (l * Math.PI * 2) / 5 - Math.PI / 2 + Math.PI / 5;
+            const lx = cx + Math.cos(la) * 38;
+            const ly = cy + Math.sin(la) * 38;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(lx, ly, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#282b30';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // Center Red PMD (Pontiac Motor Division) Arrowhead Center Cap (Photo 2!)
+        ctx.fillStyle = '#c41818';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Silver Pontiac arrowhead logo in center
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 10);
+        ctx.lineTo(cx + 6, cy + 9);
+        ctx.lineTo(cx, cy + 5);
+        ctx.lineTo(cx - 6, cy + 9);
+        ctx.closePath();
+        ctx.fill();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['gtoWheel'] = texture;
+        return texture;
+    }
+
+    // 10r. 1969/1970 Pontiac GTO "The Judge" Side Eyebrow Stripe (Photo 2)
+    createGTOJudgeStripeTexture(width = 1024, height = 128) {
+        if (this.cache['gtoJudgeStripe']) return this.cache['gtoJudgeStripe'];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Transparent background
+        ctx.clearRect(0, 0, width, height);
+
+        // Tri-Color Speed Stripe: Yellow, Orange, Red with Black Borders (Photo 2!)
+        // Tapering speed stripe running along waistline
+        const drawStripePath = (offsetY, h, color) => {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(40, 50 + offsetY);
+            ctx.quadraticCurveTo(width * 0.28, 20 + offsetY, width * 0.45, 45 + offsetY);
+            ctx.lineTo(width - 40, 48 + offsetY);
+            ctx.lineTo(width - 40, 48 + offsetY + h);
+            ctx.lineTo(width * 0.45, 45 + offsetY + h);
+            ctx.quadraticCurveTo(width * 0.28, 20 + offsetY + h, 40, 50 + offsetY + h);
+            ctx.closePath();
+            ctx.fill();
+        };
+
+        // Black outer pinstripes
+        drawStripePath(-3, 20, '#111215');
+        // Yellow top stripe
+        drawStripePath(0, 5, '#ffdd11');
+        // Orange middle stripe
+        drawStripePath(5, 5, '#ff6600');
+        // Red bottom stripe
+        drawStripePath(10, 4, '#cc1818');
+
+        // "THE JUDGE" Iconic Script Decal on Front Fender section (Photo 2!)
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'italic bold 28px "Arial Black", Impact, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText('THE JUDGE', 120, 100);
+        ctx.shadowBlur = 0;
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['gtoJudgeStripe'] = texture;
+        return texture;
+    }
+
+    // 10s. Pontiac GTO Hood-Mounted Tachometer Dial (Photo 0 & 2)
+    createGTOTachTexture(size = 128) {
+        if (this.cache['gtoTach']) return this.cache['gtoTach'];
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const cx = size * 0.5;
+        const cy = size * 0.5;
+        const r = size * 0.44;
+
+        // Black instrument dial face
+        ctx.fillStyle = '#0f1114';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Chrome bezel ring
+        ctx.strokeStyle = '#c8d0da';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // RPM Hash marks (1000 - 8000 RPM)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        for (let i = 0; i <= 8; i++) {
+            const angle = Math.PI * 0.75 + (i / 8) * Math.PI * 1.5;
+            const x1 = cx + Math.cos(angle) * (r - 16);
+            const y1 = cy + Math.sin(angle) * (r - 16);
+            const x2 = cx + Math.cos(angle) * (r - 6);
+            const y2 = cy + Math.sin(angle) * (r - 6);
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        // Redline zone (5500 - 8000 RPM)
+        ctx.strokeStyle = '#cc1818';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - 10, Math.PI * 0.75 + (5.5 / 8) * Math.PI * 1.5, Math.PI * 0.75 + Math.PI * 1.5);
+        ctx.stroke();
+
+        // Tachometer Needle (pointing at 3500 RPM)
+        const needleAngle = Math.PI * 0.75 + (3.5 / 8) * Math.PI * 1.5;
+        ctx.strokeStyle = '#ff3b30';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(needleAngle) * (r - 10), cy + Math.sin(needleAngle) * (r - 10));
+        ctx.stroke();
+
+        // Center needle hub
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.cache['gtoTach'] = texture;
+        return texture;
+    }
+
     // 10j. High-Definition Asphalt Road Texture with Stone Aggregate & Markings
     // 10j. Photorealistic 2-Lane Asphalt Highway Texture (Double-Wide with Dual-Lane Markings)
     createAsphaltRoadTexture(width = 512, height = 512) {

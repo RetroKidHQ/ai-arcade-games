@@ -310,6 +310,9 @@ class Game {
                 } else if (type === 'offroad') {
                     if (colorPicker) colorPicker.value = '#3d4147';
                     this.car.setCarType(type, 0x3d4147);
+                } else if (type === 'muscle') {
+                    if (colorPicker) colorPicker.value = '#e64215';
+                    this.car.setCarType(type, 0xe64215);
                 } else {
                     this.car.setCarType(type);
                 }

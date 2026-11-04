@@ -94,6 +94,8 @@ class Car {
             this.paintColor = 0xd91616; // Iconic Guards Red from Porsche photos
         } else if (type === 'offroad') {
             this.paintColor = 0x3d4147; // Magnetic Gray Metallic from Toyota 4Runner photos
+        } else if (type === 'muscle') {
+            this.paintColor = 0xe64215; // Carousel Red / Orbit Orange from Pontiac GTO "The Judge" photos
         }
         this.buildVehicle(this.carType);
     }
@@ -764,51 +766,466 @@ class Car {
         }
     }
 
+    // Exact 1:1 photorealistic replica of the 1969/1970 Pontiac GTO "The Judge" from reference photos (Front, Side, Rear)
     buildMuscleCar(paintMat, chromeMat, blackTrim, glassMat) {
+        const tg = window.textureGenerator;
+        const skyTex = tg ? tg.createSkyTexture() : null;
         const body = new THREE.Group();
-        const main = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.55, 4.2), paintMat);
-        main.position.set(0, 0.55, 0);
-        main.castShadow = true;
-        body.add(main);
 
-        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.45, 2.0), glassMat);
-        cabin.position.set(0, 0.95, -0.3);
-        body.add(cabin);
+        // Authentic Muscle Car Materials
+        const darkTrimMat = new THREE.MeshStandardMaterial({
+            color: 0x141619,
+            roughness: 0.65,
+            metalness: 0.25,
+            envMap: skyTex,
+            envMapIntensity: 0.6
+        });
 
-        const roof = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.08, 1.95), paintMat);
-        roof.position.set(0, 1.2, -0.3);
-        body.add(roof);
+        const silverTrimMat = new THREE.MeshStandardMaterial({
+            color: 0xdde2ea,
+            roughness: 0.25,
+            metalness: 0.9,
+            envMap: skyTex,
+            envMapIntensity: 2.2
+        });
 
-        const scoop = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.14, 0.85), blackTrim);
-        scoop.position.set(0, 0.88, 1.1);
-        body.add(scoop);
+        const clearGlassMat = new THREE.MeshPhysicalMaterial({
+            color: 0x181c20,
+            roughness: 0.04,
+            metalness: 0.1,
+            transmission: 0.72,
+            transparent: true,
+            opacity: 0.88,
+            ior: 1.5,
+            envMap: skyTex,
+            envMapIntensity: 2.5
+        });
 
-        for (const ex of [-0.5, 0.5]) {
-            const pipeGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.4, 12);
-            pipeGeo.rotateX(Math.PI / 2);
-            const pipe = new THREE.Mesh(pipeGeo, chromeMat);
-            pipe.position.set(ex, 0.35, -2.15);
-            body.add(pipe);
-            this.exhaustPipes.push(new THREE.Vector3(ex, 0.35, -2.2));
+        // 1. Classic A-Body Fastback Fuselage with Coke-Bottle Contour (Photo 1 & 2)
+        const mainFuselage = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.44, 4.85), paintMat);
+        mainFuselage.position.set(0, 0.46, 0.05);
+        mainFuselage.castShadow = true;
+        mainFuselage.receiveShadow = true;
+        body.add(mainFuselage);
+
+        // Flared Rear Coke-Bottle Hips (Photo 2)
+        for (const s of [-0.94, 0.94]) {
+            const hipFlare = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.38, 1.65), paintMat);
+            hipFlare.position.set(s, 0.49, -1.05);
+            hipFlare.castShadow = true;
+            body.add(hipFlare);
         }
 
-        this.headlightPositions = [
-            { x: -0.7, y: 0.55, z: 2.12 },
-            { x: 0.7, y: 0.55, z: 2.12 }
+        // Lower Rocker Sill Chrome Moldings (Photo 2)
+        for (const s of [-0.95, 0.95]) {
+            const rockerMolding = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 2.25), chromeMat);
+            rockerMolding.position.set(s, 0.24, 0.05);
+            body.add(rockerMolding);
+        }
+
+        // Underbody Frame Rails & Dual Exhaust Transmission Tunnel
+        const undercarriage = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.16, 4.2), darkTrimMat);
+        undercarriage.position.set(0, 0.22, 0.05);
+        body.add(undercarriage);
+
+        // 2. Sculpted Long Hood with Functional Twin Ram Air Scoops & Spine (Photo 0 & 2)
+        const hood = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.07, 1.65), paintMat);
+        hood.position.set(0, 0.69, 1.45);
+        hood.rotation.x = 0.05; // Gentle slope down to nose
+        hood.castShadow = true;
+        body.add(hood);
+
+        // Center Hood Spine Crease running forward to nose peak
+        const hoodSpine = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.025, 1.65), paintMat);
+        hoodSpine.position.set(0, 0.73, 1.45);
+        hoodSpine.rotation.x = 0.05;
+        body.add(hoodSpine);
+
+        // Twin Ram Air Hood Scoops (Photo 0 & 2!)
+        for (const s of [-0.30, 0.30]) {
+            // Scoop outer teardrop cowl
+            const scoopCowl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.38), paintMat);
+            scoopCowl.position.set(s, 0.74, 1.35);
+            scoopCowl.rotation.x = -0.06;
+            scoopCowl.castShadow = true;
+            body.add(scoopCowl);
+
+            // Scoop open forward air intake cavity
+            const scoopIntake = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.032, 0.06), darkTrimMat);
+            scoopIntake.position.set(s, 0.745, 1.53);
+            scoopIntake.rotation.x = -0.06;
+            body.add(scoopIntake);
+        }
+
+        // 3. Hood-Mounted Tachometer Pod on Driver's Side (Photo 0 & 2!)
+        const tachHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.12, 16), paintMat);
+        tachHousing.rotation.x = Math.PI / 2.15;
+        tachHousing.position.set(-0.46, 0.77, 1.15);
+        tachHousing.castShadow = true;
+        body.add(tachHousing);
+
+        // Tachometer Dial Face facing the driver windshield
+        const tachTex = tg ? tg.createGTOTachTexture() : null;
+        const tachMat = new THREE.MeshStandardMaterial({ map: tachTex, roughness: 0.25, metalness: 0.6 });
+        const tachFace = new THREE.Mesh(new THREE.CircleGeometry(0.052, 16), tachMat);
+        tachFace.rotation.y = Math.PI;
+        tachFace.rotation.x = 0.12;
+        tachFace.position.set(-0.46, 0.77, 1.085);
+        body.add(tachFace);
+
+        // 4. Iconic Endura Front Bumper, Split-Grille, Quad Headlights & "GTO" Badge (Photo 0!)
+        const enduraNose = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.36, 0.32), paintMat);
+        enduraNose.position.set(0, 0.48, 2.32);
+        enduraNose.castShadow = true;
+        body.add(enduraNose);
+
+        // Center Vertical Protruding Beak / Prow Divider (Photo 0!)
+        const noseBeak = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.36, 0.28), paintMat);
+        noseBeak.position.set(0, 0.48, 2.44);
+        noseBeak.castShadow = true;
+        body.add(noseBeak);
+
+        // Split-Grille Mesh with Quad Sealed Beams & "GTO" Emblem (Photo 0!)
+        const grilleTex = tg ? tg.createGTOGrilleTexture() : null;
+        const grilleMat = new THREE.MeshStandardMaterial({
+            map: grilleTex,
+            roughness: 0.25,
+            metalness: 0.75
+        });
+        const frontSplitGrille = new THREE.Mesh(new THREE.PlaneGeometry(1.68, 0.32), grilleMat);
+        frontSplitGrille.position.set(0, 0.52, 2.485);
+        body.add(frontSplitGrille);
+
+        // Clear Protective Lenses over the 4 Headlights
+        for (const s of [-0.70, -0.46, 0.46, 0.70]) {
+            const hlLens = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), glassMat);
+            hlLens.position.set(s, 0.52, 2.49);
+            body.add(hlLens);
+        }
+
+        // Lower Front Valence with Amber Turn Signals & Chrome USA-1 Plate (Photo 0!)
+        const lowerValence = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.14, 0.16), paintMat);
+        lowerValence.position.set(0, 0.28, 2.36);
+        body.add(lowerValence);
+
+        // Amber Parking / Turn Signal Lenses on Lower Valence (Photo 0!)
+        for (const s of [-0.68, 0.68]) {
+            const turnLamp = new THREE.Mesh(
+                new THREE.BoxGeometry(0.16, 0.07, 0.02),
+                new THREE.MeshStandardMaterial({ color: 0xff8c00, emissive: 0xcc6600, emissiveIntensity: 0.4 })
+            );
+            turnLamp.position.set(s, 0.29, 2.445);
+            body.add(turnLamp);
+
+            // Chrome bezel around turn lamp
+            const turnBezel = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.09, 0.01), chromeMat);
+            turnBezel.position.set(s, 0.29, 2.44);
+            body.add(turnBezel);
+        }
+
+        // Front Chrome "U-S-A-1" License Plate Bracket (Photo 0!)
+        const frontPlate = new THREE.Mesh(
+            new THREE.BoxGeometry(0.32, 0.15, 0.02),
+            new THREE.MeshStandardMaterial({ color: 0xd8dde4, metalness: 0.85, roughness: 0.2 })
+        );
+        frontPlate.position.set(0, 0.28, 2.45);
+        body.add(frontPlate);
+
+        // 5. Classic Semi-Fastback Hardtop Greenhouse (Photo 1 & 2)
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.46, 2.45), paintMat);
+        cabin.position.set(0, 0.88, -0.32);
+        cabin.castShadow = true;
+        body.add(cabin);
+
+        // Slanted Muscle Car Windshield (Photo 0 & 2)
+        const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.03, 0.86), clearGlassMat);
+        windshield.position.set(0, 0.94, 0.72);
+        windshield.rotation.x = -Math.PI / 3.4;
+        body.add(windshield);
+
+        // Chrome Windshield Frame A-Pillars
+        for (const s of [-0.74, 0.74]) {
+            const aPillar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.88), chromeMat);
+            aPillar.position.set(s, 0.94, 0.72);
+            aPillar.rotation.x = -Math.PI / 3.4;
+            body.add(aPillar);
+        }
+
+        // Side Hardtop Windows with Chrome Drip Rail (Photo 2)
+        for (const s of [-0.80, 0.80]) {
+            const sideGlass = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.36, 1.55), clearGlassMat);
+            sideGlass.position.set(s, 0.95, -0.05);
+            body.add(sideGlass);
+
+            // Chrome roof drip rail
+            const dripRail = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 1.85), chromeMat);
+            dripRail.position.set(s, 1.12, -0.20);
+            body.add(dripRail);
+        }
+
+        // Sloping Fastback Rear Window
+        const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.03, 0.95), clearGlassMat);
+        rearGlass.position.set(0, 0.94, -1.25);
+        rearGlass.rotation.x = Math.PI / 4.2;
+        body.add(rearGlass);
+
+        // Broad Sail Panel / C-Pillars (Photo 2)
+        for (const s of [-0.80, 0.80]) {
+            const cPillar = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.40, 0.78), paintMat);
+            cPillar.position.set(s, 0.94, -1.05);
+            cPillar.rotation.x = 0.25;
+            body.add(cPillar);
+        }
+
+        // Interior Black Vinyl Bucket Seats & Sports Steering Wheel
+        for (const s of [-0.38, 0.38]) {
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.36, 0.36), darkTrimMat);
+            seat.position.set(s, 0.65, 0.12);
+            body.add(seat);
+
+            const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.10), darkTrimMat);
+            headrest.position.set(s, 0.90, 0.05);
+            body.add(headrest);
+        }
+        const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.018, 8, 16), chromeMat);
+        steeringWheel.position.set(-0.38, 0.84, 0.42);
+        steeringWheel.rotation.x = Math.PI / 3.5;
+        body.add(steeringWheel);
+
+        // 6. "The Judge" Eyebrow Speed Stripes & Graphic Decals (Photo 2!)
+        const stripeTex = tg ? tg.createGTOJudgeStripeTexture() : null;
+        if (stripeTex) {
+            const stripeMat = new THREE.MeshStandardMaterial({
+                map: stripeTex,
+                transparent: true,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+            for (const s of [-0.95, 0.95]) {
+                const stripePlane = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.28), stripeMat);
+                stripePlane.position.set(s > 0 ? s + 0.005 : s - 0.005, 0.58, 0.65);
+                stripePlane.rotation.y = s > 0 ? Math.PI / 2 : -Math.PI / 2;
+                body.add(stripePlane);
+            }
+        }
+
+        // Chrome Bullet Side Mirrors (Photo 0 & 2)
+        for (const s of [-0.96, 0.96]) {
+            const mirrorBase = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.06, 8), chromeMat);
+            mirrorBase.position.set(s, 0.72, 0.68);
+            body.add(mirrorBase);
+
+            const mirrorBullet = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 12), chromeMat);
+            mirrorBullet.scale.set(1.4, 1.0, 1.0);
+            mirrorBullet.position.set(s > 0 ? s + 0.04 : s - 0.04, 0.76, 0.68);
+            body.add(mirrorBullet);
+        }
+
+        // Chrome Door Handles
+        for (const s of [-0.95, 0.95]) {
+            const handle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.15), chromeMat);
+            handle.position.set(s, 0.64, -0.05);
+            body.add(handle);
+        }
+
+        // 7. "The Judge" Pedestal Airfoil Wing Spoiler (Photo 1 & 2!)
+        // Main aerodynamic airfoil blade
+        const wingBlade = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.035, 0.26), paintMat);
+        wingBlade.position.set(0, 0.96, -2.02);
+        wingBlade.rotation.x = -0.08; // Downforce aerodynamic angle
+        wingBlade.castShadow = true;
+        body.add(wingBlade);
+
+        // Twin Pedestal Aerodynamic Stanchions (Photo 1!)
+        for (const s of [-0.52, 0.52]) {
+            const stanchion = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.14), paintMat);
+            stanchion.position.set(s, 0.86, -2.02);
+            stanchion.castShadow = true;
+            body.add(stanchion);
+        }
+
+        // "GTO" Script Emblem on Right Trunk Lid (Photo 1!)
+        const trunkBadge = new THREE.Mesh(
+            new THREE.BoxGeometry(0.16, 0.03, 0.01),
+            new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.5 })
+        );
+        trunkBadge.position.set(0.54, 0.72, -2.18);
+        body.add(trunkBadge);
+
+        // Center Chrome Trunk Keyhole Lock (Photo 1)
+        const trunkLock = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.01, 12), chromeMat);
+        trunkLock.rotation.x = Math.PI / 2;
+        trunkLock.position.set(0, 0.72, -2.185);
+        body.add(trunkLock);
+
+        // 8. Full-Width Polished Chrome Rear Bumper with Integrated Taillights & VA Plate (Photo 1!)
+        const bumperTex = tg ? tg.createGTORearBumperTaillightTexture() : null;
+        const bumperMat = new THREE.MeshStandardMaterial({
+            map: bumperTex,
+            roughness: 0.15,
+            metalness: 0.95
+        });
+
+        // Bumper Chrome Main Shell
+        const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(1.90, 0.26, 0.22), chromeMat);
+        rearBumper.position.set(0, 0.48, -2.25);
+        rearBumper.castShadow = true;
+        body.add(rearBumper);
+
+        // Rear Bumper Face Textured with Recessed Taillights & VA Antique Plate (Photo 1!)
+        const bumperFace = new THREE.Mesh(new THREE.PlaneGeometry(1.88, 0.25), bumperMat);
+        bumperFace.rotation.y = Math.PI;
+        bumperFace.position.set(0, 0.48, -2.365);
+        body.add(bumperFace);
+
+        // 9. Quad Polished Chrome Round Exhaust Tips (Photo 1!)
+        // Two dual twin pipes on left and right!
+        const quadPipes = [
+            { x: -0.55, y: 0.26, z: -2.28 },
+            { x: -0.63, y: 0.26, z: -2.28 },
+            { x: 0.55, y: 0.26, z: -2.28 },
+            { x: 0.63, y: 0.26, z: -2.28 }
         ];
-        this.taillightPositions = [
-            { x: -0.7, y: 0.6, z: -2.12 },
-            { x: 0.7, y: 0.6, z: -2.12 }
+        for (const qp of quadPipes) {
+            const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.32, 16), chromeMat);
+            pipe.rotation.x = Math.PI / 2 + 0.06;
+            pipe.position.set(qp.x, qp.y, qp.z);
+            body.add(pipe);
+
+            // Hollow dark pipe interior
+            const innerPipe = new THREE.Mesh(new THREE.CircleGeometry(0.028, 12), darkTrimMat);
+            innerPipe.rotation.y = Math.PI;
+            innerPipe.position.set(qp.x, qp.y, qp.z - 0.16);
+            body.add(innerPipe);
+        }
+
+        // Particle Emitter Coordinates for Dual Quad Exhausts
+        this.exhaustPipes = [
+            { position: new THREE.Vector3(-0.59, 0.26, -2.42) },
+            { position: new THREE.Vector3(0.59, 0.26, -2.42) }
         ];
 
-        const wheelOffsets = [
-            { x: -0.95, y: 0.38, z: 1.35, isFront: true },
-            { x: 0.95, y: 0.38, z: 1.35, isFront: true },
-            { x: -0.98, y: 0.42, z: -1.35, isFront: false },
-            { x: 0.98, y: 0.42, z: -1.35, isFront: false }
+        // 10. Accurate Muscle Car Raycast Light Positions
+        this.headlightPositions = [
+            { x: -0.62, y: 0.52, z: 2.48 },
+            { x: 0.62, y: 0.52, z: 2.48 }
         ];
-        this.attachModernWheels(body, wheelOffsets, 0.38, 0.22);
+        this.taillightPositions = [
+            { x: -0.65, y: 0.48, z: -2.36 },
+            { x: 0.65, y: 0.48, z: -2.36 }
+        ];
+
+        // 11. Staggered Muscle Car Pontiac Rally II Wheels & White-Letter Radial T/A Tires (Photo 2!)
+        const wheelOffsets = [
+            { x: -0.92, y: 0.36, z: 1.45, isFront: true, radius: 0.36, width: 0.24 },
+            { x: 0.92, y: 0.36, z: 1.45, isFront: true, radius: 0.36, width: 0.24 },
+            { x: -0.94, y: 0.37, z: -1.35, isFront: false, radius: 0.37, width: 0.28 },
+            { x: 0.94, y: 0.37, z: -1.35, isFront: false, radius: 0.37, width: 0.28 }
+        ];
+
+        this.attachGTOWheels(body, wheelOffsets, skyTex);
         this.bodyMeshGroup.add(body);
+    }
+
+    // Pontiac Rally II 5-Spoke Wheels with Red PMD Cap & BFGoodrich Radial T/A White-Letter Tires (Photo 2)
+    attachGTOWheels(parent, offsets, skyTex) {
+        const tg = window.textureGenerator;
+        const wheelTex = tg ? tg.createGTORallyWheelTexture() : null;
+
+        // Polished Chrome Beauty Ring Material
+        const chromeRimMat = new THREE.MeshStandardMaterial({
+            color: 0xf4f7fa,
+            metalness: 0.95,
+            roughness: 0.12,
+            envMap: skyTex,
+            envMapIntensity: 2.2
+        });
+
+        // Wheel Face with Rally II Argent Pockets, Lug Nuts, Red PMD Cap & White Raised Lettering
+        const wheelFaceMat = new THREE.MeshStandardMaterial({
+            map: wheelTex,
+            metalness: 0.85,
+            roughness: 0.25,
+            envMap: skyTex,
+            envMapIntensity: 1.8
+        });
+
+        // Meaty Muscle Car Tire Rubber Material
+        const tireMat = new THREE.MeshStandardMaterial({
+            color: 0x16181b,
+            roughness: 0.88,
+            metalness: 0.08
+        });
+
+        // Disc brake rotor & cast iron caliper
+        const rotorMat = new THREE.MeshStandardMaterial({
+            color: 0x626872,
+            roughness: 0.35,
+            metalness: 0.85
+        });
+
+        const caliperMat = new THREE.MeshStandardMaterial({
+            color: 0x24262a,
+            roughness: 0.45,
+            metalness: 0.4
+        });
+
+        for (const off of offsets) {
+            const hubGroup = new THREE.Group();
+            hubGroup.position.set(off.x, off.y, off.z);
+
+            const wheelMesh = new THREE.Group();
+
+            // Muscle Car High-Profile Tire
+            const tireGeo = new THREE.CylinderGeometry(off.radius, off.radius, off.width, 28);
+            tireGeo.rotateZ(Math.PI / 2);
+            const tire = new THREE.Mesh(tireGeo, tireMat);
+            tire.castShadow = true;
+            wheelMesh.add(tire);
+
+            // Chrome Outer Beauty Ring
+            const rimGeo = new THREE.CylinderGeometry(off.radius * 0.74, off.radius * 0.74, off.width + 0.012, 24, 1, true);
+            rimGeo.rotateZ(Math.PI / 2);
+            const rim = new THREE.Mesh(rimGeo, chromeRimMat);
+            wheelMesh.add(rim);
+
+            // Textured 5-Spoke Rally II Wheel Face on Outer Flank (Photo 2!)
+            const faceGeo = new THREE.CircleGeometry(off.radius * 0.73, 24);
+            const faceOuter = new THREE.Mesh(faceGeo, wheelFaceMat);
+            faceOuter.position.x = off.x > 0 ? off.width * 0.5 + 0.008 : -(off.width * 0.5 + 0.008);
+            faceOuter.rotation.y = off.x > 0 ? Math.PI / 2 : -Math.PI / 2;
+            wheelMesh.add(faceOuter);
+
+            // 5 Silver Machined 3D Spokes Radiating from Center
+            const spokeLen = off.radius * 0.56;
+            for (let s = 0; s < 5; s++) {
+                const spokeGroup = new THREE.Group();
+                spokeGroup.rotation.x = (s * Math.PI * 2) / 5 - Math.PI / 2;
+
+                const spoke = new THREE.Mesh(new THREE.BoxGeometry(off.width * 0.16, 0.038, spokeLen), chromeRimMat);
+                spoke.position.set(off.x > 0 ? off.width * 0.44 : -off.width * 0.44, 0, spokeLen * 0.5);
+                spokeGroup.add(spoke);
+                wheelMesh.add(spokeGroup);
+            }
+
+            // Fixed Disc Brake Rotor & Caliper
+            const rotor = new THREE.Mesh(new THREE.CylinderGeometry(off.radius * 0.58, off.radius * 0.58, 0.035, 20), rotorMat);
+            rotor.rotation.z = Math.PI / 2;
+            rotor.position.x = off.x > 0 ? -0.04 : 0.04;
+            hubGroup.add(rotor);
+
+            const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.09, off.radius * 0.36, 0.12), caliperMat);
+            caliper.position.set(off.x > 0 ? -0.04 : 0.04, off.radius * 0.36, 0);
+            hubGroup.add(caliper);
+
+            hubGroup.add(wheelMesh);
+            parent.add(hubGroup);
+
+            this.wheels.push(wheelMesh);
+            if (off.isFront) {
+                this.frontWheelHubs.push(hubGroup);
+            }
+        }
     }
 
     // Exact 1:1 photorealistic replica of the 5th-Gen Toyota 4Runner from the reference photos (Front, Side, Rear)
