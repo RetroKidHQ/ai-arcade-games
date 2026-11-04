@@ -122,9 +122,19 @@ class TerrainManager {
         }
 
         const roadInfo = this.getDistanceToRoad(x, z);
-        if (roadInfo.distance < this.roadWidth * 2.2) {
-            const blend = Math.max(0, (roadInfo.distance - this.roadWidth) / (this.roadWidth * 1.2));
-            baseHeight = baseHeight * (0.25 + 0.75 * blend);
+        if (roadInfo.distance < this.roadWidth * 2.5) {
+            // Keep causeway/roadbed elevated above water so road never goes underwater
+            const minRoadBed = this.waterHeight + 1.6;
+            if (baseHeight < minRoadBed) {
+                const causewayBlend = Math.max(0, 1.0 - roadInfo.distance / (this.roadWidth * 2.5));
+                baseHeight = baseHeight * (1.0 - causewayBlend) + minRoadBed * causewayBlend;
+            }
+
+            // Smooth terrain roadbed beneath the road
+            if (roadInfo.distance < this.roadWidth * 1.8) {
+                const blend = Math.max(0, (roadInfo.distance - this.roadWidth * 0.5) / (this.roadWidth * 1.3));
+                baseHeight = baseHeight * (0.15 + 0.85 * blend);
+            }
         }
 
         return baseHeight;
@@ -268,63 +278,150 @@ class TerrainManager {
         return this.waterMesh;
     }
 
-    // High-Resolution 3D Asphalt Highway Ribbons with Yellow Center Lines
+    // Continuous Watertight 3D Asphalt Highway Ribbons (Never clips under ground or water)
     createRoadRibbonMesh() {
         const tg = window.textureGenerator;
         const asphaltTex = tg ? tg.createAsphaltRoadTexture(512, 512) : null;
 
         const roadMat = new THREE.MeshStandardMaterial({
             map: asphaltTex,
-            roughness: 0.75,
+            roughness: 0.72,
             metalness: 0.15,
             polygonOffset: true,
-            polygonOffsetFactor: -1.0,
-            polygonOffsetUnits: -1.0
+            polygonOffsetFactor: -4.0,
+            polygonOffsetUnits: -4.0
         });
 
-        const group = new THREE.Group();
+        const halfW = this.roadWidth * 0.5;
+        const positions = [];
+        const uvs = [];
+        const indices = [];
+        let vertexOffset = 0;
+        const stepDist = 4.0;
 
         for (const road of this.roads) {
-            const numSegments = road.length - 1;
-            for (let i = 0; i < numSegments; i++) {
+            const pts = [];
+            let totalLen = 0;
+
+            for (let i = 0; i < road.length - 1; i++) {
                 const p1 = road[i];
                 const p2 = road[i + 1];
-
                 const dx = p2.x - p1.x;
                 const dz = p2.z - p1.z;
-                const len = Math.hypot(dx, dz);
-                if (len < 0.1) continue;
-
-                const angle = Math.atan2(dx, dz);
-                const steps = Math.max(4, Math.ceil(len / 18));
-                const segLen = len / steps;
-
+                const segLen = Math.hypot(dx, dz);
+                if (segLen < 0.1) continue;
+                const steps = Math.max(1, Math.ceil(segLen / stepDist));
                 for (let s = 0; s < steps; s++) {
-                    const t1 = s / steps;
-                    const t2 = (s + 1) / steps;
-
-                    const sx = p1.x + dx * ((t1 + t2) * 0.5);
-                    const sz = p1.z + dz * ((t1 + t2) * 0.5);
-                    const sy = this.getHeight(sx, sz) + 0.06; // Rests snugly on top of terrain
-
-                    const segGeo = new THREE.PlaneGeometry(this.roadWidth * 0.95, segLen + 0.2);
-                    segGeo.rotateX(-Math.PI / 2);
-                    segGeo.rotateY(angle);
-
-                    // Check slope pitch between p1 and p2
-                    const y1 = this.getHeight(p1.x + dx * t1, p1.z + dz * t1);
-                    const y2 = this.getHeight(p1.x + dx * t2, p1.z + dz * t2);
-                    const pitch = Math.atan2(y2 - y1, segLen);
-                    segGeo.rotateZ(pitch);
-
-                    const roadSeg = new THREE.Mesh(segGeo, roadMat);
-                    roadSeg.position.set(sx, sy, sz);
-                    roadSeg.receiveShadow = true;
-                    group.add(roadSeg);
+                    const t = s / steps;
+                    pts.push({
+                        x: p1.x + dx * t,
+                        z: p1.z + dz * t,
+                        dist: totalLen + segLen * t
+                    });
                 }
+                totalLen += segLen;
+            }
+            const last = road[road.length - 1];
+            pts.push({ x: last.x, z: last.z, dist: totalLen });
+
+            if (pts.length < 2) continue;
+
+            const isClosed = Math.hypot(road[0].x - last.x, road[0].z - last.z) < 0.1;
+
+            for (let i = 0; i < pts.length; i++) {
+                const curr = pts[i];
+                let tx, tz;
+                if (i === 0) {
+                    if (isClosed && pts.length > 2) {
+                        tx = pts[1].x - pts[pts.length - 2].x;
+                        tz = pts[1].z - pts[pts.length - 2].z;
+                    } else {
+                        tx = pts[1].x - curr.x;
+                        tz = pts[1].z - curr.z;
+                    }
+                } else if (i === pts.length - 1) {
+                    if (isClosed && pts.length > 2) {
+                        tx = pts[1].x - pts[pts.length - 2].x;
+                        tz = pts[1].z - pts[pts.length - 2].z;
+                    } else {
+                        tx = curr.x - pts[i - 1].x;
+                        tz = curr.z - pts[i - 1].z;
+                    }
+                } else {
+                    tx = pts[i + 1].x - pts[i - 1].x;
+                    tz = pts[i + 1].z - pts[i - 1].z;
+                }
+                const tLen = Math.hypot(tx, tz) || 1;
+                tx /= tLen;
+                tz /= tLen;
+
+                // Perpendicular horizontal normal (pointing left)
+                const nx = -tz;
+                const nz = tx;
+
+                const lx = curr.x + nx * halfW;
+                const lz = curr.z + nz * halfW;
+                const rx = curr.x - nx * halfW;
+                const rz = curr.z - nz * halfW;
+
+                const cy = this.getHeight(curr.x, curr.z);
+                const ly = this.getHeight(lx, lz);
+                const ry = this.getHeight(rx, rz);
+
+                // Road is ALWAYS strictly above the highest ground point AND above water
+                const maxGroundY = Math.max(cy, Math.max(ly, ry));
+                const minClearance = this.waterHeight + 2.0; // Guaranteed 2.0m clearance above ocean surface
+                const roadSurfaceY = Math.max(maxGroundY + 0.18, minClearance);
+
+                // Side skirts drop 0.50m below the road surface to seal all ground gaps
+                const skirtY = roadSurfaceY - 0.50;
+
+                // 4 vertices per cross-section station:
+                // 0: left skirt bottom, 1: left road surface, 2: right road surface, 3: right skirt bottom
+                positions.push(lx, skirtY, lz);
+                positions.push(lx, roadSurfaceY, lz);
+                positions.push(rx, roadSurfaceY, rz);
+                positions.push(rx, skirtY, rz);
+
+                const v = curr.dist / 8.0;
+                uvs.push(0.0, v);
+                uvs.push(0.06, v);
+                uvs.push(0.94, v);
+                uvs.push(1.0, v);
+
+                if (i > 0) {
+                    const prev = vertexOffset - 4;
+                    const c = vertexOffset;
+
+                    // Left skirt quad
+                    indices.push(prev + 0, c + 0, prev + 1);
+                    indices.push(c + 0, c + 1, prev + 1);
+
+                    // Road surface quad
+                    indices.push(prev + 1, c + 1, prev + 2);
+                    indices.push(c + 1, c + 2, prev + 2);
+
+                    // Right skirt quad
+                    indices.push(prev + 2, c + 2, prev + 3);
+                    indices.push(c + 2, c + 3, prev + 3);
+                }
+
+                vertexOffset += 4;
             }
         }
 
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geo.setIndex(new THREE.Uint32BufferAttribute(indices, 1));
+        geo.computeVertexNormals();
+
+        const roadMesh = new THREE.Mesh(geo, roadMat);
+        roadMesh.receiveShadow = true;
+        roadMesh.renderOrder = 3;
+
+        const group = new THREE.Group();
+        group.add(roadMesh);
         return group;
     }
 
