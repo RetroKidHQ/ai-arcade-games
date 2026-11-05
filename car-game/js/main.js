@@ -44,15 +44,19 @@ class Game {
 
     initThree() {
         this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x87ceeb);
         this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.0016);
 
-        this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 3000);
-        this.camera.position.set(0, 10, 20);
+        const width = window.innerWidth || 1280;
+        const height = window.innerHeight || 720;
+
+        this.camera = new THREE.PerspectiveCamera(60, width / height, 0.5, 3000);
+        this.camera.position.set(-174, 5, -185);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setSize(width, height);
         // Optimized pixel ratio capped at 1.25 for crisp graphics with high 60fps performance
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -61,9 +65,11 @@ class Game {
         this.container.appendChild(this.renderer.domElement);
 
         window.addEventListener('resize', () => {
-            this.camera.aspect = window.innerWidth / window.innerHeight;
+            const w = window.innerWidth || 1280;
+            const h = window.innerHeight || 720;
+            this.camera.aspect = w / h;
             this.camera.updateProjectionMatrix();
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setSize(w, h);
         });
     }
 
@@ -125,7 +131,7 @@ class Game {
         this.timeOfDay = time;
         if (time === 'day') {
             if (this.skyDome) this.skyDome.visible = true;
-            this.scene.background = null;
+            this.scene.background = new THREE.Color(0x87ceeb);
             this.scene.fog.color.setHex(0xbfe1fb);
             this.scene.fog.density = 0.0009;
             this.hemiLight.intensity = 0.75;
@@ -180,9 +186,27 @@ class Game {
 
     initCar() {
         this.car = new window.Car(this.scene, window.terrainManager, this.world);
-        // Start on the central downtown boulevard
-        this.car.resetPosition(-102, -174);
+        // Start on the central downtown boulevard intersection (Avenue C & Street 3)
+        this.car.resetPosition(-174, -174);
+        this.snapCameraToCar();
         this.setHeadlights(this.timeOfDay !== 'day');
+    }
+
+    snapCameraToCar() {
+        if (!this.car || !this.camera) return;
+        const targetPos = this.car.position.clone();
+        const carBack = new THREE.Vector3(0, 0, -1).applyQuaternion(this.car.root.quaternion);
+        const carUpVec = new THREE.Vector3(0, 1, 0).applyQuaternion(this.car.root.quaternion);
+        const followDist = 8.5;
+        const followHeight = 3.2;
+
+        this.camera.position.set(
+            targetPos.x + carBack.x * followDist,
+            targetPos.y + carBack.y * followDist + carUpVec.y * followHeight,
+            targetPos.z + carBack.z * followDist
+        );
+        const lookTarget = targetPos.clone().add(carUpVec.clone().multiplyScalar(1.2));
+        this.camera.lookAt(lookTarget);
     }
 
     initMinimap() {
@@ -420,8 +444,9 @@ class Game {
         if (roadInfo.p1) {
             this.car.resetPosition(roadInfo.p1.x, roadInfo.p1.z);
         } else {
-            this.car.resetPosition(-50, -200);
+            this.car.resetPosition(-174, -174);
         }
+        this.snapCameraToCar();
         this.showStuntNotification('Vehicle Recovered to Road');
     }
 
@@ -604,6 +629,14 @@ class Game {
     }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    window.game = new Game();
-});
+function bootGame() {
+    if (!window.game) {
+        window.game = new Game();
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootGame);
+} else {
+    bootGame();
+}
