@@ -115,14 +115,14 @@ class WorldManager {
 
         const gridRows = 4;
         const gridCols = 4;
-        const blockSize = 108; // 3 times more far apart (108m spacing)
+        const blockSize = 72; // Close and compact downtown skyscraper grid (72m block spacing)
 
         for (let r = 0; r < gridRows; r++) {
             for (let c = 0; c < gridCols; c++) {
                 if (r === 1 && c === 1) continue; // Open central park / plaza
 
-                const bx = cityX + (c - gridCols / 2) * blockSize;
-                const bz = cityZ + (r - gridRows / 2) * blockSize;
+                const bx = -282 + c * blockSize;
+                const bz = -282 + r * blockSize;
                 const by = this.terrain.getHeight(bx, bz);
 
                 // Assign style archetype (0, 1, 2, 3, 4) evenly across the downtown grid
@@ -649,20 +649,20 @@ class WorldManager {
         const concreteMat = new THREE.MeshStandardMaterial({ color: 0x2e3036, roughness: 0.9, metalness: 0.1 });
         const roofGravelMat = new THREE.MeshStandardMaterial({ color: 0x3d3f44, roughness: 0.9, metalness: 0.1 });
 
-        // Apartment site placements along 2-lane avenues and cross-streets
+        // Compact Apartment site placements directly bordering the downtown skyscraper blocks
         const apartmentSites = [
-            // South Apartment District (Framed between Street 5 at z=42 and Street 6 at z=150)
-            { x: -336, z: 96, rot: 0, style: 0, width: 56, depth: 26, height: 20 }, // Style A: Warehouse Loft with Tower (Photo 0)
-            { x: -228, z: 96, rot: 0, style: 1, width: 52, depth: 24, height: 22 }, // Style B: Red Brick with Fire Escape (Photo 1)
-            { x: -120, z: 96, rot: 0, style: 2, width: 48, depth: 24, height: 18 }, // Style C: Ornate Brownstone with Balconies (Photo 2)
-            { x: -12,  z: 96, rot: 0, style: 0, width: 56, depth: 26, height: 20 }, // Style A: Warehouse Loft with Tower (Photo 0)
+            // South Historic Apartment & Loft District (Directly South of Street 5 at z=-30, framed by Street 6 at z=36)
+            { x: -282, z: 3, rot: 0, style: 0, width: 56, depth: 26, height: 20 }, // Style A: Warehouse Loft with Tower (Photo 0)
+            { x: -210, z: 3, rot: 0, style: 1, width: 52, depth: 24, height: 22 }, // Style B: Red Brick with Fire Escape (Photo 1)
+            { x: -138, z: 3, rot: 0, style: 2, width: 48, depth: 24, height: 18 }, // Style C: Ornate Brownstone with Balconies (Photo 2)
+            { x: -66,  z: 3, rot: 0, style: 0, width: 56, depth: 26, height: 20 }, // Style A: Warehouse Loft with Tower (Photo 0)
 
-            // West Avenue A residential frontage
-            { x: -450, z: -282, rot: Math.PI / 2, style: 1, width: 52, depth: 24, height: 22 }, // Style B (Photo 1)
-            { x: -450, z: -66,  rot: Math.PI / 2, style: 2, width: 48, depth: 24, height: 18 }, // Style C (Photo 2)
+            // West Avenue A residential frontage (Directly West across Avenue A from downtown skyscrapers)
+            { x: -354, z: -210, rot: Math.PI / 2, style: 1, width: 52, depth: 24, height: 22 }, // Style B (Photo 1)
+            { x: -354, z: -138, rot: Math.PI / 2, style: 2, width: 48, depth: 24, height: 18 }, // Style C (Photo 2)
 
-            // Central Park District frontage (facing the park plaza)
-            { x: -228, z: -228, rot: 0, style: 1, width: 52, depth: 24, height: 22 }  // Style B (Photo 1)
+            // Central Park Plaza frontage (inside the central park square)
+            { x: -210, z: -210, rot: 0, style: 1, width: 52, depth: 24, height: 22 }  // Style B (Photo 1)
         ];
 
         for (const site of apartmentSites) {
@@ -1056,7 +1056,7 @@ class WorldManager {
             if (ty < this.terrain.waterHeight + 1.5) continue;
             // Clear of 18m 2-lane roadway and sidewalks
             if (this.terrain.getDistanceToRoad(tx, tz).distance < this.terrain.roadWidth * 0.5 + 5.0) continue;
-            if (Math.hypot(tx + 174, tz + 120) < 340) continue; // Keep skyscraper core and apartment district clear
+            if (Math.hypot(tx + 174, tz + 140) < 250) continue; // Keep compact skyscraper core and apartment district clear
             if (Math.hypot(tx - 300, tz - 300) < 95) continue;  // Stunt park
 
             const template = treeTemplates[Math.floor(Math.random() * treeTemplates.length)];
@@ -1340,20 +1340,18 @@ class WorldManager {
         // 1. Trees around all 15 Downtown Skyscrapers
         const gridRows = 4;
         const gridCols = 4;
-        const blockSize = 108;
-        const cityX = -120;
-        const cityZ = -120;
+        const blockSize = 72;
 
         for (let r = 0; r < gridRows; r++) {
             for (let c = 0; c < gridCols; c++) {
                 if (r === 1 && c === 1) continue; // Central park plaza handled below
 
-                const bx = cityX + (c - gridCols / 2) * blockSize;
-                const bz = cityZ + (r - gridRows / 2) * blockSize;
+                const bx = -282 + c * blockSize;
+                const bz = -282 + r * blockSize;
 
-                // 6 trees framing each skyscraper's sidewalk plaza (staying well clear of 18m roadbed)
-                const dCorner = 25;
-                const dMid = 26;
+                // 6 trees framing each skyscraper's sidewalk plaza (staying safely on sidewalk clear of 18m roadbed)
+                const dCorner = 23;
+                const dMid = 24;
                 treeCoords.push(
                     { x: bx - dCorner, z: bz - dCorner, type: 'urban' },
                     { x: bx + dCorner, z: bz - dCorner, type: 'urban' },
@@ -1367,13 +1365,13 @@ class WorldManager {
 
         // 2. Trees around all 7 Historic Apartment Buildings
         const apartmentSites = [
-            { x: -336, z: 96,  w: 56, d: 26 },
-            { x: -228, z: 96,  w: 52, d: 24 },
-            { x: -120, z: 96,  w: 48, d: 24 },
-            { x: -12,  z: 96,  w: 56, d: 26 },
-            { x: -450, z: -282, w: 24, d: 52 },
-            { x: -450, z: -66,  w: 24, d: 48 },
-            { x: -228, z: -228, w: 52, d: 24 }
+            { x: -282, z: 3,    w: 56, d: 26 },
+            { x: -210, z: 3,    w: 52, d: 24 },
+            { x: -138, z: 3,    w: 48, d: 24 },
+            { x: -66,  z: 3,    w: 56, d: 26 },
+            { x: -354, z: -210, w: 24, d: 52 },
+            { x: -354, z: -138, w: 24, d: 48 },
+            { x: -210, z: -210, w: 52, d: 24 }
         ];
 
         for (const apt of apartmentSites) {
@@ -1401,10 +1399,10 @@ class WorldManager {
 
         // Central Park Grove (around plaza and park apartment)
         treeCoords.push(
-            { x: -252, z: -208, type: 'bushy' },
-            { x: -204, z: -208, type: 'bushy' },
-            { x: -252, z: -248, type: 'bushy' },
-            { x: -204, z: -248, type: 'bushy' }
+            { x: -234, z: -228, type: 'bushy' },
+            { x: -186, z: -228, type: 'bushy' },
+            { x: -234, z: -192, type: 'bushy' },
+            { x: -186, z: -192, type: 'bushy' }
         );
 
         // 3. Trees around Farmland Country Barn (-280, 280)
@@ -1468,18 +1466,21 @@ class WorldManager {
 
         const lampPositions = [
             // Downtown Central Avenue C (x = -174)
-            { x: -174 + sidewalkOff, z: -350 }, { x: -174 - sidewalkOff, z: -250 },
-            { x: -174 + sidewalkOff, z: -150 }, { x: -174 - sidewalkOff, z: -50 },
-            { x: -174 + sidewalkOff, z: 50 }, { x: -174 - sidewalkOff, z: 150 },
-            { x: -174 + sidewalkOff, z: 250 }, { x: -174 - sidewalkOff, z: 350 },
+            { x: -174 + sidewalkOff, z: -280 }, { x: -174 - sidewalkOff, z: -210 },
+            { x: -174 + sidewalkOff, z: -140 }, { x: -174 - sidewalkOff, z: -70 },
+            { x: -174 + sidewalkOff, z: 0 },    { x: -174 - sidewalkOff, z: 150 },
+            { x: -174 + sidewalkOff, z: 250 },  { x: -174 - sidewalkOff, z: 350 },
 
-            // Downtown Avenue B (x = -282)
-            { x: -282 + sidewalkOff, z: -250 }, { x: -282 - sidewalkOff, z: -100 },
-            { x: -282 + sidewalkOff, z: 50 },
+            // Downtown Avenue B (x = -246)
+            { x: -246 + sidewalkOff, z: -210 }, { x: -246 - sidewalkOff, z: -70 },
+            { x: -246 + sidewalkOff, z: 0 },
 
-            // Downtown Avenue D (x = -66)
-            { x: -66 + sidewalkOff, z: -250 }, { x: -66 - sidewalkOff, z: -100 },
-            { x: -66 + sidewalkOff, z: 50 },
+            // Downtown Avenue D (x = -102)
+            { x: -102 + sidewalkOff, z: -210 }, { x: -102 - sidewalkOff, z: -70 },
+            { x: -102 + sidewalkOff, z: 0 },
+
+            // Downtown Avenue A (x = -318) & Avenue E (x = -30)
+            { x: -318 - sidewalkOff, z: -140 }, { x: -30 + sidewalkOff, z: -140 },
 
             // Regional Highways & Farmland
             { x: -280 + sidewalkOff, z: 220 }, { x: -400 + sidewalkOff, z: 350 },

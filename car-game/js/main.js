@@ -180,8 +180,8 @@ class Game {
 
     initCar() {
         this.car = new window.Car(this.scene, window.terrainManager, this.world);
-        // Start near the main scenic road
-        this.car.resetPosition(-50, -200);
+        // Start on the central downtown boulevard
+        this.car.resetPosition(-102, -174);
         this.setHeadlights(this.timeOfDay !== 'day');
     }
 
