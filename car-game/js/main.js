@@ -5,7 +5,7 @@
 
 class Game {
     constructor() {
-        this.container = document.getElementById('game-container');
+        this.container = document.getElementById('game-container') || document.body;
         this.clock = new THREE.Clock();
 
         // Input state
@@ -599,39 +599,51 @@ class Game {
     animate() {
         requestAnimationFrame(this.animate);
 
-        const delta = Math.min(this.clock.getDelta(), 0.1);
+        try {
+            const delta = Math.min(this.clock.getDelta(), 0.1);
 
-        // Update Car Physics
-        this.car.update(delta, this.input);
+            // Update Car Physics
+            this.car.update(delta, this.input);
 
-        // Update Terrain & Ocean Waves
-        if (window.terrainManager && window.terrainManager.update) {
-            window.terrainManager.update(delta);
+            // Update Terrain & Ocean Waves
+            if (window.terrainManager && window.terrainManager.update) {
+                window.terrainManager.update(delta);
+            }
+
+            // Update Open World Props & Wind Foliage
+            this.world.update(delta, this.car.position, Math.abs(this.car.speed));
+
+            // Update Camera
+            this.updateCamera(delta);
+
+            // Update Minimap every 2 frames (30fps radar update saves 50% canvas rendering)
+            this.frameCounter = (this.frameCounter || 0) + 1;
+            if (this.frameCounter % 2 === 0) {
+                this.minimap.render(this.car.position, this.car.heading);
+            }
+
+            // Update HUD Gauges
+            this.updateHUD();
+
+            // Render Scene
+            this.renderer.render(this.scene, this.camera);
+        } catch (err) {
+            console.error('Render Loop Error:', err);
         }
-
-        // Update Open World Props & Wind Foliage
-        this.world.update(delta, this.car.position, Math.abs(this.car.speed));
-
-        // Update Camera
-        this.updateCamera(delta);
-
-        // Update Minimap every 2 frames (30fps radar update saves 50% canvas rendering)
-        this.frameCounter = (this.frameCounter || 0) + 1;
-        if (this.frameCounter % 2 === 0) {
-            this.minimap.render(this.car.position, this.car.heading);
-        }
-
-        // Update HUD Gauges
-        this.updateHUD();
-
-        // Render Scene
-        this.renderer.render(this.scene, this.camera);
     }
 }
 
 function bootGame() {
     if (!window.game) {
-        window.game = new Game();
+        try {
+            window.game = new Game();
+        } catch (err) {
+            console.error('Critical Game Boot Error:', err);
+            const errBox = document.createElement('div');
+            errBox.style.cssText = 'position:fixed;top:40px;left:50%;transform:translateX(-50%);background:rgba(220,20,20,0.95);color:#fff;padding:24px;border-radius:10px;z-index:999999;font-family:monospace;font-size:14px;max-width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.8);white-space:pre-wrap;';
+            errBox.textContent = 'GAME BOOT ERROR:\n' + (err.stack || err.message);
+            document.body.appendChild(errBox);
+        }
     }
 }
 

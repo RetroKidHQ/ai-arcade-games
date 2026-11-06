@@ -521,7 +521,8 @@ class TerrainManager {
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-        geo.setIndex(new THREE.Uint32BufferAttribute(indices, 1));
+        const IndexAttr = (positions.length / 3 > 65535) ? THREE.Uint32BufferAttribute : THREE.Uint16BufferAttribute;
+        geo.setIndex(new IndexAttr(indices, 1));
         geo.computeVertexNormals();
 
         const roadMesh = new THREE.Mesh(geo, roadMat);

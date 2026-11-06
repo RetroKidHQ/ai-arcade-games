@@ -1087,6 +1087,7 @@ class WorldManager {
         rockMesh.castShadow = true;
         const dummy = new THREE.Object3D();
 
+        let rockCount = 0;
         for (let r = 0; r < 120; r++) {
             const rx = (Math.random() - 0.5) * (this.terrain.worldSize - 100);
             const rz = (Math.random() - 0.5) * (this.terrain.worldSize - 100);
@@ -1099,10 +1100,12 @@ class WorldManager {
             dummy.scale.set(rScale, rScale * (0.6 + Math.random() * 0.4), rScale);
             dummy.rotation.set(Math.random(), Math.random(), Math.random());
             dummy.updateMatrix();
-            rockMesh.setMatrixAt(r, dummy.matrix);
+            rockMesh.setMatrixAt(rockCount++, dummy.matrix);
 
             this.colliders.push({ type: 'cylinder', x: rx, z: rz, radius: 1.6 * rScale });
         }
+        rockMesh.count = rockCount;
+        rockMesh.instanceMatrix.needsUpdate = true;
         this.scene.add(rockMesh);
     }
 
@@ -1214,23 +1217,6 @@ class WorldManager {
             side: THREE.DoubleSide
         });
 
-        this.grassUniforms = { uWindTime: { value: 0 } };
-        tuftMat.onBeforeCompile = (shader) => {
-            shader.uniforms.uWindTime = this.grassUniforms.uWindTime;
-            shader.vertexShader = `
-                uniform float uWindTime;
-            ` + shader.vertexShader;
-            shader.vertexShader = shader.vertexShader.replace(
-                '#include <begin_vertex>',
-                `
-                #include <begin_vertex>
-                float sway = sin(uWindTime * 2.8 + position.x * 0.35 + position.z * 0.35) * (position.y * 0.14);
-                transformed.x += sway;
-                transformed.z += cos(uWindTime * 2.1 + position.x * 0.25) * (position.y * 0.08);
-                `
-            );
-        };
-
         const maxTufts = 2000;
         const tuftMesh = new THREE.InstancedMesh(plane1, tuftMat, maxTufts);
         const dummy = new THREE.Object3D();
@@ -1268,6 +1254,7 @@ class WorldManager {
                 }
             }
         }
+        tuftMesh.count = count;
         tuftMesh.instanceMatrix.needsUpdate = true;
         tuftMesh.receiveShadow = true;
         this.scene.add(tuftMesh);
@@ -1512,43 +1499,7 @@ class WorldManager {
         }
     }
 
-    update(dt, carPos) {
-        // Increment wind time for procedural grass vertex shader sway
-        if (this.grassUniforms && this.grassUniforms.uWindTime) {
-            this.grassUniforms.uWindTime.value += dt;
-        }
 
-        // Rotate animated props (windmill blades, lighthouse beacon)
-        for (let i = 0; i < this.animatedProps.length; i++) {
-            const prop = this.animatedProps[i];
-            if (prop.type === 'windmill' && prop.mesh) {
-                prop.mesh.rotation.z += prop.speed;
-            } else if (prop.type === 'lighthouse' && prop.mesh) {
-                prop.mesh.rotation.y += prop.speed;
-            }
-        }
-
-        // Dynamic Point Light Culling: only keep the 4 closest active streetlights to the car
-        if (carPos && this.streetLights && this.streetLights.length > 4) {
-            let sorted = [];
-            for (let i = 0; i < this.streetLights.length; i++) {
-                const sl = this.streetLights[i];
-                if (sl.intensity > 0) {
-                    const dx = sl.position.x - carPos.x;
-                    const dz = sl.position.z - carPos.z;
-                    sorted.push({ light: sl, distSq: dx * dx + dz * dz });
-                } else {
-                    sl.visible = false;
-                }
-            }
-            if (sorted.length > 0) {
-                sorted.sort((a, b) => a.distSq - b.distSq);
-                for (let i = 0; i < sorted.length; i++) {
-                    sorted[i].light.visible = (i < 4 && sorted[i].distSq < 160 * 160);
-                }
-            }
-        }
-    }
 
     // High-performance spatial-partitioned collision check (tests 3-8 local colliders instead of 450)
     checkCollision(carX, carZ, carRadius = 1.6) {
@@ -1655,10 +1606,31 @@ class WorldManager {
 
     update(delta, carPos, carSpeed) {
         for (const prop of this.animatedProps) {
-            if (prop.type === 'windmill') {
+            if (prop.type === 'windmill' && prop.mesh) {
                 prop.mesh.rotation.z += prop.speed;
-            } else if (prop.type === 'lighthouse') {
+            } else if (prop.type === 'lighthouse' && prop.mesh) {
                 prop.mesh.rotation.y += prop.speed;
+            }
+        }
+
+        // Dynamic Point Light Culling: only keep the 4 closest active streetlights to the car
+        if (carPos && this.streetLights && this.streetLights.length > 4) {
+            let sorted = [];
+            for (let i = 0; i < this.streetLights.length; i++) {
+                const sl = this.streetLights[i];
+                if (sl.intensity > 0) {
+                    const dx = sl.position.x - carPos.x;
+                    const dz = sl.position.z - carPos.z;
+                    sorted.push({ light: sl, distSq: dx * dx + dz * dz });
+                } else {
+                    sl.visible = false;
+                }
+            }
+            if (sorted.length > 0) {
+                sorted.sort((a, b) => a.distSq - b.distSq);
+                for (let i = 0; i < sorted.length; i++) {
+                    sorted[i].light.visible = (i < 4 && sorted[i].distSq < 160 * 160);
+                }
             }
         }
 
@@ -1675,7 +1647,7 @@ class WorldManager {
             }
         }
 
-        if (this.speedTrap) {
+        if (this.speedTrap && carPos) {
             const dist = Math.hypot(carPos.x - this.speedTrap.x, carPos.z - this.speedTrap.z);
             if (dist < this.speedTrap.radius && carSpeed > 60) {
                 this.speedTrap.flashLight.intensity = 8.0;
