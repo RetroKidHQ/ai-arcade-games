@@ -505,6 +505,12 @@ class Game {
             this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, desiredY, 8 * delta);
             this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, desiredZ, 7 * delta);
 
+            if (car.inLoop) {
+                this.camera.up.lerp(carUpVec, 12 * delta);
+            } else {
+                this.camera.up.lerp(new THREE.Vector3(0, 1, 0), 8 * delta);
+            }
+
             const lookTarget = targetPos.clone().add(carUpVec.clone().multiplyScalar(1.2));
             this.camera.lookAt(lookTarget);
 

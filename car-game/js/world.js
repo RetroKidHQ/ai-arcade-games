@@ -8,6 +8,8 @@ class WorldManager {
         this.terrain = terrain;
         this.colliders = [];
         this.ramps = [];
+        this.wallRides = [];
+        this.stuntLoops = [];
         this.animatedProps = [];
         this.streetLights = [];
         this.destructibles = [];
@@ -21,6 +23,7 @@ class WorldManager {
         this.buildRealisticBushland();
         this.buildBuildingTrees();
         this.buildRoadProps();
+        this.buildStuntPark();
         this.buildSpatialGrid();
     }
 
@@ -882,13 +885,619 @@ class WorldManager {
         }
     }
 
-    // Stunt Park & Ramps removed as requested to keep the road completely clear
+    // Stunt Obstacles (2x Bigger, Spread 6x Across the Map, 72m Tall 18m Wide Mega Loop)
     buildStuntPark() {
-        // No-op
-    }
+        const tg = window.textureGenerator;
+        const hazardTex = tg ? tg.createHazardStripeTexture(512, 128) : null;
+        if (hazardTex) {
+            hazardTex.repeat.set(8, 1);
+        }
+        const trackTex = tg ? tg.createStuntTrackTexture(512, 512) : null;
+        if (trackTex) {
+            trackTex.repeat.set(2, 24);
+        }
+        const wallTex = tg ? tg.createWallRideTexture(512, 512) : null;
+        if (wallTex) {
+            wallTex.repeat.set(8, 2);
+        }
 
-    createRamp() {
-        // No-op
+        const metalMat = new THREE.MeshStandardMaterial({
+            color: 0x2c3038,
+            metalness: 0.85,
+            roughness: 0.25
+        });
+        const steelTrussMat = new THREE.MeshStandardMaterial({
+            color: 0xef7a15, // Stunt vibrant orange
+            metalness: 0.7,
+            roughness: 0.35
+        });
+        const hazardMat = new THREE.MeshStandardMaterial({
+            map: hazardTex,
+            roughness: 0.5,
+            metalness: 0.2
+        });
+        const trackMat = new THREE.MeshStandardMaterial({
+            map: trackTex,
+            roughness: 0.35,
+            metalness: 0.25,
+            side: THREE.DoubleSide
+        });
+        const wallRideMat = new THREE.MeshStandardMaterial({
+            map: wallTex,
+            roughness: 0.4,
+            metalness: 0.2,
+            side: THREE.DoubleSide
+        });
+        const concreteBarrierMat = new THREE.MeshStandardMaterial({
+            color: 0xb5b8bf,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        const neonCyanMat = new THREE.MeshBasicMaterial({ color: 0x00d2ff });
+        const neonOrangeMat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
+        const cautionYellowMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+
+        // =========================================================================
+        // 1. 360° MEGA STUNT LOOP (3x BIGGER: 72m TALL, 2x WIDER: 18m WIDE)
+        // Located in South-East Off-Road Plains at (420, 480)
+        // =========================================================================
+        const loopX = 420;
+        const loopZ = 480;
+        const loopYBase = 16.0;
+        const loopR = 36.0;  // 72 meters tall!
+        const loopW = 18.0;  // 18 meters wide (2x wider)!
+        const loopOffset = 22.0; // Lateral corkscrew offset between entrance and exit
+
+        this.stuntLoops.push({
+            x: loopX,
+            z: loopZ,
+            yBase: loopYBase,
+            radius: loopR,
+            width: loopW,
+            rotation: 0,
+            xOffset: loopOffset
+        });
+
+        // 72-Meter 360° Ribbon Track Mesh
+        const loopSegs = 96;
+        const loopWidthSegs = 8;
+        const loopGeo = new THREE.BufferGeometry();
+        const loopPos = [];
+        const loopUvs = [];
+        const loopIndices = [];
+
+        for (let i = 0; i <= loopSegs; i++) {
+            const theta = (i / loopSegs) * Math.PI * 2;
+            const y = loopYBase + loopR * (1.0 - Math.cos(theta));
+            const z = loopZ + loopR * Math.sin(theta);
+            const xCenter = loopX + loopOffset * (i / loopSegs);
+
+            for (let j = 0; j <= loopWidthSegs; j++) {
+                const u = j / loopWidthSegs;
+                const x = xCenter + (u - 0.5) * loopW;
+                loopPos.push(x, y, z);
+                loopUvs.push(u, (i / loopSegs) * 24);
+            }
+        }
+
+        const stride = loopWidthSegs + 1;
+        for (let i = 0; i < loopSegs; i++) {
+            for (let j = 0; j < loopWidthSegs; j++) {
+                const a = i * stride + j;
+                const b = (i + 1) * stride + j;
+                const c = (i + 1) * stride + (j + 1);
+                const d = i * stride + (j + 1);
+                loopIndices.push(a, b, d);
+                loopIndices.push(b, c, d);
+            }
+        }
+
+        loopGeo.setAttribute('position', new THREE.Float32BufferAttribute(loopPos, 3));
+        loopGeo.setAttribute('uv', new THREE.Float32BufferAttribute(loopUvs, 2));
+        loopGeo.setIndex(loopIndices);
+        loopGeo.computeVertexNormals();
+
+        const loopMesh = new THREE.Mesh(loopGeo, trackMat);
+        loopMesh.castShadow = true;
+        loopMesh.receiveShadow = true;
+        this.scene.add(loopMesh);
+
+        // Entrance Runway (110m long, 20m wide - perfectly flush with loop entrance)
+        const enterRunwayL = 110.0;
+        const enterRunwayGeo = new THREE.PlaneGeometry(loopW + 2.0, enterRunwayL);
+        enterRunwayGeo.rotateX(-Math.PI / 2);
+        const enterRunway = new THREE.Mesh(enterRunwayGeo, trackMat);
+        enterRunway.position.set(loopX, loopYBase + 0.08, loopZ - enterRunwayL * 0.5);
+        this.scene.add(enterRunway);
+
+        // Runway Boost Strip Pads (Glowing Neon Orange acceleration strips)
+        for (let b = 0; b < 4; b++) {
+            const bz = loopZ - 90 + b * 22;
+            const pad = new THREE.Mesh(new THREE.BoxGeometry(loopW * 0.7, 0.15, 6.0), neonOrangeMat);
+            pad.position.set(loopX, loopYBase + 0.12, bz);
+            this.scene.add(pad);
+            // Flanking chevrons
+            const chL = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.18, 5.0), neonCyanMat);
+            chL.position.set(loopX - loopW * 0.42, loopYBase + 0.15, bz);
+            this.scene.add(chL);
+            const chR = chL.clone();
+            chR.position.x = loopX + loopW * 0.42;
+            this.scene.add(chR);
+        }
+
+        // Exit Runway (110m long, 20m wide - perfectly flush with loop exit)
+        const exitRunwayL = 110.0;
+        const exitRunwayGeo = new THREE.PlaneGeometry(loopW + 2.0, exitRunwayL);
+        exitRunwayGeo.rotateX(-Math.PI / 2);
+        const exitRunway = new THREE.Mesh(exitRunwayGeo, trackMat);
+        exitRunway.position.set(loopX + loopOffset, loopYBase + 0.08, loopZ + exitRunwayL * 0.5);
+        this.scene.add(exitRunway);
+
+        // Giant 72-Meter Structural Support Arches
+        for (let a = 0; a < 8; a++) {
+            const archTheta = (a / 7) * Math.PI * 1.65 + 0.15;
+            const ay = loopYBase + loopR * (1.0 - Math.cos(archTheta));
+            const az = loopZ + loopR * Math.sin(archTheta);
+            const ax = loopX + loopOffset * (archTheta / (Math.PI * 2));
+
+            const archFrame = new THREE.Mesh(new THREE.TorusGeometry(loopR + 1.2, 0.7, 8, 32, Math.PI), steelTrussMat);
+            archFrame.position.set(ax, loopYBase + loopR, az);
+            archFrame.rotation.y = Math.PI / 2;
+            this.scene.add(archFrame);
+
+            // Ground support pillars
+            const pilH = Math.max(1.0, ay - loopYBase);
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, pilH, 8), metalMat);
+            pillar.position.set(ax + loopW * 0.5 + 2.0, loopYBase + pilH * 0.5, az);
+            this.scene.add(pillar);
+
+            const pillar2 = pillar.clone();
+            pillar2.position.set(ax - loopW * 0.5 - 2.0, loopYBase + pilH * 0.5, az);
+            this.scene.add(pillar2);
+        }
+
+        // Loop Entrance Overhead Gantry at start of runway
+        const gantry = new THREE.Group();
+        const gantryPost1 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 16, 1.6), steelTrussMat);
+        gantryPost1.position.set(-loopW * 0.5 - 2.0, 8, 0);
+        const gantryPost2 = gantryPost1.clone();
+        gantryPost2.position.set(loopW * 0.5 + 2.0, 8, 0);
+        const gantryCross = new THREE.Mesh(new THREE.BoxGeometry(loopW + 6.0, 2.8, 1.6), steelTrussMat);
+        gantryCross.position.set(0, 15, 0);
+        const gantrySign = new THREE.Mesh(new THREE.BoxGeometry(loopW - 2.0, 2.0, 0.4), neonCyanMat);
+        gantrySign.position.set(0, 15, 0.9);
+        gantry.add(gantryPost1, gantryPost2, gantryCross, gantrySign);
+        gantry.position.set(loopX, loopYBase, loopZ - enterRunwayL);
+        this.scene.add(gantry);
+
+        // =========================================================================
+        // 2. CURVED BANKED WALL RIDE (2x BIGGER: 24m HIGH, 32m WIDE BANKING)
+        // Located 412 meters away at (220, 120)
+        // =========================================================================
+        const wallCx = 220;
+        const wallCz = 120;
+        const wallYBase = 10.0;
+        const wallRIn = 36.0;   // 2x bigger (was 18)
+        const wallROut = 68.0;  // 2x bigger (was 34)
+        const wallH = 24.0;     // 2x bigger (was 12)
+        const wallStartA = -Math.PI * 0.35;
+        const wallEndA = Math.PI * 0.45;
+        const wallArc = wallEndA - wallStartA;
+
+        this.wallRides.push({
+            cx: wallCx,
+            cz: wallCz,
+            yBase: wallYBase,
+            rIn: wallRIn,
+            rOut: wallROut,
+            height: wallH,
+            startAngle: wallStartA,
+            endAngle: wallEndA
+        });
+
+        // 24m High Banked Wall Surface Geometry
+        const wallRadialSegs = 18;
+        const wallArcSegs = 48;
+        const wallGeo = new THREE.BufferGeometry();
+        const wallPos = [];
+        const wallUvs = [];
+        const wallIndices = [];
+
+        for (let i = 0; i <= wallArcSegs; i++) {
+            const angle = wallStartA + (i / wallArcSegs) * wallArc;
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
+
+            for (let j = 0; j <= wallRadialSegs; j++) {
+                const u = j / wallRadialSegs;
+                const r = wallRIn + u * (wallROut - wallRIn);
+                const y = wallYBase + wallH * Math.pow(u, 1.8);
+                const x = wallCx + r * cosA;
+                const z = wallCz + r * sinA;
+
+                wallPos.push(x, y, z);
+                wallUvs.push((i / wallArcSegs) * 16, u * 2);
+            }
+        }
+
+        const wallStride = wallRadialSegs + 1;
+        for (let i = 0; i < wallArcSegs; i++) {
+            for (let j = 0; j < wallRadialSegs; j++) {
+                const a = i * wallStride + j;
+                const b = (i + 1) * wallStride + j;
+                const c = (i + 1) * wallStride + (j + 1);
+                const d = i * wallStride + (j + 1);
+                wallIndices.push(a, b, d);
+                wallIndices.push(b, c, d);
+            }
+        }
+
+        wallGeo.setAttribute('position', new THREE.Float32BufferAttribute(wallPos, 3));
+        wallGeo.setAttribute('uv', new THREE.Float32BufferAttribute(wallUvs, 2));
+        wallGeo.setIndex(wallIndices);
+        wallGeo.computeVertexNormals();
+
+        const wallMesh = new THREE.Mesh(wallGeo, wallRideMat);
+        wallMesh.receiveShadow = true;
+        this.scene.add(wallMesh);
+
+        // Top Rim Safety Guardrail & Outer Barrier along r = wallROut
+        for (let i = 0; i <= 28; i++) {
+            const angle = wallStartA + (i / 28) * wallArc;
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
+            const bx = wallCx + wallROut * cosA;
+            const bz = wallCz + wallROut * sinA;
+            const by = wallYBase + wallH;
+
+            // Outer rim collider
+            this.colliders.push({
+                type: 'cylinder',
+                x: bx,
+                z: bz,
+                radius: 3.5
+            });
+
+            // Guardrail post (2x bigger)
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 4.5), metalMat);
+            post.position.set(bx, by + 2.25, bz);
+            this.scene.add(post);
+
+            // Steel buttress bracing behind the curved wall
+            const buttress = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, wallH * 1.3), steelTrussMat);
+            buttress.position.set(wallCx + (wallROut + 5.0) * cosA, wallYBase + wallH * 0.5, wallCz + (wallROut + 5.0) * sinA);
+            buttress.rotation.y = angle;
+            buttress.rotation.x = 0.55;
+            this.scene.add(buttress);
+        }
+
+        // =========================================================================
+        // 3. STUNT MEGA DROP PLATFORM (2x BIGGER: 21m HIGH, 80m LONG, 44m WIDE)
+        // Located 376m from Wall Ride & 607m from Loop at (510, -120)
+        // =========================================================================
+        const dropX = 510;
+        const dropZ = -120;
+        const dropYBase = 19.5;
+        const dropL = 80.0;  // 2x bigger (was 40)
+        const dropW = 44.0;  // 2x bigger (was 22)
+        const dropH = 21.0;  // 2x bigger (was 10.5m)
+        const dropRampLen = 44.0;
+
+        this.ramps.push({
+            type: 'drop',
+            x: dropX,
+            z: dropZ,
+            yBase: dropYBase,
+            rotation: 0,
+            length: dropL,
+            width: dropW,
+            height: dropH,
+            rampLen: dropRampLen,
+            isDrop: true
+        });
+
+        // 44m Long Drive-up Approach Ramp Mesh
+        const dropApproach = new THREE.Mesh(new THREE.BoxGeometry(dropW, 1.4, dropRampLen), trackMat);
+        dropApproach.position.set(dropX, dropYBase + dropH * 0.5, dropZ - 18.0);
+        dropApproach.rotation.x = Math.atan2(dropH, dropRampLen);
+        this.scene.add(dropApproach);
+
+        // 36m Long x 44m Wide High Platform Deck Mesh
+        const dropDeck = new THREE.Mesh(new THREE.BoxGeometry(dropW, 2.0, dropL - dropRampLen), trackMat);
+        dropDeck.position.set(dropX, dropYBase + dropH - 1.0, dropZ + 22.0);
+        this.scene.add(dropDeck);
+
+        // Sheer 21-Meter Vertical Drop Cliff Face
+        const dropFace = new THREE.Mesh(new THREE.BoxGeometry(dropW, dropH, 2.0), hazardMat);
+        dropFace.position.set(dropX, dropYBase + dropH * 0.5, dropZ + 40.0);
+        this.scene.add(dropFace);
+
+        // Heavy Support Pillars (21m tall)
+        const dropPillars = [
+            { x: dropX - dropW * 0.45, z: dropZ + 8 },
+            { x: dropX + dropW * 0.45, z: dropZ + 8 },
+            { x: dropX - dropW * 0.45, z: dropZ + 36 },
+            { x: dropX + dropW * 0.45, z: dropZ + 36 }
+        ];
+        for (const dp of dropPillars) {
+            const pil = new THREE.Mesh(new THREE.BoxGeometry(2.5, dropH, 2.5), metalMat);
+            pil.position.set(dp.x, dropYBase + dropH * 0.5, dp.z);
+            this.scene.add(pil);
+            this.colliders.push({ type: 'cylinder', x: dp.x, z: dp.z, radius: 2.0 });
+        }
+
+        // Flashing Warning Beacons at Drop Lip
+        const beaconL = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 6.0), metalMat);
+        beaconL.position.set(dropX - dropW * 0.48, dropYBase + dropH + 3.0, dropZ + 39.0);
+        const beaconLightL = new THREE.Mesh(new THREE.SphereGeometry(1.0, 8, 8), neonOrangeMat);
+        beaconLightL.position.set(0, 3.5, 0);
+        beaconL.add(beaconLightL);
+        const beaconR = beaconL.clone();
+        beaconR.position.set(dropX + dropW * 0.48, dropYBase + dropH + 3.0, dropZ + 39.0);
+        this.scene.add(beaconL, beaconR);
+
+        // =========================================================================
+        // 4. MEGA KICKER LAUNCH RAMP (2x BIGGER: 15m HIGH, 56m LONG, 32m WIDE)
+        // Located 386m from Drop Platform at (180, -320)
+        // =========================================================================
+        const kickerX = 180;
+        const kickerZ = -320;
+        const kickerYBase = 13.5;
+        const kickerL = 56.0; // 2x bigger (was 28)
+        const kickerW = 32.0; // 2x bigger (was 16)
+        const kickerH = 15.0; // 2x bigger (was 7.5)
+
+        this.ramps.push({
+            type: 'kicker',
+            x: kickerX,
+            z: kickerZ,
+            yBase: kickerYBase,
+            rotation: 0, // facing +Z launch
+            length: kickerL,
+            width: kickerW,
+            height: kickerH,
+            isJump: true,
+            launchPitch: 0.44
+        });
+
+        // 15m High Kicker Ramp 3D Mesh
+        const kickerGeo = new THREE.BufferGeometry();
+        const kPos = [];
+        const kUvs = [];
+        const kIndices = [];
+        const kSegs = 28;
+
+        for (let i = 0; i <= kSegs; i++) {
+            const t = i / kSegs;
+            const localZ = (t - 0.5) * kickerL;
+            const y = kickerYBase + kickerH * Math.pow(t, 1.4);
+
+            for (let j = 0; j <= 6; j++) {
+                const u = j / 6;
+                const localX = (u - 0.5) * kickerW;
+                kPos.push(kickerX + localX, y, kickerZ + localZ);
+                kUvs.push(u, t * 12);
+            }
+        }
+        for (let i = 0; i < kSegs; i++) {
+            for (let j = 0; j < 6; j++) {
+                const a = i * 7 + j;
+                const b = (i + 1) * 7 + j;
+                const c = (i + 1) * 7 + (j + 1);
+                const d = i * 7 + (j + 1);
+                kIndices.push(a, b, d);
+                kIndices.push(b, c, d);
+            }
+        }
+        kickerGeo.setAttribute('position', new THREE.Float32BufferAttribute(kPos, 3));
+        kickerGeo.setAttribute('uv', new THREE.Float32BufferAttribute(kUvs, 2));
+        kickerGeo.setIndex(kIndices);
+        kickerGeo.computeVertexNormals();
+
+        const kickerMesh = new THREE.Mesh(kickerGeo, trackMat);
+        kickerMesh.castShadow = true;
+        kickerMesh.receiveShadow = true;
+        this.scene.add(kickerMesh);
+
+        // Kicker Side Rails & Undercarriage Walls (2x bigger)
+        const kickerSide1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, kickerH, kickerL), hazardMat);
+        kickerSide1.position.set(kickerX - kickerW * 0.5 - 0.6, kickerYBase + kickerH * 0.5, kickerZ);
+        const kickerSide2 = kickerSide1.clone();
+        kickerSide2.position.set(kickerX + kickerW * 0.5 + 0.6, kickerYBase + kickerH * 0.5, kickerZ);
+        this.scene.add(kickerSide1, kickerSide2);
+
+        // =========================================================================
+        // 5. GAP JUMP WITH DOWNSLOPE LANDING (2x BIGGER: 32m LAUNCH, 48m GAP, 36m LANDING)
+        // Located 323m from Mega Kicker at (-120, -430)
+        // =========================================================================
+        const gapX = -120;
+        const gapYBase = 21.0;
+        const gapLaunchZ = -465;
+        const gapLandZ = -395;
+        const gapW = 24.0;
+        const gapH = 9.6;
+
+        // Gap Launch Ramp
+        this.ramps.push({
+            type: 'ramp',
+            x: gapX,
+            z: gapLaunchZ,
+            yBase: gapYBase,
+            rotation: 0,
+            length: 32.0,
+            width: gapW,
+            height: gapH,
+            isJump: true,
+            launchPitch: 0.32
+        });
+        const gapLaunchMesh = new THREE.Mesh(new THREE.BoxGeometry(gapW, gapH, 32.0), trackMat);
+        gapLaunchMesh.position.set(gapX, gapYBase + gapH * 0.5, gapLaunchZ);
+        gapLaunchMesh.rotation.x = 0.3;
+        this.scene.add(gapLaunchMesh);
+
+        // Gap Landing Downslope Ramp
+        this.ramps.push({
+            type: 'ramp',
+            x: gapX,
+            z: gapLandZ,
+            yBase: gapYBase,
+            rotation: Math.PI,
+            length: 36.0,
+            width: gapW + 4.0,
+            height: gapH,
+            isJump: false
+        });
+        const gapLandMesh = new THREE.Mesh(new THREE.BoxGeometry(gapW + 4.0, gapH, 36.0), trackMat);
+        gapLandMesh.position.set(gapX, gapYBase + gapH * 0.5, gapLandZ);
+        gapLandMesh.rotation.x = -0.28;
+        this.scene.add(gapLandMesh);
+
+        // =========================================================================
+        // 6. CONCRETE SLALOM BARRIER WALLS (2x BIGGER: 18m WIDE BARRIERS)
+        // Located in South-West Farmland Plains at (-240, 430)
+        // =========================================================================
+        const barrierGroundY = this.terrain.getHeight(-240, 430);
+        const barrierCoords = [
+            { x: -250, z: 380, w: 18.0, rot: 0.15 },
+            { x: -220, z: 405, w: 18.0, rot: -0.2 },
+            { x: -255, z: 430, w: 18.0, rot: 0.1 },
+            { x: -215, z: 455, w: 18.0, rot: -0.15 },
+            { x: -250, z: 480, w: 18.0, rot: 0.2 },
+            { x: -220, z: 505, w: 18.0, rot: -0.1 }
+        ];
+
+        for (const bc of barrierCoords) {
+            const barrierGroup = new THREE.Group();
+            const bBase = new THREE.Mesh(new THREE.BoxGeometry(bc.w, 2.8, 2.4), concreteBarrierMat);
+            bBase.position.y = 1.4;
+            const bStripe = new THREE.Mesh(new THREE.BoxGeometry(bc.w, 0.8, 2.44), hazardMat);
+            bStripe.position.y = 1.4;
+            barrierGroup.add(bBase, bStripe);
+
+            barrierGroup.position.set(bc.x, barrierGroundY, bc.z);
+            barrierGroup.rotation.y = bc.rot;
+            this.scene.add(barrierGroup);
+
+            // Register 2x bigger spatial box collider
+            const halfW = (bc.w * 0.5) + 0.6;
+            this.colliders.push({
+                type: 'box',
+                minX: bc.x - halfW,
+                maxX: bc.x + halfW,
+                minZ: bc.z - 2.4,
+                maxZ: bc.z + 2.4
+            });
+        }
+
+        // =========================================================================
+        // 7. SMASHABLE STUNT CRATE & BARREL WALLS (2x BIGGER CRATES & BARRELS)
+        // Placed in run-ups to Mega Kicker, Mega Drop, and Mega Loop
+        // =========================================================================
+        const crateMat = new THREE.MeshStandardMaterial({ color: 0x9c7a4b, roughness: 0.8 });
+        const barrelMat = new THREE.MeshStandardMaterial({ color: 0xd91616, roughness: 0.3, metalness: 0.6 });
+
+        const wallClusters = [
+            { x: 180, z: -380, gy: 13.5 }, // Kicker approach
+            { x: 510, z: -180, gy: 19.5 }, // Drop approach
+            { x: 420, z: 390, gy: 16.0 }   // Loop approach
+        ];
+
+        for (const cluster of wallClusters) {
+            // Stack of 4 giant 2.8m crates
+            for (let cx = -1; cx <= 1; cx += 2) {
+                for (let cy = 0; cy <= 1; cy++) {
+                    const crate = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.8, 2.8), crateMat);
+                    const posX = cluster.x + cx * 1.8;
+                    const posY = cluster.gy + 1.4 + cy * 2.8;
+                    const posZ = cluster.z;
+                    crate.position.set(posX, posY, posZ);
+                    this.scene.add(crate);
+
+                    this.destructibles.push({
+                        mesh: crate,
+                        x: posX,
+                        y: posY,
+                        z: posZ,
+                        vx: 0,
+                        vz: 0,
+                        radius: 2.2
+                    });
+                }
+            }
+            // 2 giant oil barrels (2.6m tall)
+            for (let bx = -4.2; bx <= 4.2; bx += 8.4) {
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 2.6, 12), barrelMat);
+                const bPosX = cluster.x + bx;
+                const bPosY = cluster.gy + 1.3;
+                const bPosZ = cluster.z;
+                barrel.position.set(bPosX, bPosY, bPosZ);
+                this.scene.add(barrel);
+
+                this.destructibles.push({
+                    mesh: barrel,
+                    x: bPosX,
+                    y: bPosY,
+                    z: bPosZ,
+                    vx: 0,
+                    vz: 0,
+                    radius: 1.8
+                });
+            }
+        }
+
+        // =========================================================================
+        // 8. MEGA BILLBOARD WALL (2x BIGGER: 72m LONG, 12m HIGH)
+        // Located at (480, 440)
+        // =========================================================================
+        const billX = 480;
+        const billZ = 440;
+        const billY = 16.0;
+        const billL = 72.0; // 2x bigger (was 36)
+        const billH = 12.0; // 2x bigger (was 6)
+
+        const billMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, billH, billL), metalMat);
+        billMesh.position.set(billX, billY + billH * 0.5, billZ);
+        this.scene.add(billMesh);
+
+        const billSign = new THREE.Mesh(new THREE.BoxGeometry(0.4, 7.0, billL - 8.0), neonCyanMat);
+        billSign.position.set(billX - 1.3, billY + billH * 0.5, billZ);
+        this.scene.add(billSign);
+
+        const billStripe = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.6, billL), hazardMat);
+        billStripe.position.set(billX, billY + 1.0, billZ);
+        this.scene.add(billStripe);
+
+        this.colliders.push({
+            type: 'box',
+            minX: billX - 2.4,
+            maxX: billX + 2.4,
+            minZ: billZ - (billL * 0.5) - 1.0,
+            maxZ: billZ + (billL * 0.5) + 1.0
+        });
+
+        // Arena Floodlight Poles at each major stunt zone
+        const floodLights = [
+            { x: 420, z: 420, gy: 16.0 }, // Loop
+            { x: 220, z: 170, gy: 10.0 }, // Wall Ride
+            { x: 510, z: -80, gy: 19.5 }, // Mega Drop
+            { x: 180, z: -270, gy: 13.5 } // Mega Kicker
+        ];
+        for (const fl of floodLights) {
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 24.0), metalMat);
+            pole.position.set(fl.x, fl.gy + 12.0, fl.z);
+            this.scene.add(pole);
+
+            const lamp = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.6, 2.0), cautionYellowMat);
+            lamp.position.set(fl.x, fl.gy + 24.0, fl.z);
+            this.scene.add(lamp);
+
+            const pLight = new THREE.PointLight(0xffeedd, 3.2, 140, 1.8);
+            pLight.position.set(fl.x, fl.gy + 23.5, fl.z);
+            this.scene.add(pLight);
+            this.streetLights.push(pLight);
+
+            this.colliders.push({ type: 'cylinder', x: fl.x, z: fl.z, radius: 1.2 });
+        }
     }
 
     createSpeedTrap(x, y, z) {
@@ -1057,7 +1666,13 @@ class WorldManager {
             // Clear of 18m 2-lane roadway and sidewalks
             if (this.terrain.getDistanceToRoad(tx, tz).distance < this.terrain.roadWidth * 0.5 + 5.0) continue;
             if (Math.hypot(tx + 174, tz + 140) < 250) continue; // Keep compact skyscraper core and apartment district clear
-            if (Math.hypot(tx - 300, tz - 300) < 95) continue;  // Stunt park
+            // Clear of stunt obstacle zones (spread across map)
+            if (Math.hypot(tx - 420, tz - 480) < 110) continue; // Mega Loop
+            if (Math.hypot(tx - 220, tz - 120) < 100) continue; // Wall Ride
+            if (Math.hypot(tx - 510, tz - (-120)) < 80) continue; // Mega Drop
+            if (Math.hypot(tx - 180, tz - (-320)) < 70) continue; // Mega Kicker
+            if (Math.hypot(tx - (-120), tz - (-430)) < 75) continue; // Gap Jump
+            if (Math.hypot(tx - (-240), tz - 430) < 80) continue; // Slalom Barriers
 
             const template = treeTemplates[Math.floor(Math.random() * treeTemplates.length)];
             const treeMesh = template.clone();
@@ -1586,19 +2201,215 @@ class WorldManager {
     }
 
     checkRampElevation(carX, carZ) {
-        for (const ramp of this.ramps) {
+        for (let i = 0; i < this.ramps.length; i++) {
+            const ramp = this.ramps[i];
             const dx = carX - ramp.x;
             const dz = carZ - ramp.z;
             const cos = Math.cos(-ramp.rotation);
             const sin = Math.sin(-ramp.rotation);
             const localX = dx * cos - dz * sin;
             const localZ = dx * sin + dz * cos;
-            const halfL = ramp.length / 2;
-            const halfW = ramp.width / 2;
+            const halfL = ramp.length * 0.5;
+            const halfW = ramp.width * 0.5;
 
-            if (localX >= -halfL && localX <= halfL && localZ >= -halfW && localZ <= halfW) {
-                const t = (localX + halfL) / ramp.length;
-                return { onRamp: true, extraHeight: t * ramp.height };
+            if (Math.abs(localX) <= halfW && localZ >= -halfL && localZ <= halfL) {
+                const rot = ramp.rotation;
+                const sinRot = Math.sin(rot);
+                const cosRot = Math.cos(rot);
+
+                if (ramp.type === 'drop') {
+                    // Approach ramp up to flat deck, then sheer drop cliff at +halfL
+                    const rampLen = ramp.rampLen || (ramp.length * 0.55);
+                    let extraHeight = ramp.height;
+                    let norm = new THREE.Vector3(0, 1, 0);
+                    const atDropEdge = (localZ > halfL - 2.0);
+
+                    if (localZ < -halfL + rampLen) {
+                        const t = (localZ + halfL) / rampLen;
+                        extraHeight = t * ramp.height;
+                        const slopeAngle = Math.atan2(ramp.height, rampLen);
+                        norm = new THREE.Vector3(-sinRot * Math.sin(slopeAngle), Math.cos(slopeAngle), -cosRot * Math.sin(slopeAngle)).normalize();
+                    }
+                    return {
+                        onRamp: true,
+                        extraHeight,
+                        normal: norm,
+                        isDrop: true,
+                        atDropEdge,
+                        dropHeight: ramp.height
+                    };
+                } else if (ramp.type === 'kicker') {
+                    // Curved launch kicker
+                    const t = Math.max(0, Math.min(1.0, (localZ + halfL) / ramp.length));
+                    const extraHeight = ramp.height * Math.pow(t, 1.4);
+                    const slopeAngle = Math.atan2(ramp.height * 1.4 * Math.pow(Math.max(0.001, t), 0.4), ramp.length);
+                    const norm = new THREE.Vector3(-sinRot * Math.sin(slopeAngle), Math.cos(slopeAngle), -cosRot * Math.sin(slopeAngle)).normalize();
+                    return {
+                        onRamp: true,
+                        extraHeight,
+                        normal: norm,
+                        isJump: true,
+                        launchPitch: slopeAngle,
+                        atLip: (t > 0.88)
+                    };
+                } else {
+                    // Standard linear ramp
+                    const t = (localZ + halfL) / ramp.length;
+                    const slopeAngle = Math.atan2(ramp.height, ramp.length);
+                    const norm = new THREE.Vector3(-sinRot * Math.sin(slopeAngle), Math.cos(slopeAngle), -cosRot * Math.sin(slopeAngle)).normalize();
+                    return {
+                        onRamp: true,
+                        extraHeight: t * ramp.height,
+                        normal: norm,
+                        isJump: ramp.isJump || false,
+                        launchPitch: slopeAngle,
+                        atLip: (t > 0.9)
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    checkWallRide(carX, carZ) {
+        if (!this.wallRides || this.wallRides.length === 0) return null;
+        for (let i = 0; i < this.wallRides.length; i++) {
+            const wr = this.wallRides[i];
+            const dx = carX - wr.cx;
+            const dz = carZ - wr.cz;
+            const dist = Math.hypot(dx, dz);
+            if (dist < wr.rIn - 0.5 || dist > wr.rOut + 1.2) continue;
+
+            let angle = Math.atan2(dz, dx);
+            let diff = angle - wr.startAngle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            const arcLength = wr.endAngle - wr.startAngle;
+            if (diff < -0.05 || diff > arcLength + 0.05) continue;
+
+            const u = Math.max(0, Math.min(1.0, (dist - wr.rIn) / (wr.rOut - wr.rIn)));
+            const extraHeight = wr.height * Math.pow(u, 1.8);
+
+            // Banked normal vector tilted inward toward center: (-radX * slope, 1, -radZ * slope)
+            const slope = (wr.height * 1.8 * Math.pow(Math.max(0.01, u), 0.8)) / (wr.rOut - wr.rIn);
+            const radX = dx / (dist || 1);
+            const radZ = dz / (dist || 1);
+            const norm = new THREE.Vector3(-radX * slope, 1.0, -radZ * slope).normalize();
+
+            return {
+                onWall: true,
+                extraHeight,
+                normal: norm,
+                radialU: u,
+                angle
+            };
+        }
+        return null;
+    }
+
+    checkStuntRunway(carX, carZ) {
+        if (!this.stuntLoops || this.stuntLoops.length === 0) return null;
+        const loop = this.stuntLoops[0];
+        const halfW = loop.width * 0.5 + 4.0;
+        // Entrance runway approaching loop (Z from loop.z - 110 to loop.z)
+        if (Math.abs(carX - loop.x) <= halfW && carZ >= loop.z - 112 && carZ <= loop.z + 5) {
+            return {
+                height: loop.yBase + 0.08,
+                isRunway: true,
+                isBoost: (carZ >= loop.z - 95 && carZ <= loop.z - 15)
+            };
+        }
+        // Exit runway leading away from loop (Z from loop.z to loop.z + 110)
+        const exitX = loop.x + loop.xOffset;
+        if (Math.abs(carX - exitX) <= halfW && carZ >= loop.z - 5 && carZ <= loop.z + 112) {
+            return {
+                height: loop.yBase + 0.08,
+                isRunway: true,
+                isBoost: false
+            };
+        }
+        return null;
+    }
+
+    checkSolidLoopRoad(carX, carY, carZ, carSpeed = 0) {
+        if (!this.stuntLoops || this.stuntLoops.length === 0) return null;
+
+        for (let i = 0; i < this.stuntLoops.length; i++) {
+            const loop = this.stuntLoops[i];
+            const R = loop.radius;
+            const Yc = loop.yBase + R;
+            const Zc = loop.z;
+            const Xc = loop.x;
+            const W = loop.width;
+
+            // In Y-Z plane relative to loop cylinder axis
+            const dy = carY - Yc;
+            const dz = carZ - Zc;
+            const r = Math.hypot(dy, dz);
+
+            // Angle around loop: theta = 0 at entrance (dy = -R, dz = 0), pi/2 at 90 deg climb (dy = 0, dz = R), pi at apex (dy = R, dz = 0), 2*pi at exit
+            let theta = Math.atan2(dz, -dy);
+            if (theta < 0) theta += Math.PI * 2;
+
+            // Track centerline X at angle theta
+            const xCenter = Xc + loop.xOffset * (theta / (Math.PI * 2));
+            const lateralDist = carX - xCenter;
+
+            // Check if car is laterally within track width
+            const halfW = W * 0.5;
+            if (Math.abs(lateralDist) > halfW + 4.0) continue;
+
+            // Distance from cylindrical track road surface (radius R)
+            const distFromSurface = r - R;
+
+            if (Math.abs(distFromSurface) < 8.0) {
+                // Inward normal vector from the solid road track toward loop center
+                const normal = new THREE.Vector3(0, Math.cos(theta), -Math.sin(theta)).normalize();
+
+                // Forward tangent vector along track
+                const tangent = new THREE.Vector3(0, Math.sin(theta), Math.cos(theta)).normalize();
+
+                // Solid road surface position
+                const targetY = Yc - R * Math.cos(theta);
+                const targetZ = Zc + R * Math.sin(theta);
+                const targetX = xCenter;
+
+                return {
+                    onLoop: true,
+                    loop,
+                    theta,
+                    normal,
+                    tangent,
+                    targetY,
+                    targetZ,
+                    targetX,
+                    distFromSurface,
+                    radius: R,
+                    lateralDist,
+                    halfW
+                };
+            }
+        }
+        return null;
+    }
+
+    checkLoop(carX, carY, carZ, speed, heading) {
+        if (!this.stuntLoops || this.stuntLoops.length === 0) return null;
+        for (let i = 0; i < this.stuntLoops.length; i++) {
+            const loop = this.stuntLoops[i];
+            const dx = carX - loop.x;
+            const dz = carZ - loop.z;
+            const cos = Math.cos(-loop.rotation);
+            const sin = Math.sin(-loop.rotation);
+            const localX = dx * cos - dz * sin;
+            const localZ = dx * sin + dz * cos;
+
+            // Entrance check: approaching local -loop.radius in local +Z direction
+            if (Math.abs(localX) <= loop.width * 0.5 + 2.5 &&
+                localZ >= -loop.radius - 35.0 && localZ <= -loop.radius + 3.0) {
+                if (speed > 25) {
+                    return loop;
+                }
             }
         }
         return null;

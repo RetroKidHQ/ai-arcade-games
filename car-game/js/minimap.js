@@ -13,7 +13,11 @@ class Minimap {
         this.pois = [
             { name: 'City Downtown', x: -174, z: -174, icon: '🏙️', color: '#3498db' },
             { name: 'Historic Lofts & Apartments', x: -174, z: 3, icon: '🏢', color: '#e67e22' },
-            { name: 'Stunt Park', x: 300, z: 300, icon: '⚡', color: '#f39c12' },
+            { name: '72m Mega Loop', x: 420, z: 480, icon: '🔄', color: '#f39c12' },
+            { name: 'Curved Wall Ride', x: 220, z: 120, icon: '🛹', color: '#9b59b6' },
+            { name: '21m Mega Drop', x: 510, z: -120, icon: '⚠️', color: '#e74c3c' },
+            { name: '15m Mega Kicker', x: 180, z: -320, icon: '🚀', color: '#f1c40f' },
+            { name: 'Double Gap Jump', x: -120, z: -430, icon: '🎯', color: '#e67e22' },
             { name: 'Windmill Farm', x: -320, z: 240, icon: '🌾', color: '#2ecc71' },
             { name: 'Lighthouse', x: -460, z: 380, icon: '🏮', color: '#e74c3c' },
             { name: 'Mountain Peak', x: 380, z: -320, icon: '⛰️', color: '#9b59b6' }

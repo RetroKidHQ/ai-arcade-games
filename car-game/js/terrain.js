@@ -199,6 +199,30 @@ class TerrainManager {
             }
         }
 
+        // Stunt Obstacle Plateaus (Spread across map)
+        const stuntSites = [
+            { x: 420, z: 480, h: 16.0, r: 120 }, // 72m Mega Loop
+            { x: 220, z: 120, h: 10.0, r: 110 }, // 24m Curved Wall Ride
+            { x: 510, z: -120, h: 19.5, r: 90 }, // 21m Mega Drop Platform
+            { x: 180, z: -320, h: 13.5, r: 80 }, // 15m Mega Kicker
+            { x: -120, z: -430, h: 21.0, r: 85 }  // Double Gap Jump
+        ];
+        for (let i = 0; i < stuntSites.length; i++) {
+            const s = stuntSites[i];
+            const d = Math.hypot(x - s.x, z - s.z);
+            if (d < s.r) {
+                const inner = s.r * 0.72;
+                if (d <= inner) {
+                    baseHeight = s.h;
+                } else {
+                    const t = (d - inner) / (s.r - inner);
+                    const blend = t * t * (3.0 - 2.0 * t);
+                    baseHeight = s.h * (1.0 - blend) + baseHeight * blend;
+                }
+                break;
+            }
+        }
+
         return baseHeight;
     }
 
@@ -250,6 +274,21 @@ class TerrainManager {
         const height = this.getHeight(x, z);
         if (height < this.waterHeight) return 'water';
 
+        // Stunt sites road-grade traction
+        const stuntSites = [
+            { x: 420, z: 480, r: 110 },
+            { x: 220, z: 120, r: 100 },
+            { x: 510, z: -120, r: 80 },
+            { x: 180, z: -320, r: 70 },
+            { x: -120, z: -430, r: 75 },
+            { x: -240, z: 430, r: 80 }
+        ];
+        for (let i = 0; i < stuntSites.length; i++) {
+            if (Math.hypot(x - stuntSites[i].x, z - stuntSites[i].z) < stuntSites[i].r) {
+                return 'road';
+            }
+        }
+
         const roadInfo = this.getDistanceToRoad(x, z);
         const halfW = this.roadWidth * 0.5;
         if (roadInfo.distance <= halfW) {
@@ -300,7 +339,21 @@ class TerrainManager {
 
             let col = new THREE.Color();
             const halfW = this.roadWidth * 0.5;
-            if (dist <= halfW) {
+
+            // Stunt Pads asphalt color
+            let isStuntFloor = false;
+            const sites = [[420, 480, 95], [220, 120, 90], [510, -120, 70], [180, -320, 60], [-120, -430, 65], [-240, 430, 70]];
+            for (let s = 0; s < sites.length; s++) {
+                if (Math.hypot(vx - sites[s][0], vz - sites[s][1]) < sites[s][2]) {
+                    isStuntFloor = true;
+                    break;
+                }
+            }
+
+            if (isStuntFloor) {
+                // Stunt Arena Asphalt Floor
+                col.setHex(0x24262c);
+            } else if (dist <= halfW) {
                 // Asphalt & gravel roadway
                 col.copy(cGravelRoad);
             } else if (dist <= halfW + 4.0) {

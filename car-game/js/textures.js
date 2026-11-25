@@ -3187,6 +3187,140 @@ class TextureGenerator {
         this.cache['sky'] = texture;
         return texture;
     }
+
+    createHazardStripeTexture(width = 512, height = 128) {
+        const key = `hazard_${width}_${height}`;
+        if (this.cache[key]) return this.cache[key];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // High-vis yellow background
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillRect(0, 0, width, height);
+
+        // Black diagonal stripes
+        ctx.fillStyle = '#111114';
+        const stripeW = 40;
+        ctx.beginPath();
+        for (let x = -height * 2; x < width + height * 2; x += stripeW * 2) {
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x + stripeW, 0);
+            ctx.lineTo(x + stripeW + height, height);
+            ctx.lineTo(x + height, height);
+            ctx.closePath();
+        }
+        ctx.fill();
+
+        // Edge highlights
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fillRect(0, 0, width, 4);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(0, height - 4, width, 4);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        this.cache[key] = tex;
+        return tex;
+    }
+
+    createStuntTrackTexture(width = 512, height = 512) {
+        const key = `stunt_track_${width}_${height}`;
+        if (this.cache[key]) return this.cache[key];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Dark modern composite asphalt
+        ctx.fillStyle = '#1e2025';
+        ctx.fillRect(0, 0, width, height);
+
+        // Neon side borders (Cyan & Orange)
+        ctx.fillStyle = '#00d2ff';
+        ctx.fillRect(0, 0, 24, height);
+        ctx.fillStyle = '#ff7700';
+        ctx.fillRect(width - 24, 0, 24, height);
+
+        // Inner glowing stripes
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(24, 0, 6, height);
+        ctx.fillRect(width - 30, 0, 6, height);
+
+        // Center dashed yellow line
+        ctx.fillStyle = '#ffd200';
+        const dashH = 48;
+        const gapH = 32;
+        for (let y = 0; y < height; y += dashH + gapH) {
+            ctx.fillRect(width / 2 - 6, y, 12, dashH);
+        }
+
+        // Chevrons pointing forward
+        ctx.strokeStyle = 'rgba(0, 210, 255, 0.35)';
+        ctx.lineWidth = 8;
+        for (let y = 30; y < height; y += 128) {
+            ctx.beginPath();
+            ctx.moveTo(width / 2 - 80, y + 40);
+            ctx.lineTo(width / 2, y);
+            ctx.lineTo(width / 2 + 80, y + 40);
+            ctx.stroke();
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        this.cache[key] = tex;
+        return tex;
+    }
+
+    createWallRideTexture(width = 512, height = 512) {
+        const key = `wall_ride_${width}_${height}`;
+        if (this.cache[key]) return this.cache[key];
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Vibrant stunt arena composite surface
+        const grad = ctx.createLinearGradient(0, height, 0, 0); // bottom to top
+        grad.addColorStop(0, '#2b2d35');
+        grad.addColorStop(0.5, '#20222a');
+        grad.addColorStop(1, '#ff3b30'); // red top zone
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Speed lines along the horizontal curve
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        for (let y = 40; y < height - 40; y += 30) {
+            ctx.fillRect(0, y, width, 4);
+        }
+
+        // High bank indicator line (yellow)
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillRect(0, height * 0.35, width, 8);
+
+        // Top edge hazard border
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillRect(0, 0, width, 24);
+        ctx.fillStyle = '#111';
+        for (let x = 0; x < width; x += 36) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x + 18, 0);
+            ctx.lineTo(x + 6, 24);
+            ctx.lineTo(x - 12, 24);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        this.cache[key] = tex;
+        return tex;
+    }
 }
 
 window.textureGenerator = new TextureGenerator();

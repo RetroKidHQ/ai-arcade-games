@@ -41,6 +41,15 @@ class Car {
         this.driftScore = 0;
         this.totalStuntScore = 0;
 
+        // Stunt obstacle state
+        this.inLoop = null;
+        this.loopProgress = 0;
+        this.wasInLoopApex = false;
+        this.wasOnDrop = false;
+        this.wasOnRamp = null;
+        this.lastWallRideTime = 0;
+        this.gravity = 9.81; // Real-world Earth gravity (9.81 m/s^2)
+
         // RPM & Gearing
         this.rpm = 800;
         this.currentGear = 1;
@@ -2368,8 +2377,13 @@ class Car {
 
     getSampledGround(x, z) {
         const gy = this.terrain.getHeight(x, z);
-        const ramp = this.world.checkRampElevation(x, z);
-        return ramp ? (gy + ramp.extraHeight) : gy;
+        const runway = this.world.checkStuntRunway ? this.world.checkStuntRunway(x, z) : null;
+        if (runway) return Math.max(gy, runway.height);
+        const ramp = this.world.checkRampElevation ? this.world.checkRampElevation(x, z) : null;
+        if (ramp) return gy + ramp.extraHeight;
+        const wall = this.world.checkWallRide ? this.world.checkWallRide(x, z) : null;
+        if (wall) return gy + wall.extraHeight;
+        return gy;
     }
 
     update(delta, input) {
@@ -2378,6 +2392,18 @@ class Car {
         this.handbrake = input.handbrake || false;
         this.isBoosting = input.boost || false;
 
+        const boostPower = this.isBoosting ? 1.85 : 1.0;
+        const surfaceType = this.terrain.getSurfaceType(this.position.x, this.position.z);
+        const surfaceFriction = surfaceType === 'road' ? 1.0 : (surfaceType === 'road_shoulder' ? 0.8 : 0.65);
+
+        // Runway Boost Pad Speed Surge
+        const runway = this.world.checkStuntRunway ? this.world.checkStuntRunway(this.position.x, this.position.z) : null;
+        if (runway && runway.isBoost && Math.cos(this.heading) > 0.4) {
+            this.speed = Math.max(this.speed, Math.min(145, this.speed + 70 * delta));
+            this.spawnSmoke(this.position.x, this.position.y + 0.2, this.position.z, true);
+        }
+
+        // Steer angle interpolation
         const steerSpeed = 3.2 * delta;
         const speedRatio = Math.min(1.0, Math.abs(this.speed) / this.topSpeed);
         const currentMaxSteer = this.maxSteerAngle * (1.0 - speedRatio * 0.55);
@@ -2385,22 +2411,133 @@ class Car {
         let targetSteer = 0;
         if (input.left) targetSteer += currentMaxSteer;
         if (input.right) targetSteer -= currentMaxSteer;
-
         this.steerAngle = THREE.MathUtils.lerp(this.steerAngle, targetSteer, steerSpeed * 4);
 
         for (const hub of this.frontWheelHubs) {
             hub.rotation.y = this.steerAngle;
         }
 
-        // Steer heading
         let slipRatio = 0;
-        if (this.isGrounded) {
-            let turnRate = (this.speed / 50.0) * this.steerAngle * 1.8;
 
+        // =========================================================================
+        // 1. SOLID ROAD LOOP DYNAMICS (Full 360° Roller Coaster Loop Contact)
+        // =========================================================================
+        const loop = this.world.stuntLoops && this.world.stuntLoops.length > 0 ? this.world.stuntLoops[0] : null;
+
+        // Loop Entrance Trigger
+        if (!this.inLoop && loop) {
+            const dx = this.position.x - loop.x;
+            const dz = this.position.z - loop.z;
+            const dy = this.position.y - loop.yBase;
+            const headingZ = Math.cos(this.heading);
+
+            // Approaching loop entrance in +Z direction
+            if (Math.abs(dx) <= loop.width * 0.5 + 4.0 && dz >= -8.0 && dz <= 10.0 && dy <= 6.0 && headingZ > 0.1 && this.speed > 15) {
+                this.inLoop = true;
+                this.loopTheta = 0.02;
+                this.loopLateralDist = dx;
+                this.speed = Math.max(90, this.speed); // Instant thrill entrance speed
+                this.wasInLoopApex = false;
+                if (window.onStunt) window.onStunt('🌀 ENTERING 72-METER MEGA LOOP!');
+                window.soundEngine.setNitro(true);
+            }
+        }
+
+        if (this.inLoop && loop) {
+            this.isGrounded = true;
+            this.airTime = 0;
+
+            // Loop acceleration & power
+            if (throttle) {
+                this.speed += this.acceleration * 1.6 * boostPower * delta;
+            } else if (brake) {
+                this.speed = Math.max(55, this.speed - this.brakeForce * 0.5 * delta);
+            } else {
+                this.speed = Math.max(80, this.speed);
+            }
+            // Loop slope gravity: noticeable resistance on climb, thrilling acceleration down
+            const loopGravity = Math.sin(this.loopTheta) * 9.81 * 1.1;
+            this.speed -= loopGravity * delta;
+            this.speed = Math.max(65, Math.min(this.topSpeed * 1.5, this.speed));
+
+            const speedMS = this.speed / 3.6;
+            const dTheta = (speedMS / loop.radius) * delta;
+            this.loopTheta += dTheta;
+
+            // Lateral steering on the 18m-wide loop track
+            if (input.left) this.loopLateralDist = Math.max(-loop.width * 0.45, this.loopLateralDist - 14 * delta);
+            if (input.right) this.loopLateralDist = Math.min(loop.width * 0.45, this.loopLateralDist + 14 * delta);
+
+            // Parametric position along loop track:
+            // y(theta) = yBase + R*(1 - cos(theta))
+            // z(theta) = zBase + R*sin(theta)
+            // x(theta) = xBase + xOffset*(theta / 2pi) + lateralDist
+            const theta = this.loopTheta;
+            const R = loop.radius;
+            const Yc = loop.yBase + R;
+            const Zc = loop.z;
+            const Xc = loop.x;
+
+            const targetY = Yc - R * Math.cos(theta);
+            const targetZ = Zc + R * Math.sin(theta);
+            const targetX = Xc + loop.xOffset * (theta / (Math.PI * 2)) + this.loopLateralDist;
+
+            // Tangent and normal vectors
+            const tangent = new THREE.Vector3(0, Math.sin(theta), Math.cos(theta)).normalize();
+            const normal = new THREE.Vector3(0, Math.cos(theta), -Math.sin(theta)).normalize();
+            const carRight = new THREE.Vector3(1, 0, 0);
+
+            this.position.set(
+                targetX,
+                targetY + normal.y * this.wheelGroundOffset,
+                targetZ + normal.z * this.wheelGroundOffset
+            );
+            this.velocity.set(0, tangent.y * speedMS, tangent.z * speedMS);
+
+            // Orientation
+            const basisMat = new THREE.Matrix4();
+            basisMat.makeBasis(carRight, normal, tangent);
+            this.root.quaternion.setFromRotationMatrix(basisMat);
+            this.root.position.copy(this.position);
+
+            // Apex check & stunt score
+            if (theta > Math.PI * 0.8 && theta < Math.PI * 1.2) {
+                this.wasInLoopApex = true;
+            }
+
+            // Wheels roll
+            const wheelRollSpeed = speedMS * 2.5 * delta * 20;
+            for (const w of this.wheels) w.rotation.x += wheelRollSpeed;
+
+            // Loop completion exit!
+            if (this.loopTheta >= Math.PI * 2) {
+                this.inLoop = false;
+                this.loopTheta = 0;
+                this.position.set(Xc + loop.xOffset + this.loopLateralDist, loop.yBase + this.wheelGroundOffset, Zc + 2.0);
+                this.heading = 0;
+                this.velocity.set(0, 0, speedMS);
+                this.root.position.copy(this.position);
+                this.root.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0);
+                this.totalStuntScore += 1000;
+                if (window.onStunt) window.onStunt('🔥 72-METER MEGA LOOP CLEARED! +1000 PTS');
+            }
+
+            this.updateParticles(delta);
+            this.updateRPM(throttle);
+            window.soundEngine.updateEngine(this.rpm / 7000, throttle, this.carType);
+            window.soundEngine.setNitro(this.isBoosting && throttle);
+            return;
+        }
+
+        // =========================================================================
+        // 2. STANDARD GROUND DYNAMICS VS AIRBORNE PROJECTILE FLIGHT
+        // =========================================================================
+        if (this.isGrounded) {
+            // Steer heading when grounded
+            let turnRate = (this.speed / 50.0) * this.steerAngle * 1.8;
             if (this.handbrake) {
                 turnRate *= 1.8;
                 slipRatio = Math.min(1.0, Math.abs(this.speed) / 40);
-
                 if (Math.abs(this.speed) > 30) {
                     this.driftScore += Math.round(Math.abs(this.speed) * delta * 10);
                     if (window.onDrift) window.onDrift(this.driftScore);
@@ -2412,41 +2549,45 @@ class Car {
                     this.driftScore = 0;
                 }
             }
-
             this.heading += turnRate * delta;
-        }
 
-        // 2. Compute Terrain Normal & Slanted Basis Vector Framework
-        const headingDir = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading)).normalize();
-        const terrainNormal = this.terrain.getNormal(this.position.x, this.position.z);
+            // Surface normal from obstacles / ramps / wall-rides / terrain
+            const currentRamp = this.world.checkRampElevation ? this.world.checkRampElevation(this.position.x, this.position.z) : null;
+            const currentWall = this.world.checkWallRide ? this.world.checkWallRide(this.position.x, this.position.z) : null;
 
-        // Project forward direction onto the slanted terrain tangent plane
-        const carForward = headingDir.clone().sub(terrainNormal.clone().multiplyScalar(headingDir.dot(terrainNormal))).normalize();
-        const carRight = new THREE.Vector3().crossVectors(terrainNormal, carForward).normalize();
-        const carUp = new THREE.Vector3().crossVectors(carForward, carRight).normalize();
+            let currentNormal = this.terrain.getNormal(this.position.x, this.position.z);
+            if (currentWall && currentWall.normal) {
+                currentNormal = currentWall.normal;
+                if (currentWall.radialU > 0.25 && Math.abs(this.speed) > 25) {
+                    const now = performance.now();
+                    if (now - this.lastWallRideTime > 1200) {
+                        this.lastWallRideTime = now;
+                        this.totalStuntScore += 250;
+                        if (window.onStunt) window.onStunt('🛹 Curved Wall Ride! +250 PTS');
+                    }
+                }
+            } else if (currentRamp && currentRamp.normal) {
+                currentNormal = currentRamp.normal;
+            }
 
-        // 3. Slope Gravity & Engine Dynamics
-        const surfaceType = this.terrain.getSurfaceType(this.position.x, this.position.z);
-        const surfaceFriction = surfaceType === 'road' ? 1.0 : (surfaceType === 'road_shoulder' ? 0.8 : 0.65);
-        const boostPower = this.isBoosting ? 1.85 : 1.0;
+            // Project forward direction onto the slanted terrain tangent plane
+            const headingDir = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading)).normalize();
+            const carForward = headingDir.clone().sub(currentNormal.clone().multiplyScalar(headingDir.dot(currentNormal))).normalize();
+            const carRight = new THREE.Vector3().crossVectors(currentNormal, carForward).normalize();
+            const carUp = new THREE.Vector3().crossVectors(carForward, carRight).normalize();
 
-        if (this.isGrounded) {
-            // Authentic slope gravity: uphill pulls backward, downhill accelerates
-            const slopeGravity = carForward.y * 22.0;
-            this.speed -= slopeGravity * delta * 3.6;
+            // Natural hill/ramp slope resistance: car has plenty of engine power to climb!
+            const slopeGravity = carForward.y * 7.5;
+            this.speed -= slopeGravity * delta;
 
+            // Throttle / Brake / Drag with uphill drive assist on stunt ramps
+            const climbAssist = currentRamp ? 1.45 : 1.0;
             if (throttle) {
-                if (this.speed < -2) {
-                    this.speed += this.brakeForce * delta;
-                } else {
-                    this.speed += this.acceleration * boostPower * surfaceFriction * delta;
-                }
+                if (this.speed < -2) this.speed += this.brakeForce * delta;
+                else this.speed += this.acceleration * boostPower * surfaceFriction * climbAssist * delta;
             } else if (brake) {
-                if (this.speed > 2) {
-                    this.speed -= this.brakeForce * delta;
-                } else {
-                    this.speed -= this.reverseForce * delta;
-                }
+                if (this.speed > 2) this.speed -= this.brakeForce * delta;
+                else this.speed -= this.reverseForce * delta;
             } else {
                 const drag = (surfaceType === 'road' ? 6.0 : 12.0) * delta;
                 if (this.speed > 0) this.speed = Math.max(0, this.speed - drag);
@@ -2456,95 +2597,141 @@ class Car {
             if (this.handbrake && this.speed > 0) {
                 this.speed = Math.max(0, this.speed - this.brakeForce * 1.5 * delta);
             }
-        }
 
-        const maxForwardSpeed = this.topSpeed * (this.isBoosting ? 1.35 : 1.0);
-        this.speed = Math.max(-40, Math.min(maxForwardSpeed, this.speed));
+            const maxForwardSpeed = this.topSpeed * (this.isBoosting ? 1.35 : 1.0);
+            this.speed = Math.max(-40, Math.min(maxForwardSpeed, this.speed));
 
-        // 4. Move Car along the Slanted Terrain Tangent Plane
-        const moveSpeedMS = (this.speed / 3.6) * delta;
-        this.position.x += carForward.x * moveSpeedMS;
-        this.position.z += carForward.z * moveSpeedMS;
+            // Set 3D velocity vector while grounded
+            const speedMS = this.speed / 3.6;
+            this.velocity.set(carForward.x * speedMS, carForward.y * speedMS, carForward.z * speedMS);
 
-        // Keep inside world boundaries
-        const boundary = this.terrain.halfSize - 30;
-        this.position.x = Math.max(-boundary, Math.min(boundary, this.position.x));
-        this.position.z = Math.max(-boundary, Math.min(boundary, this.position.z));
+            // Move position along surface
+            this.position.x += this.velocity.x * delta;
+            this.position.z += this.velocity.z * delta;
 
-        // Obstacle Collision Check
-        const hit = this.world.checkCollision(this.position.x, this.position.z, 1.6);
-        if (hit) {
-            this.position.x += hit.nx * hit.overlap;
-            this.position.z += hit.nz * hit.overlap;
-            if (Math.abs(this.speed) > 15) {
-                window.soundEngine.playCrash(Math.min(1.0, Math.abs(this.speed) / 80));
-            }
-            this.speed *= -0.3;
-        }
+            // Keep inside world boundaries
+            const boundary = this.terrain.halfSize - 30;
+            this.position.x = Math.max(-boundary, Math.min(boundary, this.position.x));
+            this.position.z = Math.max(-boundary, Math.min(boundary, this.position.z));
 
-        // 5. Sample 4 Wheels at Current Position for Ground Clamping
-        const frontDist = 1.35;
-        const rearDist = 1.25;
-        const sideDist = 0.82;
-
-        const flX = this.position.x + carForward.x * frontDist - carRight.x * sideDist;
-        const flZ = this.position.z + carForward.z * frontDist - carRight.z * sideDist;
-        const frX = this.position.x + carForward.x * frontDist + carRight.x * sideDist;
-        const frZ = this.position.z + carForward.z * frontDist + carRight.z * sideDist;
-        const rlX = this.position.x - carForward.x * rearDist - carRight.x * sideDist;
-        const rlZ = this.position.z - carForward.z * rearDist - carRight.z * sideDist;
-        const rrX = this.position.x - carForward.x * rearDist + carRight.x * sideDist;
-        const rrZ = this.position.z - carForward.z * rearDist + carRight.z * sideDist;
-
-        const flY = this.getSampledGround(flX, flZ);
-        const frY = this.getSampledGround(frX, frZ);
-        const rlY = this.getSampledGround(rlX, rlZ);
-        const rrY = this.getSampledGround(rrX, rrZ);
-
-        const groundY = (flY + frY + rlY + rrY) / 4.0;
-        const targetY = groundY + this.wheelGroundOffset;
-
-        // 6. Ground Clamping & Normal Gravity
-        if (this.position.y <= targetY + 0.25) {
-            if (!this.isGrounded) {
-                if (this.verticalVelocity < -8) {
-                    window.soundEngine.playCrash(Math.min(1.0, -this.verticalVelocity / 20));
-                    this.suspensionPitch = -0.12;
+            // Obstacle Collision Check
+            const hit = this.world.checkCollision(this.position.x, this.position.z, 1.6);
+            if (hit) {
+                this.position.x += hit.nx * hit.overlap;
+                this.position.z += hit.nz * hit.overlap;
+                if (Math.abs(this.speed) > 15) {
+                    window.soundEngine.playCrash(Math.min(1.0, Math.abs(this.speed) / 80));
                 }
-                if (this.airTime > 0.5) {
-                    const airScore = Math.round(this.airTime * 250);
+                this.speed *= -0.3;
+                this.velocity.set(0, 0, 0);
+            }
+
+            // Check ground height at new position
+            const newGroundY = this.getSampledGround(this.position.x, this.position.z);
+            const newTargetY = newGroundY + this.wheelGroundOffset;
+
+            // Liftoff condition (leaving ramp lip, drop cliff, or huge cliff edge):
+            const heightDiff = this.position.y - newTargetY;
+            const isAtRampLip = (currentRamp && currentRamp.isJump && currentRamp.atLip && this.speed > 14);
+            const isAtDropEdge = (currentRamp && currentRamp.isDrop && currentRamp.atDropEdge && this.speed > 4);
+
+            if (heightDiff > 2.4 || isAtRampLip || isAtDropEdge) {
+                // LIFTOFF INTO REAL BALLISTIC FLIGHT!
+                this.isGrounded = false;
+                this.airTime = 0;
+
+                if (isAtRampLip) {
+                    // True projectile launch along ramp launch angle
+                    const launchPitch = currentRamp.launchPitch || 0.44;
+                    const horizMS = speedMS * Math.cos(launchPitch);
+                    this.velocity.x = Math.sin(this.heading) * horizMS;
+                    this.velocity.z = Math.cos(this.heading) * horizMS;
+                    this.velocity.y = speedMS * Math.sin(launchPitch);
+                    if (window.onStunt) window.onStunt('🚀 15-METER MEGA KICKER LAUNCH! +300 PTS');
+                    this.totalStuntScore += 300;
+                } else if (isAtDropEdge) {
+                    // Pure horizontal launch off 21m cliff edge into 2-second freefall
+                    this.velocity.x = Math.sin(this.heading) * speedMS;
+                    this.velocity.z = Math.cos(this.heading) * speedMS;
+                    this.velocity.y = 0;
+                    if (window.onStunt) window.onStunt('⚠️ 21-METER MEGA STUNT DROP! +350 PTS');
+                    this.totalStuntScore += 350;
+                } else {
+                    // Natural hill crest
+                    this.velocity.x = carForward.x * speedMS;
+                    this.velocity.y = Math.max(0, carForward.y * speedMS);
+                    this.velocity.z = carForward.z * speedMS;
+                }
+            } else {
+                // Firmly grounded on road/terrain
+                this.position.y = newTargetY;
+
+                // Slant Car on Hill using Matrix Basis & Quaternion SLERP
+                const basisMat = new THREE.Matrix4();
+                basisMat.makeBasis(carRight, carUp, carForward);
+                const targetQuat = new THREE.Quaternion().setFromRotationMatrix(basisMat);
+                this.root.quaternion.slerp(targetQuat, 25 * delta);
+            }
+        } else {
+            // =========================================================================
+            // AIRBORNE PROJECTILE FLIGHT (REAL-WORLD GRAVITY g = 9.81 m/s^2)
+            // =========================================================================
+            this.airTime += delta;
+
+            // Earth gravity pulls straight DOWN: g = 9.81 m/s^2
+            this.velocity.y -= 9.81 * delta;
+
+            // Gentle aerodynamic drag
+            this.velocity.x -= this.velocity.x * 0.03 * delta;
+            this.velocity.z -= this.velocity.z * 0.03 * delta;
+
+            // Update 3D position by real ballistic velocity
+            this.position.x += this.velocity.x * delta;
+            this.position.y += this.velocity.y * delta;
+            this.position.z += this.velocity.z * delta;
+
+            // Mid-air yaw control
+            if (input.left) this.heading += 0.9 * delta;
+            if (input.right) this.heading -= 0.9 * delta;
+
+            // Ballistic flight orientation (align pitch with trajectory parabola)
+            const horizSpeed = Math.hypot(this.velocity.x, this.velocity.z);
+            const flightPitch = Math.atan2(this.velocity.y, Math.max(1.0, horizSpeed));
+            const flightHeading = horizSpeed > 1.0 ? Math.atan2(this.velocity.x, this.velocity.z) : this.heading;
+            this.heading = THREE.MathUtils.lerp(this.heading, flightHeading, 4 * delta);
+
+            const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.heading);
+            const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -flightPitch);
+            const targetAirQuat = qYaw.clone().multiply(qPitch);
+            this.root.quaternion.slerp(targetAirQuat, 8 * delta);
+
+            // Check touchdown on solid surface (loop road, ramp, or terrain)
+            let touchGroundY = this.getSampledGround(this.position.x, this.position.z);
+            const targetLandingY = touchGroundY + this.wheelGroundOffset;
+
+            if (this.position.y <= targetLandingY) {
+                // TOUCHDOWN!
+                this.position.y = targetLandingY;
+                this.isGrounded = true;
+
+                // Real landing impact
+                if (this.velocity.y < -6.0) {
+                    window.soundEngine.playCrash(Math.min(1.0, -this.velocity.y / 25.0));
+                    this.suspensionPitch = -0.15;
+                    this.spawnSmoke(this.position.x, this.position.y, this.position.z);
+                }
+
+                if (this.airTime > 0.6) {
+                    const airScore = Math.round(this.airTime * 200);
                     this.totalStuntScore += airScore;
-                    if (window.onStunt) window.onStunt(`Big Air Jump! +${airScore} pts`);
+                    if (window.onStunt) window.onStunt(`🎯 Clean Landing! Airtime ${this.airTime.toFixed(1)}s (+${airScore} pts)`);
                 }
                 this.airTime = 0;
-            }
-            this.isGrounded = true;
-            this.verticalVelocity = 0;
-            this.position.y = targetY;
-        } else {
-            this.isGrounded = false;
-            this.airTime += delta;
-            this.verticalVelocity -= 26.0 * delta;
-            this.position.y += this.verticalVelocity * delta;
-            if (this.position.y < targetY) {
-                this.position.y = targetY;
-                this.isGrounded = true;
-                this.verticalVelocity = 0;
-            }
-        }
 
-        // 7. Slant Car on Hill using Matrix Basis & Quaternion SLERP
-        const basisMat = new THREE.Matrix4();
-        if (this.isGrounded) {
-            basisMat.makeBasis(carRight, carUp, carForward);
-            const targetQuat = new THREE.Quaternion().setFromRotationMatrix(basisMat);
-            this.root.quaternion.slerp(targetQuat, 25 * delta);
-        } else {
-            const flatUp = new THREE.Vector3(0, 1, 0);
-            const flatRight = new THREE.Vector3().crossVectors(flatUp, headingDir).normalize();
-            basisMat.makeBasis(flatRight, flatUp, headingDir);
-            const targetQuat = new THREE.Quaternion().setFromRotationMatrix(basisMat);
-            this.root.quaternion.slerp(targetQuat, 5 * delta);
+                // Restore speed from horizontal landing velocity (maintain momentum)
+                this.speed = Math.max(this.speed, horizSpeed * 3.6);
+                this.velocity.y = 0;
+            }
         }
 
         this.root.position.copy(this.position);
@@ -2557,6 +2744,7 @@ class Car {
         this.bodyMeshGroup.rotation.x = this.suspensionPitch;
         this.bodyMeshGroup.rotation.z = this.suspensionRoll;
 
+        const moveSpeedMS = (this.speed / 3.6) * delta;
         const wheelRollSpeed = moveSpeedMS * 2.5;
         for (const w of this.wheels) {
             w.rotation.x += wheelRollSpeed;
@@ -2568,13 +2756,15 @@ class Car {
         }
 
         if (this.isGrounded) {
+            const fwdX = Math.sin(this.heading);
+            const fwdZ = Math.cos(this.heading);
             if ((this.handbrake && Math.abs(this.speed) > 15) || (throttle && Math.abs(this.speed) < 10)) {
-                this.spawnSmoke(this.position.x - carForward.x * 1.2, this.position.y, this.position.z - carForward.z * 1.2);
-                this.spawnSkidmark(this.position.x, groundY, this.position.z, this.heading);
+                this.spawnSmoke(this.position.x - fwdX * 1.2, this.position.y, this.position.z - fwdZ * 1.2);
+                this.spawnSkidmark(this.position.x, this.position.y, this.position.z, this.heading);
             }
 
             if (this.isBoosting && throttle) {
-                this.spawnSmoke(this.position.x - carForward.x * 1.8, this.position.y + 0.3, this.position.z - carForward.z * 1.8, true);
+                this.spawnSmoke(this.position.x - fwdX * 1.8, this.position.y + 0.3, this.position.z - fwdZ * 1.8, true);
             }
         }
 
