@@ -11,11 +11,11 @@ Every game on this site was designed, coded, and debugged by AI — no human wro
 - **Pac-Man** — Clear the maze while avoiding ghosts
 - **Agent 7** — Infiltrate the bunker and escape undetected
 - **Galaga** — Shoot the alien swarm and destroy the flagships
-- **Wildfield** — Pokémon-style top-down meadow RPG with an enterable cabin
+- **Open Road 3D** — Open-world 3D driving simulator with 72m mega stunt loop, kicker launch ramps, cliff drops, and realistic vehicle physics
 
 ## Tech
 
 - Pure HTML/CSS/JavaScript (no frameworks)
-- Original music, including in-browser chiptunes and the Wildfield boundary loop
+- Original music, including in-browser chiptunes and synthwave radio
 - Hosted on GitHub Pages
 

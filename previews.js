@@ -533,91 +533,150 @@ function galaga(){
   };
 }
 
-/* ---------------- WILDFIELD ---------------- */
-function pokemonRpg(){
-  var heroX=W/2,heroY=H/2+10,dir=1;
-  var grass=[];
-  for(var i=0;i<80;i++)grass.push({x:Math.random()*W,y:Math.random()*H,l:1+Math.random()*3});
-  var flowers=[];
-  for(i=0;i<9;i++)flowers.push({x:Math.random()*W,y:Math.random()*H,c:Math.random()<0.5?'#fffbea':'#ff9dc4'});
-  var hero=[
-    "..HHHHHH..",
-    ".HHHHHHHH.",
-    ".HHSSSSHH.",
-    ".HSSSSSSH.",
-    ".HSESSESH.",
-    ".HSSSSSSH.",
-    "..SSSSSS..",
-    ".JJJJJJJJ.",
-    "JJJJJJJJJJ",
-    "JJJJJJJJJJ",
-    ".JJJJJJJJ.",
-    "..PPPPPP..",
-    "..PP..PP..",
-    ".PPP..PPP."
+/* ---------------- OPEN ROAD 3D (CAR GAME) ---------------- */
+function carGame(){
+  var carX=W/2, speed=120, roadOffset=0, turn=0;
+  var smoke=[];
+  // Sports car pixel sprite (rear view like Outrun / arcade racer)
+  var car=[
+    "...RRRRRRRRRR...",
+    "..RRRRRRRRRRRR..",
+    "..KKKKKKKKKKKK..",
+    ".KKWWWWWWWWWWKK.",
+    ".KKWWWWWWWWWWKK.",
+    "RRRRRRRRRRRRRRRR",
+    "RLLRRRRRRRRRRLLR",
+    "RLLRRRRRRRRRRLLR",
+    "BBBBBBBBBBBBBBBB",
+    "TTT..EE....EE..TTT",
+    "TTT............TTT"
   ];
-  var pal={H:'#e94f4d',S:'#f4c58e',E:'#211e30',J:'#4e8fd5',P:'#2d3c60'};
+  var carPal={
+    R:'#ff3838', // Vibrant red body
+    K:'#1e1e1e', // Black roof/trim
+    W:'#70d6ff', // Tinted glass windshield
+    L:'#ffdd59', // Tail lights
+    B:'#3d3d3d', // Bumper
+    E:'#ffd32a', // Dual exhaust flame/tips
+    T:'#0f0f0f'  // Tires
+  };
+
   return {
     draw:function(ctx,t,dt){
-      var i;
-      ctx.fillStyle='#79c95c';ctx.fillRect(0,0,W,H);
+      turn = Math.sin(t * 1.2);
+      carX = W / 2 + turn * 45;
+      roadOffset = (roadOffset + speed * dt * 2.5) % 40;
 
-      // Subtle meadow patchwork.
-      ctx.fillStyle='rgba(255,255,255,.04)';
-      for(var y=0;y<H;y+=16)for(var x=0;x<W;x+=16){
-        if(((x/16+y/16)%9)===0)ctx.fillRect(x,y,16,16);
+      // Synthwave Sunset Sky Gradient
+      var skyGrad = ctx.createLinearGradient(0, 0, 0, 90);
+      skyGrad.addColorStop(0, '#10002b');
+      skyGrad.addColorStop(0.5, '#5a189a');
+      skyGrad.addColorStop(1, '#ff7b00');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, 90);
+
+      // Distant Sun
+      ctx.fillStyle = '#ffea00';
+      ctx.beginPath();
+      ctx.arc(W / 2 - turn * 20, 68, 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Distant 72m Stunt Loop Outline on Horizon
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(W / 2 + 50 - turn * 30, 62, 14, 26, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Distant City Skyline
+      ctx.fillStyle = '#240046';
+      for(var b = 0; b < 14; b++){
+        var bx = b * 22 - turn * 10;
+        var bh = 15 + ((b * 37) % 28);
+        ctx.fillRect(bx, 90 - bh, 18, bh);
       }
 
-      // Grass blades and tiny flowers.
-      ctx.fillStyle='#5eae46';
-      for(i=0;i<grass.length;i++){
-        var g=grass[i];
-        ctx.fillRect(g.x,g.y,1,g.l);
-        ctx.fillRect(g.x+2,g.y+1,1,g.l);
-      }
-      for(i=0;i<flowers.length;i++){
-        var f=flowers[i];
-        ctx.fillStyle=f.c;
-        ctx.fillRect(f.x,f.y,1,1);
-        ctx.fillRect(f.x+2,f.y+1,1,1);
-        ctx.fillStyle='#ffd94e';
-        ctx.fillRect(f.x+1,f.y+1,1,1);
+      // Ground / Off-Road Plains
+      ctx.fillStyle = '#2d6a4f';
+      ctx.fillRect(0, 90, W, H - 90);
+
+      // Pseudo-3D Perspective Highway
+      for(var y = 90; y < H; y++){
+        var p = (y - 90) / (H - 90);
+        var roadW = 24 + p * 190;
+        var rx = W / 2 + (p * turn * 30);
+        var isAlt = ((y + roadOffset) % 24) < 12;
+
+        // Shoulder / Curbs
+        ctx.fillStyle = isAlt ? '#ff3838' : '#ffffff';
+        ctx.fillRect(rx - roadW / 2 - 6, y, roadW + 12, 1);
+
+        // Asphalt Road Bed
+        ctx.fillStyle = isAlt ? '#333533' : '#242423';
+        ctx.fillRect(rx - roadW / 2, y, roadW, 1);
+
+        // Dashed Centerline
+        if(isAlt && p > 0.15){
+          ctx.fillStyle = '#ffee32';
+          ctx.fillRect(rx - 2, y, 4, 1);
+        }
       }
 
-      // Non-solid black boundary outline in the bottom-left.
-      ctx.strokeStyle='#000';ctx.lineWidth=4;
-      ctx.strokeRect(10,H-66,72,56);
-
-      // Idle/walk loop.
-      heroX=W/2+Math.sin(t*0.9)*55;
-      heroY=H/2+10+Math.sin(t*3.6)*1;
-      dir=Math.cos(t*0.9)>=0?1:-1;
-      ctx.fillStyle='rgba(28,80,33,.23)';
-      ctx.fillRect(heroX-7,heroY+1,14,2);
-      ctx.save();
-      if(dir<0){
-        ctx.translate(heroX+10,heroY-28);
-        ctx.scale(-1,1);
-        pxp(ctx,0,0,hero,2,pal);
-      }else{
-        pxp(ctx,heroX-10,heroY-28,hero,2,pal);
+      // Tire smoke particles when drifting
+      if(Math.abs(turn) > 0.4 && Math.random() < 0.6){
+        smoke.push({ x: carX + (Math.random() - 0.5) * 20, y: 142, r: 2 + Math.random() * 3, life: 0.35 });
       }
-      ctx.restore();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      for(var s = smoke.length - 1; s >= 0; s--){
+        var sm = smoke[s];
+        sm.life -= dt;
+        sm.y -= 12 * dt;
+        sm.r += 8 * dt;
+        if(sm.life <= 0){ smoke.splice(s, 1); continue; }
+        ctx.beginPath();
+        ctx.arc(sm.x, sm.y, sm.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
-      text(ctx,'WILDFIELD',8,7,8,'#fdf8e5');
-      text(ctx,'ROUTE 01',8,19,6,'#2c5a2a');
-      text(ctx,'WALK '+(dir>0?'RIGHT':'LEFT'),W-8,H-14,6,'#fdf8e5','right');
+      // Draw Player Car
+      pxp(ctx, carX - 16, 126, car, 2, carPal);
+
+      // HUD Telemetry
+      text(ctx, 'OPEN ROAD 3D', 8, 6, 8, '#00f0ff');
+      text(ctx, '185 KM/H', W - 8, 6, 8, '#ffea00', 'right');
+      text(ctx, 'STUNT LOOP AHEAD', 8, 18, 6, '#ff7b00');
     },
     title:function(ctx,blink){
-      ctx.fillStyle='#79c95c';ctx.fillRect(0,0,W,H);
-      ctx.fillStyle='rgba(255,255,255,.05)';
-      for(var y=0;y<H;y+=16)for(var x=0;x<W;x+=16){
-        if(((x/16+y/16)%7)===0)ctx.fillRect(x,y,16,16);
-      }
-      text(ctx,'WILDFIELD',W/2,42,16,'#fdf8e5','center');
-      text(ctx,'OPEN MEADOW RPG',W/2,68,8,'#245c24','center');
-      pxp(ctx,W/2-10,92,hero,2,pal);
-      if(blink)text(ctx,'PRESS START',W/2,136,8,'#1b1b1b','center');
+      // Title Card
+      var skyGrad = ctx.createLinearGradient(0, 0, 0, 95);
+      skyGrad.addColorStop(0, '#03071e');
+      skyGrad.addColorStop(1, '#d00000');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, 95);
+
+      ctx.fillStyle = '#ffba08';
+      ctx.beginPath();
+      ctx.arc(W / 2, 85, 28, Math.PI, 0);
+      ctx.fill();
+
+      ctx.fillStyle = '#1b4332';
+      ctx.fillRect(0, 95, W, H - 95);
+
+      // Road
+      ctx.fillStyle = '#2b2b2b';
+      ctx.beginPath();
+      ctx.moveTo(W / 2 - 12, 95);
+      ctx.lineTo(W / 2 + 12, 95);
+      ctx.lineTo(W / 2 + 100, H);
+      ctx.lineTo(W / 2 - 100, H);
+      ctx.fill();
+
+      // Car
+      pxp(ctx, W / 2 - 16, 116, car, 2, carPal);
+
+      text(ctx, 'OPEN ROAD 3D', W / 2, 28, 14, '#ffea00', 'center');
+      text(ctx, 'STUNT LOOP & 4X4 RACER', W / 2, 50, 7, '#00f0ff', 'center');
+      if(blink) text(ctx, 'PRESS START', W / 2, 146, 8, '#ffffff', 'center');
     }
   };
 }
@@ -629,7 +688,7 @@ var factories={
   'pacman':pacman,
   'agent7':agent7,
   'galaga':galaga,
-  'wildfield':pokemonRpg
+  'car-game':carGame
 };
 
 var previews={},active=null,rafId=null,lastT=0;
