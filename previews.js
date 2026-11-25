@@ -535,10 +535,11 @@ function galaga(){
 
 /* ---------------- OPEN ROAD 3D (CAR GAME) ---------------- */
 function carGame(){
-  var carX=W/2, speed=120, roadOffset=0, turn=0;
   var smoke=[];
-  // Sports car pixel sprite (rear view like Outrun / arcade racer)
-  var car=[
+  var boostLines=[];
+
+  // Sports car pixel sprite - Rear standard view
+  var carRear=[
     "...RRRRRRRRRR...",
     "..RRRRRRRRRRRR..",
     "..KKKKKKKKKKKK..",
@@ -551,132 +552,293 @@ function carGame(){
     "TTT..EE....EE..TTT",
     "TTT............TTT"
   ];
+  // Sports car pixel sprite - Inverted upside-down view for loop apex
+  var carInverted=[
+    "TTT............TTT",
+    "TTT..EE....EE..TTT",
+    "BBBBBBBBBBBBBBBB",
+    "RLLRRRRRRRRRRLLR",
+    "RLLRRRRRRRRRRLLR",
+    "RRRRRRRRRRRRRRRR",
+    ".KKWWWWWWWWWWKK.",
+    ".KKWWWWWWWWWWKK.",
+    "..KKKKKKKKKKKK..",
+    "..RRRRRRRRRRRR..",
+    "...RRRRRRRRRR..."
+  ];
+
   var carPal={
-    R:'#ff3838', // Vibrant red body
-    K:'#1e1e1e', // Black roof/trim
-    W:'#70d6ff', // Tinted glass windshield
-    L:'#ffdd59', // Tail lights
-    B:'#3d3d3d', // Bumper
-    E:'#ffd32a', // Dual exhaust flame/tips
-    T:'#0f0f0f'  // Tires
+    R:'#ff2a2a', // Vibrant racing red body
+    K:'#141414', // Carbon black roof/trim
+    W:'#64d2ff', // Reflective windshield glass
+    L:'#ffcc00', // Amber/red tail light cluster
+    B:'#333333', // Rear diffuser
+    E:'#00f0ff', // Nitro cyan exhaust pulse
+    T:'#0a0a0a'  // Wide racing tires
   };
 
   return {
     draw:function(ctx,t,dt){
-      turn = Math.sin(t * 1.2);
-      carX = W / 2 + turn * 45;
-      roadOffset = (roadOffset + speed * dt * 2.5) % 40;
+      var cycle = t % 14.0; // 14-second action gameplay clip
+      var speed = 140;
+      var carX = W / 2;
+      var carY = 126;
+      var carSprite = carRear;
+      var statusMsg = '';
+      var stuntBanner = '';
 
-      // Synthwave Sunset Sky Gradient
-      var skyGrad = ctx.createLinearGradient(0, 0, 0, 90);
-      skyGrad.addColorStop(0, '#10002b');
-      skyGrad.addColorStop(0.5, '#5a189a');
-      skyGrad.addColorStop(1, '#ff7b00');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, W, 90);
+      // -------------------------------------------------------------
+      // Clip Sequencing:
+      // 0.0 - 4.5s: City Street Cruise & High-Speed Drift
+      // 4.5 - 9.0s: 72m Mega Loop Climb, Apex Inversion & Exit
+      // 9.0 - 14.0s: 15m Mega Kicker Jump, Mid-Air Flight & Landing
+      // -------------------------------------------------------------
+      if(cycle < 4.5){
+        // Street Cruise & Drifting
+        var pTurn = Math.sin(t * 2.2);
+        carX = W / 2 + pTurn * 50;
+        speed = 135 + Math.abs(pTurn) * 45;
+        statusMsg = 'HIGHWAY CRUISE · GEAR 4';
+        if(Math.abs(pTurn) > 0.4){
+          stuntBanner = 'DRIFT: +150 PTS';
+          smoke.push({ x: carX - 12 + Math.random() * 24, y: 144, r: 2 + Math.random() * 3, life: 0.35 });
+        }
+      } else if(cycle < 9.0){
+        // 72m Mega Stunt Loop Traversal
+        var loopP = (cycle - 4.5) / 4.5; // 0.0 to 1.0
+        var theta = loopP * Math.PI * 2;
+        speed = 195;
+        statusMsg = '72M MEGA LOOP · NITRO';
 
-      // Distant Sun
-      ctx.fillStyle = '#ffea00';
-      ctx.beginPath();
-      ctx.arc(W / 2 - turn * 20, 68, 22, 0, Math.PI * 2);
-      ctx.fill();
+        if(loopP < 0.25){
+          // Approach runway over neon boost pads
+          carX = W / 2;
+          carY = 126;
+          stuntBanner = '⚡ NITRO BOOST PAD!';
+          for(var i = 0; i < 2; i++){
+            boostLines.push({ x: W / 2 + (Math.random() - 0.5) * 160, y: 70 + Math.random() * 40, l: 15 + Math.random() * 30 });
+          }
+        } else if(loopP < 0.75){
+          // In the loop! Climbing vertical, inverted at apex (loopP ~ 0.5), descending
+          var loopR = 48;
+          var loopCenterY = 75;
+          carX = W / 2 + Math.sin(theta) * 32;
+          carY = loopCenterY - Math.cos(theta) * loopR;
+          if(loopP > 0.38 && loopP < 0.62){
+            carSprite = carInverted; // Inverted upside down at 72m loop apex!
+            stuntBanner = '🔥 360° MEGA LOOP CLEARED! +1000 PTS';
+          } else {
+            stuntBanner = '🌀 CLIMBING 72M LOOP';
+          }
+        } else {
+          // Exit loop onto runway
+          carX = W / 2 + 15;
+          carY = 126;
+          stuntBanner = '🎯 CLEAN LOOP EXIT!';
+        }
+      } else {
+        // 15m Mega Kicker Ramp Launch & Ballistic Airtime
+        var jumpP = (cycle - 9.0) / 5.0; // 0.0 to 1.0
+        speed = 160;
+        statusMsg = 'AIRBORNE · GRAVITY 9.8';
 
-      // Distant 72m Stunt Loop Outline on Horizon
-      ctx.strokeStyle = '#00f0ff';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(W / 2 + 50 - turn * 30, 62, 14, 26, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Distant City Skyline
-      ctx.fillStyle = '#240046';
-      for(var b = 0; b < 14; b++){
-        var bx = b * 22 - turn * 10;
-        var bh = 15 + ((b * 37) % 28);
-        ctx.fillRect(bx, 90 - bh, 18, bh);
+        if(jumpP < 0.25){
+          // Driving up the kicker launch ramp
+          carX = W / 2;
+          carY = 126 - (jumpP / 0.25) * 28;
+          stuntBanner = '⚠️ MEGA KICKER RAMP';
+        } else if(jumpP < 0.75){
+          // Ballistic mid-air projectile flight!
+          var airP = (jumpP - 0.25) / 0.5; // 0 to 1 parabola
+          carX = W / 2 + Math.sin(airP * Math.PI) * 10;
+          carY = 98 - Math.sin(airP * Math.PI) * 44; // Soars high into the sky!
+          stuntBanner = '🚀 15M MEGA KICKER LAUNCH! +300 PTS';
+          smoke.push({ x: carX - 10 + Math.random() * 20, y: carY + 12, r: 2 + Math.random() * 2, life: 0.2 });
+        } else {
+          // Touchdown landing!
+          carX = W / 2;
+          carY = 126;
+          stuntBanner = '🎯 CLEAN LANDING!';
+          smoke.push({ x: carX - 14, y: 144, r: 3 + Math.random() * 3, life: 0.4 });
+          smoke.push({ x: carX + 14, y: 144, r: 3 + Math.random() * 3, life: 0.4 });
+        }
       }
 
-      // Ground / Off-Road Plains
-      ctx.fillStyle = '#2d6a4f';
-      ctx.fillRect(0, 90, W, H - 90);
+      // -------------------------------------------------------------
+      // Background Rendering: Synthwave Sunset Sky & Mountain Horizon
+      // -------------------------------------------------------------
+      var skyGrad = ctx.createLinearGradient(0, 0, 0, 85);
+      skyGrad.addColorStop(0, '#0c0728');
+      skyGrad.addColorStop(0.4, '#4a1259');
+      skyGrad.addColorStop(0.8, '#c72c48');
+      skyGrad.addColorStop(1, '#ff7b00');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, 85);
 
-      // Pseudo-3D Perspective Highway
-      for(var y = 90; y < H; y++){
-        var p = (y - 90) / (H - 90);
-        var roadW = 24 + p * 190;
-        var rx = W / 2 + (p * turn * 30);
-        var isAlt = ((y + roadOffset) % 24) < 12;
+      // Glowing Sun
+      ctx.fillStyle = '#ffee55';
+      ctx.beginPath();
+      ctx.arc(W / 2, 65, 20, 0, Math.PI * 2);
+      ctx.fill();
 
-        // Shoulder / Curbs
-        ctx.fillStyle = isAlt ? '#ff3838' : '#ffffff';
+      // Distant 72m Mega Loop Silhouette
+      ctx.strokeStyle = '#ff7b00';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(W / 2 + 55, 55, 14, 28, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // City Skyscraper Silhouette
+      ctx.fillStyle = '#1c0f38';
+      for(var b = 0; b < 16; b++){
+        var bx = b * 20;
+        var bh = 14 + ((b * 43) % 36);
+        ctx.fillRect(bx, 85 - bh, 16, bh);
+        // Illuminated skyscraper windows
+        ctx.fillStyle = '#ffcc00';
+        for(var w = 0; w < 3; w++){
+          ctx.fillRect(bx + 3 + w * 4, 85 - bh + 6, 2, 3);
+        }
+        ctx.fillStyle = '#1c0f38';
+      }
+
+      // Ground Landscape (Lush green plains)
+      ctx.fillStyle = '#1e5f38';
+      ctx.fillRect(0, 85, W, H - 85);
+
+      // -------------------------------------------------------------
+      // Pseudo-3D Perspective Road Network
+      // -------------------------------------------------------------
+      var roadScroll = (t * speed * 3.0) % 30;
+      for(var y = 85; y < H; y++){
+        var p = (y - 85) / (H - 85);
+        var roadW = 22 + p * 200;
+        var rx = W / 2 + Math.sin(t * 1.5) * (p * 22);
+        var isAlt = ((y + roadScroll) % 24) < 12;
+
+        // Shoulder curbs
+        ctx.fillStyle = isAlt ? '#ff2a2a' : '#ffffff';
         ctx.fillRect(rx - roadW / 2 - 6, y, roadW + 12, 1);
 
-        // Asphalt Road Bed
-        ctx.fillStyle = isAlt ? '#333533' : '#242423';
+        // Asphalt 2-lane road surface
+        ctx.fillStyle = isAlt ? '#2b2d30' : '#1f2022';
         ctx.fillRect(rx - roadW / 2, y, roadW, 1);
 
-        // Dashed Centerline
-        if(isAlt && p > 0.15){
-          ctx.fillStyle = '#ffee32';
+        // Dashed yellow centerline
+        if(isAlt && p > 0.16){
+          ctx.fillStyle = '#ffd32a';
           ctx.fillRect(rx - 2, y, 4, 1);
         }
       }
 
-      // Tire smoke particles when drifting
-      if(Math.abs(turn) > 0.4 && Math.random() < 0.6){
-        smoke.push({ x: carX + (Math.random() - 0.5) * 20, y: 142, r: 2 + Math.random() * 3, life: 0.35 });
+      // Nitro speed lines
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 1.5;
+      for(var bl = boostLines.length - 1; bl >= 0; bl--){
+        var bLine = boostLines[bl];
+        bLine.y += 240 * dt;
+        if(bLine.y > H){ boostLines.splice(bl, 1); continue; }
+        ctx.beginPath();
+        ctx.moveTo(bLine.x, bLine.y);
+        ctx.lineTo(bLine.x, bLine.y + bLine.l);
+        ctx.stroke();
       }
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+
+      // Smoke particles
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
       for(var s = smoke.length - 1; s >= 0; s--){
         var sm = smoke[s];
         sm.life -= dt;
-        sm.y -= 12 * dt;
-        sm.r += 8 * dt;
+        sm.y -= 14 * dt;
+        sm.r += 10 * dt;
         if(sm.life <= 0){ smoke.splice(s, 1); continue; }
         ctx.beginPath();
         ctx.arc(sm.x, sm.y, sm.r, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Draw Player Car
-      pxp(ctx, carX - 16, 126, car, 2, carPal);
+      // Draw Sports Car
+      pxp(ctx, carX - 16, carY, carSprite, 2, carPal);
 
-      // HUD Telemetry
+      // -------------------------------------------------------------
+      // Authentic In-Game Arcade HUD Overlays
+      // -------------------------------------------------------------
+      // Top Status & Speedometer
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      ctx.fillRect(0, 0, W, 22);
       text(ctx, 'OPEN ROAD 3D', 8, 6, 8, '#00f0ff');
-      text(ctx, '185 KM/H', W - 8, 6, 8, '#ffea00', 'right');
-      text(ctx, 'STUNT LOOP AHEAD', 8, 18, 6, '#ff7b00');
+      text(ctx, Math.round(speed) + ' KM/H', W - 8, 6, 8, '#ffee00', 'right');
+
+      // Stunt Action Notification
+      if(stuntBanner){
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(W / 2 - 90, 26, 180, 16);
+        ctx.strokeStyle = '#ff7b00';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(W / 2 - 90, 26, 180, 16);
+        text(ctx, stuntBanner, W / 2, 30, 6, '#ffffff', 'center');
+      }
+
+      // Bottom Telemetry & Status
+      text(ctx, statusMsg, 8, H - 12, 6, '#00f0ff');
+
+      // Radar Minimap (Bottom-Right corner preview)
+      ctx.fillStyle = 'rgba(10, 25, 40, 0.85)';
+      ctx.fillRect(W - 28, H - 28, 24, 24);
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(W - 28, H - 28, 24, 24);
+      // Radar player dot
+      ctx.fillStyle = '#00ff66';
+      ctx.fillRect(W - 17, H - 17, 3, 3);
+      // Radar loop icon
+      ctx.strokeStyle = '#ff7b00';
+      ctx.beginPath();
+      ctx.arc(W - 16, H - 21, 3, 0, Math.PI * 2);
+      ctx.stroke();
     },
     title:function(ctx,blink){
-      // Title Card
-      var skyGrad = ctx.createLinearGradient(0, 0, 0, 95);
-      skyGrad.addColorStop(0, '#03071e');
-      skyGrad.addColorStop(1, '#d00000');
+      // Arcade Attract Screen: Realistic 3D scene teaser
+      var skyGrad = ctx.createLinearGradient(0, 0, 0, 90);
+      skyGrad.addColorStop(0, '#0c0728');
+      skyGrad.addColorStop(0.5, '#4a1259');
+      skyGrad.addColorStop(1, '#ff7b00');
       ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, W, 95);
+      ctx.fillRect(0, 0, W, 90);
 
-      ctx.fillStyle = '#ffba08';
+      // Sunset sun
+      ctx.fillStyle = '#ffee55';
       ctx.beginPath();
-      ctx.arc(W / 2, 85, 28, Math.PI, 0);
+      ctx.arc(W / 2, 72, 22, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#1b4332';
-      ctx.fillRect(0, 95, W, H - 95);
+      // 72m Loop Arch in Center
+      ctx.strokeStyle = '#ff7b00';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.ellipse(W / 2, 58, 22, 38, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Ground
+      ctx.fillStyle = '#1e5f38';
+      ctx.fillRect(0, 90, W, H - 90);
 
       // Road
-      ctx.fillStyle = '#2b2b2b';
+      ctx.fillStyle = '#222426';
       ctx.beginPath();
-      ctx.moveTo(W / 2 - 12, 95);
-      ctx.lineTo(W / 2 + 12, 95);
-      ctx.lineTo(W / 2 + 100, H);
-      ctx.lineTo(W / 2 - 100, H);
+      ctx.moveTo(W / 2 - 16, 90);
+      ctx.lineTo(W / 2 + 16, 90);
+      ctx.lineTo(W / 2 + 105, H);
+      ctx.lineTo(W / 2 - 105, H);
       ctx.fill();
 
-      // Car
-      pxp(ctx, W / 2 - 16, 116, car, 2, carPal);
+      // Car parked in front
+      pxp(ctx, W / 2 - 16, 114, carRear, 2, carPal);
 
-      text(ctx, 'OPEN ROAD 3D', W / 2, 28, 14, '#ffea00', 'center');
-      text(ctx, 'STUNT LOOP & 4X4 RACER', W / 2, 50, 7, '#00f0ff', 'center');
-      if(blink) text(ctx, 'PRESS START', W / 2, 146, 8, '#ffffff', 'center');
+      // Neon Marquee Title
+      text(ctx, 'OPEN ROAD 3D', W / 2, 16, 13, '#ffee00', 'center');
+      text(ctx, '72M LOOP · MEGA JUMPS · 4X4', W / 2, 34, 6, '#00f0ff', 'center');
+      if(blink) text(ctx, 'HOVER FOR GAMEPLAY · PLAY', W / 2, 146, 7, '#ffffff', 'center');
     }
   };
 }
